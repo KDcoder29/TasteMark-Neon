@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@neondatabase/neon-js": "^0.7.0-beta",
+    "@neondatabase/serverless": "^1.2.0",
+    "pg": "^8.23.1"
+  }
+}
