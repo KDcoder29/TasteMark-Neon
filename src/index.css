@@ -29,6 +29,16 @@ body{margin:0;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antia
 .input{width:100%;padding:11px 13px;font-size:15px;color:var(--ink);background:var(--surface);
   border:1px solid var(--line);border-radius:12px;outline:none;transition:border-color .2s,box-shadow .2s}
 .input:focus{border-color:var(--pri);box-shadow:0 0 0 4px #3d6a9420}
+/* text inputs with suggestions (city): no browser arrow, suggestions still show while typing */
+input::-webkit-calendar-picker-indicator{display:none!important;opacity:0}
+input[list]{background-image:none}
+
+/* dropdowns: custom arrow, kept slightly inside the box */
+select.input{-webkit-appearance:none;appearance:none;padding-right:40px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 16px center;background-size:14px}
+:root[data-theme="dark"] select.input{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa7b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")}
 .btn{padding:11px 16px;border-radius:12px;font-weight:600;font-size:15px;border:1px solid var(--line);
   background:var(--surface);color:var(--ink);cursor:pointer;transition:transform .15s,box-shadow .2s,background .2s}
 .btn:active{transform:scale(.97)}

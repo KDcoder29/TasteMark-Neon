@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
 import { addDishWithRating } from './groupApi'
-import { norm } from './shared'
+import { norm, priceInput, priceProps } from './shared'
 
 // Add a dish (with my rating) to a place that is already in the group.
 // If the dish already exists there, my rating is added to it.
@@ -53,7 +53,7 @@ export default function DishForm({ me, place, onClose, onSaved }) {
         {!existing && (
           <>
             <label className={label} style={mute}>Price ₹ *</label>
-            <input type="number" min="0" inputMode="numeric" value={f.price} onChange={e => set('price', e.target.value)} placeholder="200" className="input mb-3" />
+            <input {...priceProps} value={f.price} onChange={e => set('price', priceInput(e.target.value))} placeholder="200" className="input mb-3" />
           </>
         )}
 

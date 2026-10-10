@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
-import { CATEGORIES } from './shared'
+import { CATEGORIES, priceInput, priceProps } from './shared'
 import { findGroupPlace, addDishWithRating } from './groupApi'
 
 const blankDish = () => ({ name: '', price: '', rating: 0, order_again: '', note: '' })
@@ -166,7 +166,7 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
               <div key={i} className="rise mb-3 rounded-2xl border p-3" style={{ borderColor: 'var(--line)', background: 'var(--dish)' }}>
                 <div className="mb-2 flex gap-2">
                   <input required placeholder="Dish name *" value={d.name} onChange={e => setDish(i, 'name', e.target.value)} className="input" />
-                  <input required min="0" type="number" inputMode="numeric" placeholder="Price ₹ *" value={d.price} onChange={e => setDish(i, 'price', e.target.value)} className="input !w-28" />
+                  <input required {...priceProps} placeholder="Price ₹ *" value={d.price} onChange={e => setDish(i, 'price', priceInput(e.target.value))} className="input !w-28" />
                 </div>
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <div className="flex">

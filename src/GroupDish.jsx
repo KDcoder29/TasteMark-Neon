@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
-import { Stars, Avatar, tint, timeAgo } from './shared'
+import { Stars, Avatar, tint, timeAgo, priceInput, priceProps } from './shared'
 
 const EMOJIS = ['👍', '😋', '🔥', '😐', '👎']
 const ok = r => { if (r.error) throw r.error; return r }
@@ -202,7 +202,7 @@ export default function GroupDish({ d, me, names, isOwner, onChanged }) {
               {editing ? (
                 <form onSubmit={saveDish} className="flex flex-wrap gap-2">
                   <input value={en} onChange={e => setEn(e.target.value)} placeholder="Dish name" className="input !py-2 flex-1" />
-                  <input type="number" min="0" value={ep} onChange={e => setEp(e.target.value)} placeholder="₹" className="input !py-2 !w-24" />
+                  <input {...priceProps} value={ep} onChange={e => setEp(priceInput(e.target.value))} placeholder="₹" className="input !py-2 !w-24" />
                   <button disabled={busy} className="btn btn-pri !py-2 !text-sm">Save</button>
                   <button type="button" onClick={() => setEditing(false)} className="btn !py-2 !text-sm">Cancel</button>
                 </form>

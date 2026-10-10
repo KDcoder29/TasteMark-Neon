@@ -7,7 +7,7 @@ import DishForm from './DishForm'
 import Wishlist from './Wishlist'
 import Activity from './Activity'
 import Picker from './Picker'
-import { CATEGORIES, Stars } from './shared'
+import { CATEGORIES, Stars, priceScale, PriceSlider } from './shared'
 
 const SAMPLE = [
   { name: 'Coffea: Brew on the Rocks', city: 'Vadodara', area: '13 Canal Rd', categories: ['Cafe'],
@@ -46,7 +46,7 @@ export default function Journal({ me, group, groups }) {
   const [city, setCity] = useState('All')
   const [cat, setCat] = useState('All')
   const [minRate, setMinRate] = useState(0)
-  const [maxPrice, setMaxPrice] = useState(300)
+  const [maxPrice, setMaxPrice] = useState(null)   // null = any price
   const [again, setAgain] = useState(false)
 
   const isOwner = group?.role === 'owner'
@@ -85,27 +85,29 @@ export default function Journal({ me, group, groups }) {
     load()
   }
 
+  const scale = useMemo(() => priceScale(places), [places])
+  const priceOn = maxPrice != null && maxPrice < scale.cap
   const opts = k => [...new Set(places.map(p => p[k]).filter(Boolean))]
-  const dirty = q || city !== 'All' || cat !== 'All' || minRate || maxPrice < 300 || again
-  const reset = () => { setQ(''); setCity('All'); setCat('All'); setMinRate(0); setMaxPrice(300); setAgain(false) }
+  const dirty = q || city !== 'All' || cat !== 'All' || minRate || priceOn || again
+  const reset = () => { setQ(''); setCity('All'); setCat('All'); setMinRate(0); setMaxPrice(null); setAgain(false) }
 
   const results = useMemo(() => {
     const s = q.trim().toLowerCase()
-    const dishFilter = minRate > 0 || maxPrice < 300 || again
+    const dishFilter = minRate > 0 || priceOn || again
     return places.flatMap(p => {
       if (city !== 'All' && p.city !== city) return []
       if (cat !== 'All' && !(p.categories || []).includes(cat)) return []
       const placeHit = !s || [p.name, p.city, p.area, (p.categories || []).join(' '), p.directions].join(' ').toLowerCase().includes(s)
       const dishes = (p.dishes || []).filter(d =>
         (!minRate || d.rating >= minRate) &&
-        (maxPrice >= 300 || (d.price && d.price <= maxPrice)) &&
+        (!priceOn || (d.price != null && d.price <= maxPrice)) &&
         (!again || d.order_again === 'yes') &&
         (!s || placeHit || [d.name, d.note].join(' ').toLowerCase().includes(s)))
       if (dishFilter && !dishes.length) return []
       if (!dishFilter && s && !placeHit && !dishes.length) return []
       return [{ ...p, dishes, allDishes: p.dishes }]
     })
-  }, [places, q, city, cat, minRate, maxPrice, again])
+  }, [places, q, city, cat, minRate, maxPrice, priceOn, again])
 
   const tabs = [
     ['journal', 'Journal'],
@@ -166,11 +168,10 @@ export default function Journal({ me, group, groups }) {
             {dirty && <button className="chip fade" onClick={reset}>Clear ✕</button>}
           </div>
 
-          <label className="mt-3 block text-xs font-medium" style={mute}>
-            Max price: <span style={{ color: 'var(--pri)' }}>{maxPrice >= 300 ? 'any' : '₹' + maxPrice}</span>
-            <input type="range" min={0} max={300} step={10} value={maxPrice} onChange={e => setMaxPrice(+e.target.value)}
-              className="mt-1 w-full" style={{ accentColor: 'var(--pri)' }} />
-          </label>
+          <div className="mt-3 text-xs font-medium" style={mute}>
+            Max price: <span style={{ color: 'var(--pri)' }}>{priceOn ? '₹' + maxPrice : 'any'}</span>
+            <PriceSlider places={places} scale={scale} maxPrice={maxPrice} onChange={setMaxPrice} />
+          </div>
 
           {!loading && places.length > 0 && (
             <p className="mb-3 mt-2 text-sm" style={mute}>

@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CATEGORIES, Stars } from './shared'
+import { CATEGORIES, Stars, priceScale, PriceSlider } from './shared'
 
 // "Where should we eat?": picks a random place from favorites, the wishlist, or everything.
 export default function Picker({ places, wishlist, group, onClose }) {
   const [src, setSrc] = useState('fav')            // 'fav' | 'new' | 'any'
   const [city, setCity] = useState('All')
   const [cat, setCat] = useState('All')
-  const [maxPrice, setMaxPrice] = useState(300)
+  const [maxPrice, setMaxPrice] = useState(null)   // null = any
   const [shown, setShown] = useState(null)
   const [spin, setSpin] = useState('')
   const timer = useRef(null)
@@ -16,6 +16,9 @@ export default function Picker({ places, wishlist, group, onClose }) {
   useEffect(() => () => clearInterval(timer.current), [])
 
   const cities = useMemo(() => [...new Set([...places, ...wishlist].map(x => x.city).filter(Boolean))], [places, wishlist])
+
+  const scale = useMemo(() => priceScale(places), [places])
+  const priceOn = maxPrice != null && maxPrice < scale.cap
 
   const pool = useMemo(() => {
     const okCity = x => city === 'All' || x.city === city
@@ -27,7 +30,7 @@ export default function Picker({ places, wishlist, group, onClose }) {
         if (!okCity(p) || !okCat(p)) continue
         const dishes = p.dishes || []
         if (src === 'fav' && !dishes.some(d => d.rating >= 4)) continue
-        if (maxPrice < 300 && !dishes.some(d => d.price && d.price <= maxPrice)) continue
+        if (priceOn && !dishes.some(d => d.price != null && d.price <= maxPrice)) continue
         const top = [...dishes].sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 2)
         out.push({ key: 'p' + p.id, kind: 'place', name: p.name, city: p.city, area: p.area, directions: p.directions, categories: p.categories, top })
       }
@@ -39,7 +42,7 @@ export default function Picker({ places, wishlist, group, onClose }) {
       }
     }
     return out
-  }, [places, wishlist, src, city, cat, maxPrice])
+  }, [places, wishlist, src, city, cat, maxPrice, priceOn])
 
   function reset(fn) { return v => { fn(v); setShown(null) } }
 
@@ -97,11 +100,10 @@ export default function Picker({ places, wishlist, group, onClose }) {
         </div>
 
         {src !== 'new' && (
-          <label className="mb-4 block text-xs font-medium" style={mute}>
-            Budget per dish: <span style={{ color: 'var(--pri)' }}>{maxPrice >= 300 ? 'any' : 'up to ₹' + maxPrice}</span>
-            <input type="range" min={0} max={300} step={10} value={maxPrice} onChange={e => reset(setMaxPrice)(+e.target.value)}
-              className="mt-1 w-full" style={{ accentColor: 'var(--pri)' }} />
-          </label>
+          <div className="mb-4 text-xs font-medium" style={mute}>
+            Budget per dish: <span style={{ color: 'var(--pri)' }}>{priceOn ? 'up to ₹' + maxPrice : 'any'}</span>
+            <PriceSlider places={places} scale={scale} maxPrice={maxPrice} onChange={reset(setMaxPrice)} />
+          </div>
         )}
 
         {/* result */}

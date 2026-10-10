@@ -69,6 +69,7 @@ function ProfileMenu({ email, username, dark, setDark, onPassword, onGroups, onL
 export default function App() {
   const [session, setSession] = useState(undefined)
   const [dark, setDark] = useTheme()
+  const loggedOut = useRef(false)
   const [pwOpen, setPwOpen] = useState(false)
   const [groupsOpen, setGroupsOpen] = useState(false)
   const [groups, setGroups] = useState([])
@@ -81,7 +82,8 @@ export default function App() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s))
+    // after an explicit logout, ignore late "signed in" events so the old session cannot come back
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => { if (loggedOut.current && s) return; setSession(s) })
     return () => sub.subscription.unsubscribe()
   }, [])
 
@@ -111,8 +113,10 @@ export default function App() {
 
   // sign out and go straight back to the login page (do not wait for an auth-change event)
   async function logout() {
+    loggedOut.current = true
     try { await supabase.auth.signOut() } catch (e) { console.error(e) }
     setSession(null); setGroups([]); setGroupsReady(false); setUsername(''); setGroupsOpen(false)
+    window.location.replace('/')   // fresh start: nothing from the old session is left in memory
   }
 
   const chooseSpace = id => {
@@ -144,7 +148,7 @@ export default function App() {
   }
 
   if (session === undefined) return <div className="p-10"><div className="skel mx-auto max-w-md" /></div>
-  if (!session) return <Login onSession={setSession} />
+  if (!session) return <Login onSession={s => { loggedOut.current = false; setSession(s) }} />
 
   const activeGroup = groups.find(g => g.id === space) || null
 
@@ -155,7 +159,7 @@ export default function App() {
           <div className="flex items-center gap-2.5">
             <Logo size={36} />
             <div className="leading-tight">
-              <div className="font-bold tracking-tight">Tastemark</div>
+              <div className="font-bold tracking-tight">BiteMark</div>
               <div className="text-xs" style={{ color: 'var(--mute)' }}>Remember every great bite</div>
             </div>
           </div>

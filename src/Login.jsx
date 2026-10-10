@@ -90,7 +90,7 @@ export default function Login({ onSession }) {
         <div className="rise flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <Logo size={40} />
-            <span className="text-xl font-bold tracking-tight">Tastemark</span>
+            <span className="text-xl font-bold tracking-tight">BiteMark</span>
           </div>
         </div>
         <h1 className="rise mt-5 text-2xl font-bold leading-tight tracking-tight lg:mt-16 lg:text-5xl" style={{ animationDelay: '80ms' }}>
@@ -150,7 +150,7 @@ export default function Login({ onSession }) {
               {busy ? 'Please wait…' : isSignup ? 'Create account' : 'Log in'}</button>
           </form>
           <p className="mt-5 text-center text-sm" style={{ color: 'var(--mute)' }}>
-            {isSignup ? 'Already have an account?' : 'New to Tastemark?'}{' '}
+            {isSignup ? 'Already have an account?' : 'New to BiteMark?'}{' '}
             <button onClick={() => { setIsSignup(!isSignup); setError(''); setInfo(''); setPassword('') }}
               className="tbtn font-semibold" style={{ color: 'var(--pri)' }}>{isSignup ? 'Log in' : 'Create an account'}</button>
           </p>

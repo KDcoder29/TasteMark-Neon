@@ -1,7 +1,7 @@
-// Tastemark logo: green serving cloche with a star, on cream
+// BiteMark logo: green serving cloche with a star, on cream
 export default function Logo({ size = 36 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 512 512" className="shrink-0" role="img" aria-label="Tastemark">
+    <svg width={size} height={size} viewBox="0 0 512 512" className="shrink-0" role="img" aria-label="BiteMark">
       <rect width="512" height="512" rx="112" fill="#f3ead8" />
       <rect x="4" y="4" width="504" height="504" rx="108" fill="none" stroke="#1d3b2f" strokeOpacity=".18" strokeWidth="8" />
       <g transform="translate(256 256) scale(1.15) translate(-256 -250)">
