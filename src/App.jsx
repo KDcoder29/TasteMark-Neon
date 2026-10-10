@@ -138,7 +138,7 @@ export default function App() {
   }
 
   if (session === undefined) return <div className="p-10"><div className="skel mx-auto max-w-md" /></div>
-  if (!session) return <Login />
+  if (!session) return <Login onSession={setSession} />
 
   const activeGroup = groups.find(g => g.id === space) || null
 

@@ -14,7 +14,7 @@ const TRUST = [
   ['🚫', 'No ads, no sharing', 'Your places and dishes are never sold or shared.'],
 ]
 
-export default function Login() {
+export default function Login({ onSession }) {
   const [identity, setIdentity] = useState('')   // login: username or email
   const [username, setUsername] = useState('')     // signup only
   const [email, setEmail] = useState('')           // signup only
@@ -27,9 +27,25 @@ export default function Login() {
   const quote = useMemo(() => QUOTES[new Date().getDate() % QUOTES.length], [])
 
   const lookup = async (param, value) => {
-    const r = await fetch(`/api/auth-lookup?${param}=${encodeURIComponent(value)}`)
-    if (!r.ok) throw new Error('Could not reach the server. Please try again.')
+    let r
+    try { r = await fetch(`/api/auth-lookup?${param}=${encodeURIComponent(value)}`) }
+    catch { throw new Error('Could not reach the server. Please try again.') }
+    const type = r.headers.get('content-type') || ''
+    if (!r.ok || !type.includes('json')) {
+      throw new Error('The username service is not available right now. Please try again, or use your email.')
+    }
     return r.json()
+  }
+
+  // make sure a session really exists, then tell the app (do not rely only on the auth-change event)
+  async function finish(result) {
+    let s = result?.session
+    if (!s) s = (await supabase.auth.getSession()).data?.session
+    if (!s) {
+      console.error('Signed in but no session was returned', result)
+      throw new Error('You were signed in, but the session was not saved. In the Neon Console (Auth), add this site address as a trusted domain, then try again.')
+    }
+    onSession?.(s)
   }
 
   async function submit(e) {
@@ -47,8 +63,9 @@ export default function Login() {
         })
         if (e1) throw e1
         // if email verification is switched off in Neon Auth, signing in works straight away
-        const { error: e2 } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
+        const { data: d2, error: e2 } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
         if (e2) setInfo('Account created! If email verification is on, check your inbox, then log in.')
+        else await finish(d2)
       } else {
         let loginEmail = identity.trim()
         if (!loginEmail.includes('@')) {            // it is a username: find its email
@@ -56,8 +73,9 @@ export default function Login() {
           if (!found) throw new Error('Incorrect username/email or password.')
           loginEmail = found
         }
-        const { error: e1 } = await supabase.auth.signInWithPassword({ email: loginEmail, password })
+        const { data: d1, error: e1 } = await supabase.auth.signInWithPassword({ email: loginEmail, password })
         if (e1) throw new Error(/invalid|incorrect|credential/i.test(e1.message) ? 'Incorrect username/email or password.' : e1.message)
+        await finish(d1)
       }
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.')
