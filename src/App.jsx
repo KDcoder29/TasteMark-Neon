@@ -18,7 +18,7 @@ function useTheme() {
   return [dark, setDark]
 }
 
-function ProfileMenu({ email, username, dark, setDark, onPassword, onGroups }) {
+function ProfileMenu({ email, username, dark, setDark, onPassword, onGroups, onLogout }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -57,7 +57,7 @@ function ProfileMenu({ email, username, dark, setDark, onPassword, onGroups }) {
             </button>
           )}
           <div className="my-1 h-px" style={{ background: 'var(--line)' }} />
-          <button className="menu-item" style={{ color: 'var(--bad)' }} onClick={() => supabase.auth.signOut()}>
+          <button className="menu-item" style={{ color: 'var(--bad)' }} onClick={() => { setOpen(false); onLogout() }}>
             <span>Log out</span>
           </button>
         </div>
@@ -108,6 +108,12 @@ export default function App() {
       .then(() => supabase.from('profiles').select('username').eq('id', uid).maybeSingle())
       .then(({ data }) => setUsername(data?.username || ''))
   }, [uid])
+
+  // sign out and go straight back to the login page (do not wait for an auth-change event)
+  async function logout() {
+    try { await supabase.auth.signOut() } catch (e) { console.error(e) }
+    setSession(null); setGroups([]); setGroupsReady(false); setUsername(''); setGroupsOpen(false)
+  }
 
   const chooseSpace = id => {
     setSpace(id)
@@ -160,7 +166,7 @@ export default function App() {
               <span key={String(dark)} className="fade inline-block">{dark ? '☀️' : '🌙'}</span>
             </button>
             <ProfileMenu email={session.user.email} username={username} dark={dark} setDark={setDark}
-              onPassword={null} onGroups={() => setGroupsOpen(true)} />
+              onPassword={null} onGroups={() => setGroupsOpen(true)} onLogout={logout} />
           </div>
         </div>
 
