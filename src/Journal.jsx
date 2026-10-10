@@ -48,6 +48,8 @@ export default function Journal({ me, group, groups }) {
   const [minRate, setMinRate] = useState(0)
   const [maxPrice, setMaxPrice] = useState(null)   // null = any price
   const [again, setAgain] = useState(false)
+  const [sort, setSort] = useState(() => { try { return localStorage.getItem('sort') || 'recent' } catch { return 'recent' } })
+  const chooseSort = v => { setSort(v); try { localStorage.setItem('sort', v) } catch {} }
 
   const isOwner = group?.role === 'owner'
   const canEditPlace = p => p.user_id === me || isOwner
@@ -109,6 +111,30 @@ export default function Journal({ me, group, groups }) {
     })
   }, [places, q, city, cat, minRate, maxPrice, priceOn, again])
 
+  // sorting happens on the filtered list; places without a rating/price always go last
+  const sorted = useMemo(() => {
+    const avg = (p, k) => {
+      const v = (p.dishes || []).map(d => d[k]).filter(x => x != null && x > 0)
+      return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null
+    }
+    const num = (k, dir) => (a, b) => {
+      const x = avg(a, k), y = avg(b, k)
+      if (x == null && y == null) return 0
+      if (x == null) return 1
+      if (y == null) return -1
+      return dir * (x - y)
+    }
+    const by = {
+      recent: (a, b) => new Date(b.created_at) - new Date(a.created_at),
+      oldest: (a, b) => new Date(a.created_at) - new Date(b.created_at),
+      rating: num('rating', -1),
+      cheap: num('price', 1),
+      pricey: num('price', -1),
+      name: (a, b) => a.name.localeCompare(b.name),
+    }[sort] || (() => 0)
+    return [...results].sort(by)
+  }, [results, sort])
+
   const tabs = [
     ['journal', 'Journal'],
     ['wishlist', `Wishlist${wishlist.length ? ` (${wishlist.length})` : ''}`],
@@ -160,6 +186,17 @@ export default function Journal({ me, group, groups }) {
               {['All', ...CATEGORIES].map(v => <option key={v} value={v}>{v === 'All' ? 'All categories' : v}</option>)}</select>
           </div>
 
+          <div className="mt-2">
+            <select className="input" value={sort} onChange={e => chooseSort(e.target.value)} aria-label="Sort places">
+              <option value="recent">Sort: Newest first</option>
+              <option value="oldest">Sort: Oldest first</option>
+              <option value="rating">Sort: Highest rated</option>
+              <option value="cheap">Sort: Price, low to high</option>
+              <option value="pricey">Sort: Price, high to low</option>
+              <option value="name">Sort: Name A to Z</option>
+            </select>
+          </div>
+
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {[3, 4, 5].map(n => (
               <button key={n} className={`chip ${minRate === n ? 'on' : ''}`} onClick={() => setMinRate(minRate === n ? 0 : n)}>{n}★+</button>
@@ -189,9 +226,9 @@ export default function Journal({ me, group, groups }) {
                 </p>
                 {!group && <button onClick={seed} className="text-sm font-medium underline" style={{ color: 'var(--pri)' }}>or load sample data</button>}
               </div>
-            ) : results.length === 0 ? (
+            ) : sorted.length === 0 ? (
               <div className="fade py-14 text-center" style={mute}>Nothing found. Try fewer filters.</div>
-            ) : results.map((p, i) => (
+            ) : sorted.map((p, i) => (
               <div key={p.id} className="rise mb-4 overflow-hidden rounded-2xl border transition duration-300 hover:-translate-y-0.5 hover:shadow-xl"
                 style={{ background: 'var(--surface)', borderColor: 'var(--line)', animationDelay: `${Math.min(i, 8) * 50}ms`, boxShadow: '0 1px 2px #0f172a0a' }}>
                 {/* PARENT: place */}

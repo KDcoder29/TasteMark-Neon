@@ -24,6 +24,7 @@ export default function Login({ onSession }) {
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
   const [busy, setBusy] = useState(false)
+  const [forgot, setForgot] = useState(false)
   const quote = useMemo(() => QUOTES[new Date().getDate() % QUOTES.length], [])
 
   const lookup = async (param, value) => {
@@ -52,7 +53,19 @@ export default function Login({ onSession }) {
     e.preventDefault()
     setBusy(true); setError(''); setInfo('')
     try {
-      if (isSignup) {
+      if (forgot) {
+        let mail = identity.trim()
+        if (!mail.includes('@')) {                  // username -> email
+          const { email: found } = await lookup('username', mail)
+          mail = found || ''
+        }
+        if (mail) {
+          const { error: e1 } = await supabase.auth.resetPasswordForEmail(mail, { redirectTo: `${window.location.origin}/reset-password` })
+          if (e1) throw e1
+        }
+        // same message whether or not the account exists, so nobody can probe for accounts
+        setInfo('If an account matches, a password reset link is on its way. Check your inbox (and spam).')
+      } else if (isSignup) {
         const uname = username.trim()
         if (!/^[A-Za-z0-9_.]{3,20}$/.test(uname)) throw new Error('Username must be 3-20 characters: letters, numbers, _ or .')
         const { available } = await lookup('available', uname)
@@ -106,12 +119,18 @@ export default function Login({ onSession }) {
       {/* Form */}
       <section className="l-form">
         <div className="card login-card rise w-full max-w-sm !p-6 sm:!p-7" style={{ animationDelay: '120ms' }}>
-          <h2 className="text-2xl font-bold">{isSignup ? 'Create your account' : 'Welcome back'}</h2>
+          <h2 className="text-2xl font-bold">{forgot ? 'Reset your password' : isSignup ? 'Create your account' : 'Welcome back'}</h2>
           <p className="mb-6 mt-1 text-sm" style={{ color: 'var(--mute)' }}>
-            {isSignup ? 'It takes less than a minute. No card needed.' : 'Log in to open your journal.'}
+            {forgot ? 'Enter your username or email and we will send you a reset link.' : isSignup ? 'It takes less than a minute. No card needed.' : 'Log in to open your journal.'}
           </p>
           <form onSubmit={submit} className="space-y-3">
-            {isSignup ? (
+            {forgot ? (
+              <div>
+                <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--mute)' }}>Username or email</label>
+                <input required autoFocus autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="Username or you@example.com"
+                  value={identity} onChange={e => setIdentity(e.target.value)} className="input" />
+              </div>
+            ) : isSignup ? (
               <>
                 <div>
                   <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--mute)' }}>Username</label>
@@ -132,7 +151,7 @@ export default function Login({ onSession }) {
                   value={identity} onChange={e => setIdentity(e.target.value)} className="input" />
               </div>
             )}
-            <div>
+            {!forgot && <div>
               <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--mute)' }}>Password</label>
               <div className="relative">
                 <input type={show ? 'text' : 'password'} required minLength={6}
@@ -143,17 +162,23 @@ export default function Login({ onSession }) {
                   className="tbtn absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold" style={{ color: 'var(--pri)' }}>
                   {show ? 'Hide' : 'Show'}</button>
               </div>
-            </div>
+              {!isSignup && <div className="mt-1.5 text-right"><button type="button" className="tbtn text-xs font-semibold" style={{ color: 'var(--pri)' }}
+                onClick={() => { setForgot(true); setError(''); setInfo('') }}>Forgot password?</button></div>}
+            </div>}
             {error && <p className="fade rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--errbg)', color: 'var(--bad)' }}>{error}</p>}
             {info && <p className="fade rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--okbg)', color: 'var(--ok)' }}>{info}</p>}
             <button disabled={busy} className="btn btn-pri w-full !mt-5">
-              {busy ? 'Please wait…' : isSignup ? 'Create account' : 'Log in'}</button>
+              {busy ? 'Please wait…' : forgot ? 'Send reset link' : isSignup ? 'Create account' : 'Log in'}</button>
           </form>
-          <p className="mt-5 text-center text-sm" style={{ color: 'var(--mute)' }}>
+          {forgot ? (
+            <p className="mt-5 text-center text-sm">
+              <button className="tbtn font-semibold" style={{ color: 'var(--pri)' }} onClick={() => { setForgot(false); setError(''); setInfo('') }}>Back to log in</button>
+            </p>
+          ) : <p className="mt-5 text-center text-sm" style={{ color: 'var(--mute)' }}>
             {isSignup ? 'Already have an account?' : 'New to BiteMark?'}{' '}
             <button onClick={() => { setIsSignup(!isSignup); setError(''); setInfo(''); setPassword('') }}
               className="tbtn font-semibold" style={{ color: 'var(--pri)' }}>{isSignup ? 'Log in' : 'Create an account'}</button>
-          </p>
+          </p>}
           <p className="mt-4 border-t pt-4 text-center text-xs" style={{ color: 'var(--mute)', borderColor: 'var(--line)' }}>
             🔒 Encrypted connection · Your journal is visible only to you
           </p>

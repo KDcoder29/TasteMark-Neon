@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 import Login from './Login'
 import Journal from './Journal'
 import ChangePassword from './ChangePassword'
+import ResetPassword from './ResetPassword'
 import Groups from './Groups'
 import Logo from './Logo'
 
@@ -67,6 +68,7 @@ function ProfileMenu({ email, username, dark, setDark, onPassword, onGroups, onL
 }
 
 export default function App() {
+  if (window.location.pathname.startsWith('/reset-password')) return <ResetPassword />
   const [session, setSession] = useState(undefined)
   const [dark, setDark] = useTheme()
   const loggedOut = useRef(false)
@@ -170,7 +172,7 @@ export default function App() {
               <span key={String(dark)} className="fade inline-block">{dark ? '☀️' : '🌙'}</span>
             </button>
             <ProfileMenu email={session.user.email} username={username} dark={dark} setDark={setDark}
-              onPassword={null} onGroups={() => setGroupsOpen(true)} onLogout={logout} />
+              onPassword={() => setPwOpen(true)} onGroups={() => setGroupsOpen(true)} onLogout={logout} />
           </div>
         </div>
 

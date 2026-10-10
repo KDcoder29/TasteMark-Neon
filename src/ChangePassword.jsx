@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
+import { changePassword } from './authApi'
 
 export default function ChangePassword({ onClose }) {
+  const [cur, setCur] = useState('')
   const [pw, setPw] = useState('')
   const [pw2, setPw2] = useState('')
   const [msg, setMsg] = useState({ type: '', text: '' })
@@ -12,9 +14,14 @@ export default function ChangePassword({ onClose }) {
     if (pw.length < 6) return setMsg({ type: 'err', text: 'Password must be at least 6 characters.' })
     if (pw !== pw2) return setMsg({ type: 'err', text: 'The two passwords do not match.' })
     setBusy(true); setMsg({ type: '', text: '' })
-    const { error } = await supabase.auth.updateUser({ password: pw })
+    try {
+      const { data } = await supabase.auth.getSession()
+      await changePassword(cur, pw, data?.session?.access_token)
+    } catch (err) {
+      setBusy(false)
+      return setMsg({ type: 'err', text: err.message })
+    }
     setBusy(false)
-    if (error) return setMsg({ type: 'err', text: error.message })
     setMsg({ type: 'ok', text: 'Password updated.' })
     setTimeout(onClose, 1200)
   }
@@ -27,7 +34,8 @@ export default function ChangePassword({ onClose }) {
           <h2 className="text-lg font-bold">Change password</h2>
           <button type="button" onClick={onClose} className="ghost grid h-8 w-8 place-items-center rounded-full text-xl" style={{ color: 'var(--mute)' }}>×</button>
         </div>
-        <input type="password" autoFocus required placeholder="New password" value={pw} onChange={e => setPw(e.target.value)} className="input mb-3" />
+        <input type="password" autoFocus required autoComplete="current-password" placeholder="Current password" value={cur} onChange={e => setCur(e.target.value)} className="input mb-3" />
+        <input type="password" required placeholder="New password" value={pw} onChange={e => setPw(e.target.value)} className="input mb-3" />
         <input type="password" required placeholder="Confirm new password" value={pw2} onChange={e => setPw2(e.target.value)} className="input mb-4" />
         {msg.text && (
           <p className="fade mb-3 rounded-lg px-3 py-2 text-sm"
