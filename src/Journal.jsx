@@ -1,3 +1,4 @@
+import { matchScore } from './search'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from './supabase'
 import PlaceForm from './PlaceForm'
@@ -94,20 +95,31 @@ export default function Journal({ me, group, groups }) {
   const reset = () => { setQ(''); setCity('All'); setCat('All'); setMinRate(0); setMaxPrice(null); setAgain(false) }
 
   const results = useMemo(() => {
-    const s = q.trim().toLowerCase()
+    const searching = q.trim().length > 0
     const dishFilter = minRate > 0 || priceOn || again
     return places.flatMap(p => {
       if (city !== 'All' && p.city !== city) return []
       if (cat !== 'All' && !(p.categories || []).includes(cat)) return []
-      const placeHit = !s || [p.name, p.city, p.area, (p.categories || []).join(' '), p.directions].join(' ').toLowerCase().includes(s)
-      const dishes = (p.dishes || []).filter(d =>
-        (!minRate || d.rating >= minRate) &&
-        (!priceOn || (d.price != null && d.price <= maxPrice)) &&
-        (!again || d.order_again === 'yes') &&
-        (!s || placeHit || [d.name, d.note].join(' ').toLowerCase().includes(s)))
+      const placeText = [p.name, p.city, p.area, (p.categories || []).join(' '), p.directions].join(' ')
+      let best = 0
+      const dishes = (p.dishes || []).filter(d => {
+        if (minRate && !(d.rating >= minRate)) return false
+        if (priceOn && !(d.price != null && d.price <= maxPrice)) return false
+        if (again && d.order_again !== 'yes') return false
+        if (!searching) return true
+        // smart match: every word must be found in the place or the dish (see search.js)
+        const sc = matchScore(q, placeText, d.name, d.note)
+        best = Math.max(best, sc)
+        return sc > 0
+      })
       if (dishFilter && !dishes.length) return []
-      if (!dishFilter && s && !placeHit && !dishes.length) return []
-      return [{ ...p, dishes, allDishes: p.dishes }]
+      if (searching && !dishes.length) {
+        // a place with no dishes yet, or whose dishes were all filtered out, can still match by its own details
+        const ps = matchScore(q, placeText)
+        if (!ps || (p.dishes || []).length) return []
+        best = ps
+      }
+      return [{ ...p, dishes, allDishes: p.dishes, _score: best }]
     })
   }, [places, q, city, cat, minRate, maxPrice, priceOn, again])
 
@@ -132,8 +144,10 @@ export default function Journal({ me, group, groups }) {
       pricey: num('price', -1),
       name: (a, b) => a.name.localeCompare(b.name),
     }[sort] || (() => 0)
-    return [...results].sort(by)
-  }, [results, sort])
+    const out = [...results].sort(by)
+    if (q.trim() && sort === 'recent') out.sort((x, y) => (y._score || 0) - (x._score || 0))   // best match first (stable, so ties stay newest-first)
+    return out
+  }, [results, sort, q])
 
   const tabs = [
     ['journal', 'Journal'],

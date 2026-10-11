@@ -1,18 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { supabase } from './supabase'
 import Logo from './Logo'
-
-const QUOTES = [
-  { q: 'Memory is the diary that we all carry about with us.', by: 'Oscar Wilde' },
-  { q: 'Tell me what you eat, and I will tell you what you are.', by: 'Jean Anthelme Brillat-Savarin' },
-  { q: 'One cannot think well, love well, sleep well, if one has not dined well.', by: 'Virginia Woolf' },
-]
-
-const TRUST = [
-  ['🔒', 'Private by design', 'Every entry is tied to your account. Only you can see your journal.'],
-  ['🛡️', 'Secure sign-in', 'Passwords are encrypted, and your connection is protected.'],
-  ['🚫', 'No ads, no sharing', 'Your places and dishes are never sold or shared.'],
-]
 
 export default function Login({ onSession }) {
   const [identity, setIdentity] = useState('')   // login: username or email
@@ -25,7 +13,6 @@ export default function Login({ onSession }) {
   const [info, setInfo] = useState('')
   const [busy, setBusy] = useState(false)
   const [forgot, setForgot] = useState(false)
-  const quote = useMemo(() => QUOTES[new Date().getDate() % QUOTES.length], [])
 
   const lookup = async (param, value) => {
     let r
@@ -97,33 +84,21 @@ export default function Login({ onSession }) {
   }
 
   return (
-    <div className="login">
-      {/* Brand */}
-      <section className="l-brand"><div className="l-inner">
-        <div className="rise flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <Logo size={40} />
-            <span className="text-xl font-bold tracking-tight">BiteMark</span>
-          </div>
+    <div className="fixed inset-0 overflow-y-auto overflow-x-hidden" style={{ background: 'var(--bg)' }}>
+      <div className="flex min-h-full items-center justify-center px-4 py-4">
+      <div className="w-full max-w-sm">
+        <div className="rise mb-4 flex flex-col items-center text-center">
+          <Logo size={48} />
+          <h1 className="mt-2.5 text-2xl font-bold leading-none tracking-tight">BiteMark</h1>
+          <p className="mt-1.5 text-sm" style={{ color: 'var(--mute)' }}>Remember every great bite.</p>
         </div>
-        <h1 className="rise mt-5 text-2xl font-bold leading-tight tracking-tight lg:mt-16 lg:text-5xl" style={{ animationDelay: '80ms' }}>
-          Remember every<br className="hidden lg:block" /> great bite.
-        </h1>
-        <p className="rise mt-3 hidden max-w-md text-base lg:mt-5 lg:block lg:text-lg" style={{ color: 'var(--mute)', animationDelay: '140ms' }}>
-          Your private food journal. Save the places you eat, the dishes you loved, what they cost,
-          and what you'd order again, then find it all in seconds.
-        </p>
-        </div>
-      </section>
 
-      {/* Form */}
-      <section className="l-form">
-        <div className="card login-card rise w-full max-w-sm !p-6 sm:!p-7" style={{ animationDelay: '120ms' }}>
-          <h2 className="text-2xl font-bold">{forgot ? 'Reset your password' : isSignup ? 'Create your account' : 'Welcome back'}</h2>
-          <p className="mb-6 mt-1 text-sm" style={{ color: 'var(--mute)' }}>
-            {forgot ? 'Enter your username or email and we will send you a reset link.' : isSignup ? 'It takes less than a minute. No card needed.' : 'Log in to open your journal.'}
+        <div className="card login-card rise !p-5 sm:!p-6" style={{ animationDelay: '80ms', boxShadow: '0 1px 2px #0f172a0d, 0 12px 32px #0f172a14' }}>
+          <h2 className="text-xl font-bold tracking-tight">{forgot ? 'Reset your password' : isSignup ? 'Create your account' : 'Welcome back'}</h2>
+          <p className="mb-4 mt-0.5 text-sm" style={{ color: 'var(--mute)' }}>
+            {forgot ? 'Enter your username or email and we will send you a reset link.' : isSignup ? 'Start your food journal in under a minute.' : 'Log in to open your journal.'}
           </p>
-          <form onSubmit={submit} className="space-y-3">
+          <form onSubmit={submit} className="space-y-2.5">
             {forgot ? (
               <div>
                 <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--mute)' }}>Username or email</label>
@@ -134,9 +109,8 @@ export default function Login({ onSession }) {
               <>
                 <div>
                   <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--mute)' }}>Username</label>
-                  <input required autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="e.g. kandarp29"
+                  <input required autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="3-20 letters, numbers, _ or ."
                     value={username} onChange={e => setUsername(e.target.value.replace(/\s/g, ''))} className="input" maxLength={20} />
-                  <p className="mt-1 text-xs" style={{ color: 'var(--mute)' }}>3-20 characters: letters, numbers, _ or .</p>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium" style={{ color: 'var(--mute)' }}>Email</label>
@@ -167,44 +141,21 @@ export default function Login({ onSession }) {
             </div>}
             {error && <p className="fade rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--errbg)', color: 'var(--bad)' }}>{error}</p>}
             {info && <p className="fade rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--okbg)', color: 'var(--ok)' }}>{info}</p>}
-            <button disabled={busy} className="btn btn-pri w-full !mt-5">
+            <button disabled={busy} className="btn btn-pri w-full !mt-4">
               {busy ? 'Please wait…' : forgot ? 'Send reset link' : isSignup ? 'Create account' : 'Log in'}</button>
           </form>
           {forgot ? (
-            <p className="mt-5 text-center text-sm">
+            <p className="mt-4 text-center text-sm">
               <button className="tbtn font-semibold" style={{ color: 'var(--pri)' }} onClick={() => { setForgot(false); setError(''); setInfo('') }}>Back to log in</button>
             </p>
-          ) : <p className="mt-5 text-center text-sm" style={{ color: 'var(--mute)' }}>
+          ) : <p className="mt-4 text-center text-sm" style={{ color: 'var(--mute)' }}>
             {isSignup ? 'Already have an account?' : 'New to BiteMark?'}{' '}
             <button onClick={() => { setIsSignup(!isSignup); setError(''); setInfo(''); setPassword('') }}
               className="tbtn font-semibold" style={{ color: 'var(--pri)' }}>{isSignup ? 'Log in' : 'Create an account'}</button>
           </p>}
-          <p className="mt-4 border-t pt-4 text-center text-xs" style={{ color: 'var(--mute)', borderColor: 'var(--line)' }}>
-            🔒 Encrypted connection · Your journal is visible only to you
-          </p>
         </div>
-      </section>
-
-      {/* Trust + quote */}
-      <section className="l-info"><div className="l-inner">
-        <ul className="space-y-4">
-          {TRUST.map(([icon, title, text], i) => (
-            <li key={title} className="rise flex gap-3" style={{ animationDelay: `${200 + i * 70}ms` }}>
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-base"
-                style={{ background: 'var(--surface)', border: '1px solid var(--line)' }}>{icon}</span>
-              <div>
-                <div className="text-sm font-semibold">{title}</div>
-                <div className="text-sm" style={{ color: 'var(--mute)' }}>{text}</div>
-              </div>
-            </li>
-          ))}
-        </ul>
-        <blockquote className="rise mt-8 border-l-2 pl-4" style={{ borderColor: 'var(--pri)', animationDelay: '420ms' }}>
-          <p className="text-base italic">“{quote.q}”</p>
-          <footer className="mt-1 text-sm" style={{ color: 'var(--mute)' }}>{quote.by}</footer>
-        </blockquote>
-        </div>
-      </section>
+      </div>
+      </div>
     </div>
   )
 }
