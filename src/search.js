@@ -37,6 +37,10 @@ const GROUPS = [
   ['cheap', 'budget', 'affordable'],
   ['soda', 'mojito', 'fizzy', 'drink'],
   ['salad', 'healthy'],
+  ['protein', 'protien', 'fit', 'nutrition', 'workout', 'gym', 'healthy'],
+  ['chips', 'chip', 'wafer', 'wafers', 'khakhra', 'khakhara', 'chakli', 'crisps', 'namkeen', 'crunchy'],
+  ['bar', 'granola', 'muesli', 'energybar'],
+  ['snack', 'snacks', 'munchies', 'nibble'],
 ]
 
 const stripAccents = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '')

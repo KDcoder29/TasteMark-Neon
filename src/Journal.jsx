@@ -8,6 +8,7 @@ import DishForm from './DishForm'
 import Wishlist from './Wishlist'
 import Activity from './Activity'
 import Picker from './Picker'
+import CravingChat from './CravingChat'
 import { CATEGORIES, Stars, priceScale, PriceSlider } from './shared'
 
 const SAMPLE = [
@@ -43,6 +44,7 @@ export default function Journal({ me, group, groups }) {
   const [sharing, setSharing] = useState(null)     // { place, dish } being added to a group
   const [addingDish, setAddingDish] = useState(null)
   const [picking, setPicking] = useState(false)
+  const [asking, setAsking] = useState(false)
   const [q, setQ] = useState('')
   const [city, setCity] = useState('All')
   const [cat, setCat] = useState('All')
@@ -166,7 +168,10 @@ export default function Journal({ me, group, groups }) {
               : <>Personal journal <span className="opacity-80">· only you can see this</span></>}
           </span>
         </div>
-        <button onClick={() => setPicking(true)} className="chip !py-1">🎲 {group ? 'Where should we eat?' : 'Where to eat?'}</button>
+        <div className="flex shrink-0 gap-2">
+          <button onClick={() => setAsking(true)} className="chip !py-1">💬 Craving something?</button>
+          <button onClick={() => setPicking(true)} className="chip !py-1">🎲 {group ? 'Where should we eat?' : 'Where to eat?'}</button>
+        </div>
       </div>
 
       {/* Journal / Wishlist / Activity */}
@@ -326,6 +331,8 @@ export default function Journal({ me, group, groups }) {
       )}
 
       {picking && <Picker places={places} wishlist={wishlist} group={group} onClose={() => setPicking(false)} />}
+
+      {asking && <CravingChat places={places} onClose={() => setAsking(false)} />}
 
       {(editing || creating) && (
         <PlaceForm me={me} place={editing} prefill={creating?.prefill} wishId={creating?.wishId}
