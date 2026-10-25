@@ -66,11 +66,17 @@ BiteMark ("Remember every great bite") is a personal food journal PWA, used main
 - **Testing.**
   - `npm test` runs Vitest 5 (`*.test.js` next to the source files). Write tests first.
   - UI checks use the Playwright MCP against `npm run dev`. The MCP can only read files inside the repo, so fixtures live in `e2e/fixtures/`. Scratch output goes to `.playwright-mcp/`, which is gitignored.
-  - Vitest 5 was installed with `--legacy-peer-deps`. npm 10.8 crashed resolving its peer set ("Cannot read properties of null (reading 'edgesOut')").
+  - **`.npmrc` sets `legacy-peer-deps=true`. Do not remove it.** Root-caused on 2026-10-26 after Vercel's `npm install` failed with "Cannot read properties of null (reading 'children')".
+    - `@neondatabase/neon-js` → `@neondatabase/auth` → `better-auth@1.7.6` declares `vitest` as a peer dependency.
+    - With any vitest installed, npm's `#loadPeerSet` crashes on a clean install. Both Vitest 3 and Vitest 5 crash, with or without a lockfile.
+    - Bisected: removing `@neondatabase/neon-js` or `vitest` makes the install succeed.
+    - With the `.npmrc`, `npm ci`, the tests, the build and a browser load of the built app were all verified. The lockfile is unchanged.
+    - If a later neon-js or better-auth release drops the vitest peer, test removing the `.npmrc` with a clean `npm ci`.
   - The production build warns that the main chunk is 693 KB. That size was already there before this change.
 
 ## Branches
-- `origin/main` is the main branch. Every task gets a feature branch cut from `origin/main`. Claude may create the branch; the user commits and pushes.
+- `origin/main` is the main branch. Every task gets a feature branch cut from `origin/main` with `git switch --no-track -c BiteMark/<Name> origin/main`. Claude may create the branch; the user commits and pushes.
+  - Without `--no-track`, a plain `git push` goes to main. That is how the bill scan landed: commit b12d64c went directly into `main` on 2026-10-25.
 - `BiteMark/Maps_feature`: the Map tab, Leaflet and geocoding (commit 594a41f). Marked "not accurate, not to be merged with main". `MapView.jsx` and `geocode.js` do not exist on other branches.
 - `BiteMark/Bill_Scan`: bill photo → prefilled dish form (in progress).
 
