@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { supabase } from './supabase'
 import { CATEGORIES, priceInput, priceProps } from './shared'
 import { findGroupPlace, addDishWithRating } from './groupApi'
-
-const blankDish = () => ({ name: '', price: '', rating: 0, order_again: '', note: '' })
+import { blankDish, mergeScannedDishes, placeFormError } from './placeRules'
+import BillScan from './BillScan'
 
 // place      = existing place being edited (null when adding)
 // prefill    = starting values when adding from the wishlist; wishId = that wishlist item
@@ -29,20 +29,9 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
   const setField = k => e => setF({ ...f, [k]: e.target.value })
   const setDish = (i, k, v) => setDishes(dishes.map((d, j) => (j === i ? { ...d, [k]: v } : d)))
 
-  const validate = () => {
-    if (!f.name.trim() || !f.city.trim() || !f.area.trim()) return 'Please fill in place name, city and area.'
-    if (!cats.length) return 'Pick at least one category.'
-    if (editingGroup) return ''
-    for (const d of dishes) {
-      if (!d.name.trim() || d.price === '') return 'Every dish needs a name and a price.'
-      if (!d.rating) return 'Please give every dish a star rating.'
-    }
-    return ''
-  }
-
   async function save(e) {
     e.preventDefault()
-    const bad = validate()
+    const bad = placeFormError({ f, cats, dishes, editingGroup })
     setError(bad)
     if (bad) return
     setBusy(true)
@@ -162,6 +151,7 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
         ) : (
           <>
             <h3 className="mb-2 text-sm font-semibold">Dishes</h3>
+            <BillScan onDishes={found => setDishes(ds => mergeScannedDishes(ds, found))} />
             {dishes.map((d, i) => (
               <div key={i} className="rise mb-3 rounded-2xl border p-3" style={{ borderColor: 'var(--line)', background: 'var(--dish)' }}>
                 <div className="mb-2 flex gap-2">
@@ -183,7 +173,7 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
                     ))}
                   </div>
                 </div>
-                <input placeholder="Review note (optional)" value={d.note} onChange={e => setDish(i, 'note', e.target.value)} className="input" />
+                <input required placeholder="Your comment *" aria-label="Your comment" value={d.note} onChange={e => setDish(i, 'note', e.target.value)} className="input" />
                 {dishes.length > 1 && (
                   <button type="button" onClick={() => setDishes(dishes.filter((_, j) => j !== i))}
                     className="mt-2 text-xs font-medium" style={{ color: 'var(--bad)' }}>Remove dish</button>
