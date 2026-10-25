@@ -9,6 +9,7 @@ import Wishlist from './Wishlist'
 import Activity from './Activity'
 import Picker from './Picker'
 import CravingChat from './CravingChat'
+import MapView from './MapView'
 import { CATEGORIES, Stars, priceScale, PriceSlider } from './shared'
 
 const SAMPLE = [
@@ -38,7 +39,7 @@ export default function Journal({ me, group, groups }) {
   const [wishlist, setWishlist] = useState([])
   const [names, setNames] = useState({})
   const [loading, setLoading] = useState(true)
-  const [view, setView] = useState('journal')      // 'journal' | 'wishlist' | 'activity'
+  const [view, setView] = useState('journal')      // 'journal' | 'map' | 'wishlist' | 'activity'
   const [editing, setEditing] = useState(null)     // place being edited
   const [creating, setCreating] = useState(null)   // {} or { prefill, wishId }
   const [sharing, setSharing] = useState(null)     // { place, dish } being added to a group
@@ -153,6 +154,7 @@ export default function Journal({ me, group, groups }) {
 
   const tabs = [
     ['journal', 'Journal'],
+    ['map', 'Map'],
     ['wishlist', `Wishlist${wishlist.length ? ` (${wishlist.length})` : ''}`],
     ...(group ? [['activity', 'Activity']] : []),
   ]
@@ -189,6 +191,10 @@ export default function Journal({ me, group, groups }) {
       )}
 
       {view === 'activity' && group && <Activity me={me} group={group} names={names} />}
+
+      {view === 'map' && (
+        <MapView places={sorted} wishlist={city === 'All' ? wishlist : wishlist.filter(w => w.city === city)} />
+      )}
 
       {view === 'journal' && (
         <>

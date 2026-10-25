@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from './supabase'
 import { CATEGORIES, priceInput, priceProps } from './shared'
 import { findGroupPlace, addDishWithRating } from './groupApi'
+import { geocode, addressOf } from './geocode'
 
 const blankDish = () => ({ name: '', price: '', rating: 0, order_again: '', note: '' })
 
@@ -49,6 +50,15 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
     try {
       const clean = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.trim() || null]))
       clean.categories = cats
+
+      // Pin it on the map: only look it up again if the area/city actually changed
+      // (or it's a new place), so editing unrelated fields doesn't re-geocode every time.
+      const addressChanged = !editing || addressOf(place) !== addressOf(clean)
+      if (addressChanged) {
+        const hit = await geocode({ area: clean.area, city: clean.city, name: clean.name })
+        clean.lat = hit?.lat ?? null
+        clean.lng = hit?.lng ?? null
+      }
 
       if (editing) {
         const { error: e1 } = await supabase.from('places').update(clean).eq('id', place.id)

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
 import { CATEGORIES } from './shared'
+import { geocode } from './geocode'
 
 // "Want to try" list. In a group everybody sees it; in Personal only you do.
 export default function Wishlist({ me, group, items, names, isOwner, onChanged, onWent }) {
@@ -19,10 +20,13 @@ export default function Wishlist({ me, group, items, names, isOwner, onChanged, 
     e.preventDefault()
     if (!f.name.trim()) return setError('Enter the place name.')
     setBusy(true); setError('')
-    const { error: err } = await supabase.from('wishlist').insert({
+    const row = {
       name: f.name.trim(), city: f.city.trim() || null, area: f.area.trim() || null,
       note: f.note.trim() || null, categories: cats, group_id: group?.id ?? null,
-    })
+    }
+    const hit = await geocode({ area: row.area, city: row.city, name: row.name })   // best-effort, for the map tab
+    if (hit) { row.lat = hit.lat; row.lng = hit.lng }
+    const { error: err } = await supabase.from('wishlist').insert(row)
     setBusy(false)
     if (err) return setError(err.message)
     setF({ name: '', city: '', area: '', note: '' }); setCats([]); setOpen(false)
