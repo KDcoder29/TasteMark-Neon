@@ -26,6 +26,10 @@ const P = {
   heart: <path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.3a4.3 4.3 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z" />,
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
   sparkle:<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" />,
+  refresh: <><path d="M20 12a8 8 0 1 1-2.4-5.7" /><path d="M20 4v4.5h-4.5" /></>,
+  trash: <><path d="M4 7h16" /><path d="M6 7l1 13h10l1-13" /><path d="M9 7V4h6v3" /><path d="M10 11v5M14 11v5" /></>,
+  map: <><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z" /><path d="M9 4v14M15 6v14" /></>,
+  repeat: <><path d="M4 12a7 7 0 0 1 12-5l3 3" /><path d="M19 5v5h-5" /><path d="M20 12a7 7 0 0 1-12 5l-3-3" /><path d="M5 19v-5h5" /></>,
 }
 
 export default function Icon({ name, size = 20, stroke = 2, className, style }) {

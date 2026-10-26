@@ -193,3 +193,51 @@ button:not(:disabled),[role=button],select,label[for]{cursor:pointer}
   .l-info{padding-top:48px}
 }
 .l-inner{max-width:520px}
+
+/* ---------- phone polish (2026-10-27) ---------- */
+@keyframes tabin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes out{to{opacity:0;transform:translateX(-28px) scale(.97)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.tabin{animation:tabin .26s var(--ease) both}
+
+/* bottom bar: the active tab gets a soft pill that springs open behind its icon */
+.navico{position:relative;display:grid;place-items:center;width:56px;height:30px}
+.navico>*{position:relative}
+.navico::before{content:"";position:absolute;inset:0;border-radius:99px;background:var(--pri-soft);opacity:0;transform:scaleX(.35);
+  transition:transform .32s var(--spring),opacity .18s}
+.navbtn.on .navico::before{opacity:1;transform:none}
+.navbtn.on svg{transform:none}
+.navbtn:active .navico{transform:scale(.92)}
+.navico{transition:transform .15s var(--ease)}
+
+/* pull to refresh: a round badge slides out from under the top bar */
+@media (max-width:1023.98px){html,body{overscroll-behavior-y:none}}
+.ptr{position:fixed;left:0;right:0;top:62px;z-index:14;display:flex;justify-content:center;pointer-events:none;
+  opacity:0;transform:translateY(-56px)}
+.ptr-ball{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--surface);color:var(--faint);
+  border:1px solid var(--line);box-shadow:var(--sh-2);transition:color .15s}
+.ptr.ready .ptr-ball,.ptr.spin .ptr-ball{color:var(--pri)}
+.ptr.spin svg{animation:spin .75s linear infinite}
+
+/* Want to try */
+.wcard{padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--sh-1)}
+.wcard.out{animation:out .18s var(--ease) forwards}
+.wnote{margin:8px 0 0;padding:2px 0 2px 10px;border-left:3px solid var(--accent-soft);font-size:13.5px;color:var(--mute)}
+:root[data-theme="dark"] .wnote{border-left-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+
+/* "Removed · Undo" */
+.toast{position:fixed;z-index:44;left:16px;right:16px;bottom:calc(96px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;
+  justify-content:space-between;gap:12px;padding:12px 8px 12px 16px;border-radius:14px;background:var(--ink);color:var(--bg);
+  font-size:14px;font-weight:500;box-shadow:var(--sh-3);animation:popup .24s var(--spring) both}
+.toast-act{flex:none;padding:6px 12px;border:0;border-radius:9px;background:transparent;font:inherit;font-weight:700;
+  color:color-mix(in srgb,var(--pri) 55%,var(--bg))}
+.toast-act:active{transform:scale(.95)}
+@media (min-width:1024px){.toast{left:auto;right:32px;bottom:28px;width:360px}}
+
+/* "Your food story" in the You sheet */
+.story{margin:2px 8px 10px;padding:14px;border-radius:16px;background:var(--surface-2);border:1px solid var(--line)}
+.story-nums{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 6px}
+.story-nums div{display:flex;flex-direction:column}
+.story-nums b{font-size:26px;font-weight:800;line-height:1.1;letter-spacing:-.02em;color:var(--pri);font-variant-numeric:tabular-nums}
+.story-nums span{font-size:12.5px;color:var(--mute)}
+.story-row{display:flex;align-items:center;gap:11px;padding:8px 0 0}

@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import Icon from './Icons'
 import { CATEGORIES, PriceSlider } from './shared'
 import { filterPlaces, activeFilterCount, NO_FILTERS, SORTS } from './journalFilter'
+import { useSheetDrag } from './useGestures'
 
 // Phone filters, the Zomato / Swiggy way: sections on the left, options on the right, and a live
 // "Show N places" so you know what you'll get before applying. Works on a draft; nothing changes
 // behind the sheet until "Show".
 export default function FilterSheet({ places, filters, sort, scale, cities, start = 'sort', onApply, onClose }) {
+  const drag = useSheetDrag(onClose)
   const [d, setD] = useState(filters)
   const [s, setS] = useState(sort)
   const [tab, setTab] = useState(start)
@@ -51,7 +53,7 @@ export default function FilterSheet({ places, filters, sort, scale, cities, star
   return (
     <>
       <div className="scrim" onMouseDown={onClose} />
-      <section className="drawer !max-h-[86vh]" role="dialog" aria-modal="true" aria-label="Filters">
+      <section ref={drag} className="drawer !max-h-[86vh]" role="dialog" aria-modal="true" aria-label="Filters">
         <div className="grabber" />
         <div className="flex items-center justify-between border-b px-5 pb-3 pt-1" style={{ borderColor: 'var(--line)' }}>
           <h2 className="m-0 text-lg font-extrabold">Filters</h2>
