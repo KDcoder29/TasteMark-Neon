@@ -1,8 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import Logo from './Logo'
+import { recallEmail, rememberLogin } from './fastStart'
+
+const store = (() => { try { return window.localStorage } catch { return null } })()
 
 export default function Login({ onSession }) {
+  // While you type: wake the (auto-sleeping) database and open the connection to the login server,
+  // so pressing "Log in" doesn't pay ~2.5 s of wake-up + ~1 s of connection setup.
+  useEffect(() => {
+    fetch('/api/auth-lookup?ping=1').catch(() => {})
+    const auth = (import.meta.env.VITE_NEON_AUTH_URL || '').replace(/\/$/, '')
+    if (auth) fetch(`${auth}/get-session`, { credentials: 'include' }).catch(() => {})
+  }, [])
+
   const [identity, setIdentity] = useState('')   // login: username or email
   const [username, setUsername] = useState('')     // signup only
   const [email, setEmail] = useState('')           // signup only
@@ -67,14 +78,26 @@ export default function Login({ onSession }) {
         if (e2) setInfo('Account created! If email verification is on, check your inbox, then log in.')
         else await finish(d2)
       } else {
-        let loginEmail = identity.trim()
-        if (!loginEmail.includes('@')) {            // it is a username: find its email
-          const { email: found } = await lookup('username', loginEmail)
-          if (!found) throw new Error('Incorrect username/email or password.')
-          loginEmail = found
+        const typed = identity.trim()
+        let loginEmail = typed
+        let remembered = false
+        if (!typed.includes('@')) {                 // a username: this device may already know its email
+          const known = recallEmail(store, typed)
+          if (known) { loginEmail = known; remembered = true }
+          else {
+            const { email: found } = await lookup('username', typed)
+            if (!found) throw new Error('Incorrect username/email or password.')
+            loginEmail = found
+          }
         }
-        const { data: d1, error: e1 } = await supabase.auth.signInWithPassword({ email: loginEmail, password })
+        const signIn = em => supabase.auth.signInWithPassword({ email: em, password })
+        let { data: d1, error: e1 } = await signIn(loginEmail)
+        if (e1 && remembered) {                     // the remembered email may be out of date: look it up once
+          const { email: found } = await lookup('username', typed)
+          if (found && found !== loginEmail) { loginEmail = found; ({ data: d1, error: e1 } = await signIn(found)) }
+        }
         if (e1) throw new Error(/invalid|incorrect|credential/i.test(e1.message) ? 'Incorrect username/email or password.' : e1.message)
+        rememberLogin(store, typed, loginEmail)
         await finish(d1)
       }
     } catch (err) {

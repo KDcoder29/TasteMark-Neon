@@ -16,6 +16,9 @@ import Icon from './Icons'
 import { CATEGORIES, priceScale, PriceSlider } from './shared'
 import { smartIndex, shouldAutoWarm } from './smartIndex'
 import { docsFromPlaces } from './smartSearch'
+import { loadJournal, saveJournal } from './fastStart'
+
+const store = (() => { try { return window.localStorage } catch { return null } })()
 
 const SAMPLE = [
   { name: 'Coffea: Brew on the Rocks', city: 'Vadodara', area: '13 Canal Rd', categories: ['Cafe'],
@@ -41,10 +44,13 @@ function groupDish(d) {
 // me = my user id, group = the open group (null = Personal), groups = all my groups.
 // view / setView and the + button's addIntent come from the app shell (sidebar / bottom bar).
 export default function Journal({ me, group, groups, username, view, setView, addIntent, onIntentDone, onStats, addButton }) {
-  const [places, setPlaces] = useState([])
-  const [wishlist, setWishlist] = useState([])
-  const [names, setNames] = useState({})
-  const [loading, setLoading] = useState(true)
+  // last time's journal for this person + space, shown at once while the fresh copy loads
+  const spaceKey = group?.id || 'personal'
+  const [snap] = useState(() => loadJournal(store, me, spaceKey))
+  const [places, setPlaces] = useState(snap?.places || [])
+  const [wishlist, setWishlist] = useState(snap?.wishlist || [])
+  const [names, setNames] = useState(snap?.names || {})
+  const [loading, setLoading] = useState(!snap)
   const [editing, setEditing] = useState(null)     // place being edited
   const [creating, setCreating] = useState(null)   // {} or { prefill, wishId } or { billFile }
   const [sharing, setSharing] = useState(null)     // { place, dish } being added to a group
@@ -77,22 +83,23 @@ export default function Journal({ me, group, groups, username, view, setView, ad
     let q2 = supabase.from('wishlist').select('*').is('went_at', null).order('created_at', { ascending: false })
     q2 = group ? q2.eq('group_id', group.id) : q2.is('group_id', null)
 
-    let [r1, r2] = await Promise.all([placesQ(true), q2])
+    // members' names load alongside, not after (each trip to the US database is ~0.25 s)
+    const q3 = group ? supabase.from('profiles').select('id, display_name') : Promise.resolve({ data: null })
+    let [r1, r2, r3] = await Promise.all([placesQ(true), q2, q3])
     // bills are an extra: if the API doesn't know bill_photos (migration not run, stale schema
     // cache), show the journal without 🧾 buttons rather than not at all
     if (r1.error && /bill_photos/.test(r1.error.message)) { console.warn(r1.error.message); r1 = await placesQ(false) }
+    const fresh = {}
     if (r1.error) alert(r1.error.message)
-    else setPlaces(group
+    else setPlaces(fresh.places = group
       ? r1.data.map(p => ({ ...p, dishes: [...(p.dishes || [])].sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).map(groupDish) }))
       : r1.data)
     if (r2.error) console.error(r2.error)
-    else setWishlist(r2.data)
-
-    if (group) {
-      const { data: pr } = await supabase.from('profiles').select('id, display_name')
-      setNames(Object.fromEntries((pr || []).map(r => [r.id, r.display_name])))
-    }
+    else setWishlist(fresh.wishlist = r2.data)
+    if (r3.data) setNames(fresh.names = Object.fromEntries(r3.data.map(r => [r.id, r.display_name])))
     setLoading(false)
+    // keep a snapshot so the next app start shows this at once (cleared on log out)
+    if (fresh.places && fresh.wishlist) saveJournal(store, me, spaceKey, { places: fresh.places, wishlist: fresh.wishlist, names: fresh.names || {} })
   }
   useEffect(() => { load() }, [])
 
