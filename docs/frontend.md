@@ -111,3 +111,26 @@ BiteMark ("Remember every great bite") is a personal food journal PWA, used main
     - The viewer covers the full screen and sits on top of the form; zoom works and Esc closes it.
   - Desktop at 1280 px shows only "Upload bill photo".
   - No database writes this time. The save path is unchanged from the bill scan run, which was already verified.
+- 2026-10-26: **Bill reading state redesigned** (branch `BiteMark/Bill_Photo`, cut from `origin/BiteMark/Bill_Capture` because capture is not in `main` yet).
+  - **Problem:** the user reported the loading colours looked wrong. It showed "Reading bill… 0%" with a tiny dot almost the whole time.
+  - **Root cause:** Tesseract only reports progress for "recognizing text", which jumps from 1% to 63% in one go. Startup and the language-data download, about 40% of the time (much more on a phone's first scan), report nothing.
+  - **Fix:**
+    - The title is now "Reading your bill…", with a step line from `stageOf()` in `billOcr.js`: "Getting the reader ready", "Downloading the reader…" (shown only if it lasts more than 500 ms, so a cached reader never flashes it), then "Finding dishes and prices".
+    - A `.scanbar` sliding bar in `--pri` on a 16% `--pri` tint replaces the bar. It stays still when the user has reduced motion turned on.
+    - The percentage is gone. `readBillText(file, onStage)` now reports a step instead of 0..1.
+- 2026-10-26: **Saved bill photos** (user decisions: shown on the place card, stored in Neon, visible to all group members).
+  - `BillScan` calls `onPhoto(file)` for each photo that added at least one dish. `PlaceForm` collects them in `billFiles`, and on Save calls `saveBills(savedId, files)` from `billApi.js`.
+    - Before upload, the photo is compressed by `billPhoto.js`: long side ≤ 1600 px, JPEG quality 0.7, drawn on a white background.
+    - A failed bill upload alerts the user but does not undo the saved place.
+  - `Journal` selects `bill_photos(id)` (ids only) and shows a **🧾 Bill** button on the card, or **🧾 N** when there are several.
+  - `PlaceBills.jsx` fetches the images when the button is tapped and shows them in `BillViewer.jsx`, which was moved out of `BillScan`.
+    - The viewer adds "1 of N" arrows (and ← →), a caption with place, date and "added by" in groups, and Delete when `canDeleteBill` allows it.
+  - Unit tested: `billImageSize`, `canDeleteBill`. 47 tests pass and the build passes.
+  - **Status:** tested end to end on 2026-10-26 (Playwright, 390 px, user's account):
+    - Scan → Save uploaded the bill (HTTP 201). The card showed 🧾 Bill, and the viewer showed the image, the caption and Delete.
+    - A second visit through Edit + scanning `e2e/fixtures/bill2.jpg` gave 🧾 2. The viewer showed "1 of 2", and → went to "2 of 2".
+    - Deleting a bill asked for confirmation and the card went back to 🧾 Bill.
+    - Deleting the place removed its bills (ON DELETE CASCADE). The database was back to 61 places, 204 dishes and 0 bills.
+  - **Resilience (2026-10-26):** if the places query fails because of `bill_photos` (migration missing or stale API schema cache), `Journal.load()` retries without `bill_photos(id)`. The journal then loads without 🧾 buttons instead of showing an alert loop.
+    - Reproduced first: with the stale cache, the journal showed a repeating alert.
+    - Verified after the fix: it loads 44 places with no alerts.

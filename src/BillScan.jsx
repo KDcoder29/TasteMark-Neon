@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { readBillText } from './billOcr'
 import { parseBillText } from './billParse'
 import { canTakePhoto } from './capture'
+import BillViewer from './BillViewer'
 
 // "Scan a bill" tile in the Add place form. Take a photo of the bill (phones) or upload one; it is
 // read on this device (free) and every dish line found is handed to onDishes([{ name, price }]),
 // which returns how many were actually added. Stars and comments are left for you to add.
-// The photo stays on the device: it is only shown as a thumbnail to check against while reviewing.
-export default function BillScan({ onDishes }) {
+// onPhoto(file) gets each photo that added dishes; the form saves it with the place on Save.
+export default function BillScan({ onDishes, onPhoto }) {
   const camera = useRef(null)
   const upload = useRef(null)
   const [state, setState] = useState({ step: 'idle' })   // idle | reading | done | empty | error
@@ -27,19 +27,33 @@ export default function BillScan({ onDishes }) {
     e.target.value = ''                                     // lets you pick the same photo again
     if (!file) return
     setPhoto(URL.createObjectURL(file))
-    setState({ step: 'reading', progress: 0 })
+    setState({ step: 'reading', stage: 'prepare' })
+    let slow
     try {
-      const text = await readBillText(file, p => setState({ step: 'reading', progress: p }))
+      const text = await readBillText(file, stage => {
+        clearTimeout(slow)
+        // a cached reader "downloads" for ~90 ms; only say so when it is really downloading
+        if (stage === 'download') slow = setTimeout(() => setState({ step: 'reading', stage }), 500)
+        else setState({ step: 'reading', stage })
+      })
+      clearTimeout(slow)
       const found = parseBillText(text)
       if (!found.length) return setState({ step: 'empty' })
-      setState({ step: 'done', count: latest.current(found), found: found.length })
+      const count = latest.current(found)
+      if (count) onPhoto?.(file)                             // kept with the place when you press Save
+      setState({ step: 'done', count, found: found.length })
     } catch (err) {
+      clearTimeout(slow)
       console.error(err)
       setState({ step: 'error' })
     }
   }
 
-  const pct = Math.round((state.progress || 0) * 100)
+  const stageText = {
+    prepare: 'Getting the reader ready',
+    download: 'Downloading the reader. Only the first scan does this.',
+    read: 'Finding dishes and prices',
+  }[state.stage]
   const mute = { color: 'var(--mute)' }
   const scanned = state.step === 'done'
   const pick = 'chip !py-1.5 inline-flex items-center gap-1.5 font-semibold'
@@ -58,11 +72,12 @@ export default function BillScan({ onDishes }) {
           </span>
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold">
-              {reading ? `Reading bill… ${pct}%` : scanned ? 'Add more from the bill' : 'Scan a bill'}
+              {reading ? 'Reading your bill…' : scanned ? 'Add more from the bill' : 'Scan a bill'}
             </div>
             {reading ? (
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full" style={{ background: 'var(--line)' }}>
-                <div className="h-full rounded-full transition-[width] duration-300" style={{ width: `${Math.max(pct, 4)}%`, background: 'var(--pri)' }} />
+              <div role="status">
+                <p key={state.stage} className="fade text-xs" style={mute}>{stageText}</p>
+                <div className="scanbar mt-2.5" aria-hidden="true" />
               </div>
             ) : (
               <>
@@ -121,40 +136,7 @@ export default function BillScan({ onDishes }) {
         )}
       </div>
 
-      {viewing && photo && <BillViewer src={photo} onClose={() => setViewing(false)} />}
-    </div>
-  )
-}
-
-// Full-screen bill photo to check names and prices against. Scrolls/pinch-zooms; Esc or tap outside closes.
-// Rendered into <body>: inside the form, the form's slide-in transform made `fixed` mean
-// "form-sized" and drew the form's fields on top of the photo.
-function BillViewer(props) {
-  return createPortal(<BillViewerPanel {...props} />, document.body)
-}
-
-function BillViewerPanel({ src, onClose }) {
-  const [zoom, setZoom] = useState(false)
-  useEffect(() => {
-    const esc = e => { if (e.key === 'Escape') { e.stopPropagation(); onClose() } }
-    window.addEventListener('keydown', esc, true)
-    return () => window.removeEventListener('keydown', esc, true)
-  }, [onClose])
-
-  return (
-    <div role="dialog" aria-modal="true" aria-label="Bill photo" className="fade fixed inset-0 z-40 flex flex-col"
-      style={{ background: '#0f172ae6' }} onMouseDown={e => e.target === e.currentTarget && onClose()}>
-      <div className="flex items-center justify-between px-4 py-3 text-sm text-white">
-        <button type="button" onClick={() => setZoom(!zoom)} className="rounded-full px-3 py-1.5 font-semibold" style={{ background: '#ffffff1f' }}>
-          {zoom ? 'Fit to screen' : 'Zoom in'}
-        </button>
-        <button type="button" onClick={onClose} aria-label="Close bill photo" autoFocus
-          className="grid h-9 w-9 place-items-center rounded-full text-xl" style={{ background: '#ffffff1f' }}>×</button>
-      </div>
-      <div className="min-h-0 flex-1 overflow-auto px-3 pb-6" onMouseDown={e => e.target === e.currentTarget && onClose()}>
-        <img src={src} alt="Bill" onClick={() => setZoom(!zoom)}
-          className={zoom ? 'mx-auto block w-[200%] max-w-none cursor-zoom-out' : 'mx-auto block max-h-full max-w-full cursor-zoom-in object-contain'} />
-      </div>
+      {viewing && photo && <BillViewer photos={[{ id: photo, src: photo }]} onClose={() => setViewing(false)} />}
     </div>
   )
 }

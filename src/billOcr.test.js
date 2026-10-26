@@ -1,5 +1,27 @@
 import { describe, expect, test } from 'vitest'
-import { enhancePixels, scaleFor } from './billOcr'
+import { enhancePixels, scaleFor, stageOf } from './billOcr'
+
+describe('stageOf', () => {
+  test('is "download" while the language data is still coming in (first scan)', () => {
+    expect(stageOf({ status: 'loading language traineddata', progress: 0.4 })).toBe('download')
+  })
+
+  test('is "prepare" while the reader starts up', () => {
+    expect(stageOf({ status: 'loading tesseract core', progress: 0 })).toBe('prepare')
+    expect(stageOf({ status: 'initializing tesseract', progress: 1 })).toBe('prepare')
+    expect(stageOf({ status: 'loading language traineddata', progress: 1 })).toBe('prepare')
+    expect(stageOf({ status: 'initializing api', progress: 0.5 })).toBe('prepare')
+  })
+
+  test('is "read" while the text is being recognised', () => {
+    expect(stageOf({ status: 'recognizing text', progress: 0.3 })).toBe('read')
+  })
+
+  test('is null for anything else', () => {
+    expect(stageOf({ status: 'something new', progress: 0 })).toBe(null)
+    expect(stageOf(undefined)).toBe(null)
+  })
+})
 
 const px = (...rgb) => new Uint8ClampedArray(rgb.flatMap(([r, g, b]) => [r, g, b, 255]))
 const grays = data => [...data].filter((_, i) => i % 4 === 0)

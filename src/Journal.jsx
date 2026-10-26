@@ -9,6 +9,7 @@ import Wishlist from './Wishlist'
 import Activity from './Activity'
 import Picker from './Picker'
 import CravingChat from './CravingChat'
+import PlaceBills from './PlaceBills'
 import { CATEGORIES, Stars, priceScale, PriceSlider } from './shared'
 
 const SAMPLE = [
@@ -45,6 +46,7 @@ export default function Journal({ me, group, groups }) {
   const [addingDish, setAddingDish] = useState(null)
   const [picking, setPicking] = useState(false)
   const [asking, setAsking] = useState(false)
+  const [billsOf, setBillsOf] = useState(null)     // place whose bill photos are open
   const [q, setQ] = useState('')
   const [city, setCity] = useState('All')
   const [cat, setCat] = useState('All')
@@ -59,13 +61,19 @@ export default function Journal({ me, group, groups }) {
   const mute = { color: 'var(--mute)' }
 
   async function load() {
-    const sel = group ? '*, dishes(*, dish_ratings(*), dish_reactions(*), dish_comments(*))' : '*, dishes(*)'
-    let q1 = supabase.from('places').select(sel).order('created_at', { ascending: false })
-    q1 = group ? q1.eq('group_id', group.id) : q1.is('group_id', null)
+    // bill_photos(id): just enough to show the 🧾 button; the images load when it is tapped
+    const dishSel = group ? 'dishes(*, dish_ratings(*), dish_reactions(*), dish_comments(*))' : 'dishes(*)'
+    const placesQ = bills => {
+      const q = supabase.from('places').select(`*, ${bills ? 'bill_photos(id), ' : ''}${dishSel}`).order('created_at', { ascending: false })
+      return group ? q.eq('group_id', group.id) : q.is('group_id', null)
+    }
     let q2 = supabase.from('wishlist').select('*').is('went_at', null).order('created_at', { ascending: false })
     q2 = group ? q2.eq('group_id', group.id) : q2.is('group_id', null)
 
-    const [r1, r2] = await Promise.all([q1, q2])
+    let [r1, r2] = await Promise.all([placesQ(true), q2])
+    // bills are an extra: if the API doesn't know bill_photos (migration not run, stale schema
+    // cache), show the journal without 🧾 buttons rather than not at all
+    if (r1.error && /bill_photos/.test(r1.error.message)) { console.warn(r1.error.message); r1 = await placesQ(false) }
     if (r1.error) alert(r1.error.message)
     else setPlaces(group
       ? r1.data.map(p => ({ ...p, dishes: [...(p.dishes || [])].sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).map(groupDish) }))
@@ -264,6 +272,12 @@ export default function Journal({ me, group, groups }) {
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                     {(p.categories || []).map(c => <span key={c} className="rounded-full border px-2.5 py-0.5 text-xs font-medium" style={{ background: 'var(--surface)', borderColor: 'var(--line)', color: 'var(--mute)' }}>{c}</span>)}
+                    {p.bill_photos?.length > 0 && (
+                      <button onClick={() => setBillsOf(p)} aria-label={`View ${p.bill_photos.length === 1 ? 'the bill' : `${p.bill_photos.length} bills`} for ${p.name}`}
+                        className="rounded-lg px-2.5 py-1 text-xs font-medium ghost transition" style={{ color: 'var(--pri)' }}>
+                        🧾 {p.bill_photos.length === 1 ? 'Bill' : p.bill_photos.length}
+                      </button>
+                    )}
                     {canEditPlace(p) && (
                       <button onClick={() => setEditing({ ...p, dishes: p.allDishes })}
                         className="rounded-lg px-2.5 py-1 text-xs font-medium ghost transition" style={{ color: 'var(--pri)' }}>Edit</button>
@@ -331,6 +345,8 @@ export default function Journal({ me, group, groups }) {
       )}
 
       {picking && <Picker places={places} wishlist={wishlist} group={group} onClose={() => setPicking(false)} />}
+
+      {billsOf && <PlaceBills place={billsOf} me={me} isOwner={isOwner} names={names} onClose={() => setBillsOf(null)} onChanged={load} />}
 
       {asking && <CravingChat places={places} onClose={() => setAsking(false)} />}
 

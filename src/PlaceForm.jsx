@@ -4,6 +4,7 @@ import { CATEGORIES, priceInput, priceProps } from './shared'
 import { findGroupPlace, addDishWithRating } from './groupApi'
 import { blankDish, mergeScannedDishes, newScannedDishes, placeFormError } from './placeRules'
 import BillScan from './BillScan'
+import { saveBills } from './billApi'
 
 // place      = existing place being edited (null when adding)
 // prefill    = starting values when adding from the wishlist; wishId = that wishlist item
@@ -24,6 +25,7 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
   const [target, setTarget] = useState(defaultGroupId)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [billFiles, setBillFiles] = useState([])   // bill photos scanned here, saved with the place
   const toggleCat = c => setCats(cats.includes(c) ? cats.filter(x => x !== c) : [...cats, c])
 
   const setField = k => e => setF({ ...f, [k]: e.target.value })
@@ -35,6 +37,7 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
     setError(bad)
     if (bad) return
     setBusy(true)
+    let savedId = editing ? place.id : null
     try {
       const clean = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.trim() || null]))
       clean.categories = cats
@@ -60,6 +63,7 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
           if (e1) throw e1
           placeId = data.id; created = true
         }
+        savedId = placeId
         const known = existing ? [...existing.dishes] : []
         let saved = 0
         try {
@@ -76,6 +80,7 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
         // PERSONAL
         const { data, error: e1 } = await supabase.from('places').insert({ ...clean, group_id: null }).select('id').single()
         if (e1) throw e1
+        savedId = data.id
         const rows = dishes.filter(d => d.name.trim()).map(d => ({
           place_id: data.id, name: d.name.trim(), price: d.price === '' ? null : +d.price,
           rating: d.rating || null, order_again: d.order_again || null, note: d.note.trim() || null,
@@ -84,6 +89,9 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
       }
 
       if (wishId) await supabase.from('wishlist').update({ went_at: new Date().toISOString() }).eq('id', wishId)
+      // the place is saved either way; a failed bill upload must not undo it
+      try { await saveBills(savedId, billFiles) }
+      catch (err) { console.error(err); alert('The place was saved, but the bill photo could not be saved: ' + (err.message || 'unknown error')) }
       setBusy(false)
       onSaved()
     } catch (err) {
@@ -151,7 +159,7 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
         ) : (
           <>
             <h3 className="mb-2 text-sm font-semibold">Dishes</h3>
-            <BillScan onDishes={found => {
+            <BillScan onPhoto={file => setBillFiles(b => [...b, file])} onDishes={found => {
               const fresh = newScannedDishes(dishes, found)
               setDishes(mergeScannedDishes(dishes, fresh))
               return fresh.length
