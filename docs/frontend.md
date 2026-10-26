@@ -203,3 +203,43 @@ BiteMark ("Remember every great bite") is a personal food journal PWA, used main
     - Laptop: the Sort menu lists 6 options; picking A to Z re-sorts; ↓↓ Enter on City picked Vadodara (37 cards); an outside click closes the menu.
     - Phone: Groups → Langotiyas shows the toggle and "Personal" in the bar; Activity shows the feed; Personal returns to "Hi, Kandarp".
     - No page errors. 67 tests pass and the build passes.
+- 2026-10-26: **Smart "Craving?" chat with on-device ML** (branch `BiteMark/Smart_Craving`, from `origin/main` after PR #3).
+  - **User decisions:** (1) a free AI model running on the device, PLUS a food dictionary as a booster; no paid API. (2) The index is stored on each device (IndexedDB), not in Neon.
+  - **Model** (`src/embedder.js`): `@huggingface/transformers@3.8.1`, `Xenova/all-MiniLM-L6-v2` (q8, about 25 MB, downloaded once from Hugging Face; the ONNX runtime comes from the CDN).
+    - Loaded with a dynamic `import()`, so it's a separate chunk of about 847 KB that downloads only when the chat opens.
+    - Each dish's vector is cached in IndexedDB `bitemark-ml/vecs` under `model|textHash`, so only new or edited dishes are re-read.
+    - Measured: first run 34 s (download + about 200 dishes); later opens about 2 s.
+  - **Dictionary** (`src/foodLexicon.js`): 15 families (South Indian, North Indian, Gujarati, Chaat, Chinese, Italian, Fast food, Coffee, Desserts, Something cold, Spicy, Healthy, Breakfast, Snacks, Drinks), each with trigger words and dishes. Exports `expandQuery` and `topicsOfDish`.
+  - **Brain** (`src/smartSearch.js`, pure and unit-tested):
+    - `docsFromPlaces`: one entry per dish; its text = name, note, **its families**, place, area/city, categories; the key is an FNV hash of that text.
+    - `parseCraving`: pulls out "under ₹150"-style price limits.
+    - `rankDishes`: the score is the max of meaning (cosine ≥ 0.42), family (0.8, whole-word match via the `search.js` stemmer), and words (`matchScore`); then +0.04 × rating and +0.08 for order again.
+    - `relatedSearches`: up to 3 found dish names plus the other families they belong to.
+  - **Measured on the real journal** (this explains the tuning):
+    - all-MiniLM is weak on Indian dish names: kulfi vs "sweet tooth" 0.14; lassi vs "chilled" 0.04; Diet Coke vs "sweet tooth" 0.47.
+    - Adding families to the dish text lifted the right matches (lassi 0.06 → 0.37, kulfi 0.02 → 0.31, gulab jamun 0.14 → 0.39), but noise reaches about 0.37. Hence the 0.42 cut-off: the dictionary leads and the model adds only confident matches.
+    - Remaining known stray: a soda for "sweet tooth".
+    - Upgrade path if needed: a bigger multilingual model (about 120 MB) or a bigger dictionary.
+  - **Bug found and fixed:** fuzzy prefix matching made "vada" (South Indian) match "Vadapav". The dictionary now matches whole words only (a test covers it).
+  - **UI** (`CravingChat.jsx`, rewritten):
+    - Same drawer as the rest of the app; a status dot (warming up / smart on / word-only fallback); starter chips.
+    - Answers instantly with dictionary + words while the model loads.
+    - Each result card shows why it matched ("Similar in meaning / Same food family / Matches your words"); tapping it opens that place's details (`onOpenPlace`). RELATED chips ask again.
+  - `src/craving.js` was deleted (replaced). 85 tests pass, the build passes, and a clean `npm ci` with `.npmrc` works.
+  - **Verified (Playwright, real model):** "south indian" → only the dosas and paniyaram at 22 Parallel (Vadapav excluded after the fix); "something chilled to beat the heat" → lassi, kulfi, ice creams, shake; "sweet tooth under 150" → desserts under ₹150; tapping a result opened its place; a related chip asked again.
+- 2026-10-26: **Craving AI now prepares in the background after login** (user: "don't start the download when the chat opens").
+  - `src/smartIndex.js` (tested):
+    - `createIndexer(build)` is a single shared job. `ensure(docs)` runs once per journal state; a second caller gets the same promise. It notifies listeners (loading + step/pct, then ready / off), keeps the old vectors usable during a rebuild, and never throws at callers.
+    - `shouldAutoWarm(navigator)` is false on Data Saver or 2G (then the chat starts the job when opened).
+    - The app-wide instance is `smartIndex`.
+  - `Journal` calls `smartIndex.ensure(docsFromPlaces(places))` via `requestIdleCallback` (timeout 4 s; `setTimeout` 1.5 s fallback) once places have loaded. `CravingChat` subscribes to the same job instead of building its own.
+  - `buildIndex` now ALWAYS loads the model at the end, even when every vector is cached (from Cache Storage, no download). Before this, the first question paid about 3 s for the model.
+  - **Storage on the device** (answering the user):
+    - The model files are in the browser's **Cache Storage** (`transformers-cache`).
+    - The dish vectors are in **IndexedDB** (`bitemark-ml`).
+    - Neither is in localStorage, which only holds `space`, `theme` and `sort`.
+    - Both survive closing the app, logging out and app updates. They are lost only if the site's data is cleared, and then they rebuild once.
+  - **Verified (Playwright):**
+    - After a reload the chat opens already showing "Smart matching on".
+    - Measured in the page, button press to answer on screen took 55–63 ms, including the first question. Earlier 2–4 s readings came from Playwright's own waiting, not the app.
+    - The job itself: embedding a question 11–18 ms, ranking 200 dishes 4 ms. 92 tests pass and the build passes.
