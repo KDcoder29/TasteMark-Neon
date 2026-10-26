@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { supabase } from './supabase'
 import { CATEGORIES, priceInput, priceProps } from './shared'
 import { findGroupPlace, addDishWithRating } from './groupApi'
-import { blankDish, mergeScannedDishes, placeFormError } from './placeRules'
+import { blankDish, mergeScannedDishes, newScannedDishes, placeFormError } from './placeRules'
 import BillScan from './BillScan'
 
 // place      = existing place being edited (null when adding)
@@ -151,7 +151,11 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
         ) : (
           <>
             <h3 className="mb-2 text-sm font-semibold">Dishes</h3>
-            <BillScan onDishes={found => setDishes(ds => mergeScannedDishes(ds, found))} />
+            <BillScan onDishes={found => {
+              const fresh = newScannedDishes(dishes, found)
+              setDishes(mergeScannedDishes(dishes, fresh))
+              return fresh.length
+            }} />
             {dishes.map((d, i) => (
               <div key={i} className="rise mb-3 rounded-2xl border p-3" style={{ borderColor: 'var(--line)', background: 'var(--dish)' }}>
                 <div className="mb-2 flex gap-2">

@@ -4,6 +4,20 @@ export const blankDish = () => ({ name: '', price: '', rating: 0, order_again: '
 
 const isBlank = d => !String(d.name).trim() && d.price === ''
 
+const key = s => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ')
+
+// A long bill can be captured in parts; re-photographing the same part must not add the same
+// dishes twice. Returns only the scanned dishes not already in the list (or earlier in the scan).
+export function newScannedDishes(dishes, scanned) {
+  const seen = new Set(dishes.map(d => key(d.name)).filter(Boolean))
+  return (scanned || []).filter(s => {
+    const k = key(s.name)
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
+}
+
 // Bill scan results -> dish rows. Only name and price come from the bill; you add stars and a
 // comment yourself. Untouched empty rows are dropped so the list doesn't start with a blank one.
 export function mergeScannedDishes(dishes, scanned) {
