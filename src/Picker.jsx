@@ -68,7 +68,7 @@ export default function Picker({ places, wishlist, group, onClose }) {
   const sources = [['fav', 'Favorites'], ['new', 'To try'], ['any', 'Anything']]
 
   return (
-    <div className="fade fixed inset-0 z-30 grid place-items-center overflow-y-auto p-4" style={{ background: '#0f172a80', backdropFilter: 'blur(3px)' }}
+    <div className="fade fixed inset-0 z-[45] grid place-items-center overflow-y-auto p-4" style={{ background: '#0b120f80', backdropFilter: 'blur(3px)' }}
       onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div className="sheet w-full max-w-sm rounded-3xl p-5 shadow-2xl" style={{ background: 'var(--surface)' }}>
         <div className="mb-1 flex items-center justify-between">

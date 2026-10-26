@@ -27,7 +27,7 @@ export default function ChangePassword({ onClose }) {
   }
 
   return (
-    <div className="fade fixed inset-0 z-30 grid place-items-center p-4" style={{ background: '#0f172a80', backdropFilter: 'blur(3px)' }}
+    <div className="fade fixed inset-0 z-[45] grid place-items-center p-4" style={{ background: '#0b120f80', backdropFilter: 'blur(3px)' }}
       onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <form onSubmit={submit} className="sheet w-full max-w-sm rounded-3xl p-5 shadow-2xl" style={{ background: 'var(--surface)' }}>
         <div className="mb-4 flex items-center justify-between">

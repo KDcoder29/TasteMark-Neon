@@ -39,7 +39,7 @@ function Panel({ photos, onClose, onDelete }) {
 
   if (!photo) return null
   return (
-    <div role="dialog" aria-modal="true" aria-label="Bill photo" className="fade fixed inset-0 z-40 flex flex-col text-white"
+    <div role="dialog" aria-modal="true" aria-label="Bill photo" className="fade fixed inset-0 z-50 flex flex-col text-white"
       style={{ background: '#0f172ae6' }} onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div className="flex items-center justify-between gap-2 px-4 py-3 text-sm">
         <button type="button" onClick={() => setZoom(!zoom)} className="rounded-full px-3 py-1.5 font-semibold" style={glass}>
