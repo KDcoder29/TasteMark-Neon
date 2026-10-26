@@ -10,6 +10,8 @@ import Icon from './Icons'
 import AddMenu from './AddMenu'
 import { tint } from './shared'
 import { clearFastStart } from './fastStart'
+import StoryCard from './StoryCard'
+import { useSheetDrag, buzz } from './useGestures'
 
 function useTheme() {
   const [dark, setDark] = useState(() => {
@@ -36,7 +38,7 @@ function useDesktop() {
 }
 
 // Account details + settings: a dropdown on laptops, a sheet from the "You" tab on phones.
-function AccountPanel({ email, username, dark, setDark, onPassword, onLogout, onDone }) {
+function AccountPanel({ email, username, dark, setDark, onPassword, onLogout, onDone, story }) {
   return (
     <>
       <div className="flex items-center gap-3 px-3 pb-3 pt-2">
@@ -48,6 +50,7 @@ function AccountPanel({ email, username, dark, setDark, onPassword, onLogout, on
           {username && <div className="truncate text-xs" style={{ color: 'var(--mute)' }}>{email}</div>}
         </div>
       </div>
+      {story}
       <div className="my-1 h-px" style={{ background: 'var(--line)' }} />
       <button className="menu-item" onClick={() => setDark(!dark)} role="switch" aria-checked={dark}>
         <span className="flex items-center gap-2.5"><Icon name={dark ? 'moon' : 'sun'} size={18} /> Dark mode</span>
@@ -66,6 +69,7 @@ function AccountPanel({ email, username, dark, setDark, onPassword, onLogout, on
 
 // a bottom sheet for phones (spaces, account)
 function Sheet({ title, onClose, children }) {
+  const drag = useSheetDrag(onClose)
   useEffect(() => {
     const key = e => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', key)
@@ -74,7 +78,7 @@ function Sheet({ title, onClose, children }) {
   return (
     <>
       <div className="scrim" onMouseDown={onClose} />
-      <div className="drawer !max-h-[80vh] lg:!top-auto lg:!bottom-auto" role="dialog" aria-label={title}>
+      <div ref={drag} className="drawer !max-h-[80vh] lg:!top-auto lg:!bottom-auto" role="dialog" aria-label={title}>
         <div className="grabber" />
         <div className="flex items-center justify-between px-5 pb-1 pt-2">
           <h2 className="m-0 text-lg font-bold">{title}</h2>
@@ -105,7 +109,7 @@ export default function App() {
   const [addIntent, setAddIntent] = useState(null)        // { file? } -> Journal opens the place form
   const [sheet, setSheet] = useState(null)                // phones: 'spaces' | 'you'
   const [acctOpen, setAcctOpen] = useState(false)         // laptops: account dropdown
-  const [stats, setStats] = useState({ places: 0, wish: 0 })
+  const [stats, setStats] = useState({ places: 0, wish: 0, story: null })
   const acctRef = useRef(null)
   const desktop = useDesktop()
 
@@ -300,31 +304,33 @@ export default function App() {
 
       {/* ---------- phone bottom bar ---------- */}
       <nav className="bottomnav" aria-label="Main" style={adding ? { zIndex: 42 } : null}>
-        <button className={`navbtn ${view === 'journal' || view === 'activity' ? 'on' : ''}`} onClick={() => go('journal')}><Icon name="home" size={22} />Home</button>
-        <button className={`navbtn ${view === 'wishlist' ? 'on' : ''}`} onClick={() => go('wishlist')}><Icon name="bookmark" size={22} />Want to try</button>
-        <button data-addbtn className={`navplus ${adding ? 'open' : ''}`} onClick={() => setAdding(!adding)} aria-label="Add" aria-expanded={adding}>
+        <button className={`navbtn ${!sheet && (view === 'journal' || view === 'activity') ? 'on' : ''}`} onClick={() => go('journal')}><span className="navico"><Icon name="home" size={22} /></span>Home</button>
+        <button className={`navbtn ${!sheet && view === 'wishlist' ? 'on' : ''}`} onClick={() => go('wishlist')}><span className="navico"><Icon name="bookmark" size={22} /></span>Want to try</button>
+        <button data-addbtn className={`navplus ${adding ? 'open' : ''}`} onClick={() => { buzz(); setAdding(!adding) }} aria-label="Add" aria-expanded={adding}>
           <Icon name="plus" size={28} stroke={2.6} />
         </button>
         {/* inside a group this is the way home (the top-bar switcher was easy to miss);
             in Personal it opens your groups. A group's Activity lives on the group's own page. */}
         {activeGroup ? (
           <button className="navbtn" onClick={() => { chooseSpace('personal'); window.scrollTo({ top: 0 }) }}>
-            <Icon name="user" size={22} />Personal
+            <span className="navico"><Icon name="user" size={22} /></span>Personal
           </button>
         ) : (
-          <button className="navbtn" onClick={() => setSheet('spaces')}><Icon name="users" size={22} />Groups</button>
+          <button className={`navbtn ${sheet === 'spaces' ? 'on' : ''}`} onClick={() => setSheet('spaces')}><span className="navico"><Icon name="users" size={22} /></span>Groups</button>
         )}
-        <button className="navbtn" onClick={() => setSheet('you')}>
+        <button className={`navbtn ${sheet === 'you' ? 'on' : ''}`} onClick={() => setSheet('you')}>
           {/* your initial, like a profile photo — so it never looks like the "Personal" tab next to it */}
-          <span className="grid h-[22px] w-[22px] place-items-center rounded-full text-[11px] font-bold" style={{ background: 'var(--pri-soft)', color: 'var(--pri)' }}>
+          <span className="navico"><span className="grid h-[22px] w-[22px] place-items-center rounded-full text-[11px] font-bold" style={{ background: 'var(--pri-soft)', color: 'var(--pri)', outline: '1.5px solid currentColor', outlineOffset: 1 }}>
             {(username || session.user.email || '?')[0].toUpperCase()}
-          </span>You
+          </span></span>You
         </button>
       </nav>
       {adding && !desktop && <AddMenu onPick={pickAdd} onClose={() => setAdding(false)} />}
 
       {sheet === 'spaces' && <Sheet title="Your spaces" onClose={() => setSheet(null)}>{spaceList(() => setSheet(null))}</Sheet>}
-      {sheet === 'you' && <Sheet title="You" onClose={() => setSheet(null)}><AccountPanel {...account} onDone={() => setSheet(null)} /></Sheet>}
+      {sheet === 'you' && <Sheet title="You" onClose={() => setSheet(null)}>
+        <AccountPanel {...account} onDone={() => setSheet(null)} story={<StoryCard story={stats.story} space={activeGroup ? activeGroup.name : 'Personal'} />} />
+      </Sheet>}
 
       {pwOpen && <ChangePassword onClose={() => setPwOpen(false)} />}
       {groupsOpen && <Groups me={uid} groups={groups} onClose={() => setGroupsOpen(false)}

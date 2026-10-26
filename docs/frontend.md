@@ -25,6 +25,7 @@ BiteMark ("Remember every great bite") is a personal food journal PWA, used main
 | `ShareDish.jsx`, `groupApi.js` | Copy a personal dish into a group. A group has one card per place (matched by name + city), and your rating is added to it. |
 | `GroupDish.jsx` | A dish inside a group: average rating, your rating, reactions, comments. |
 | `Wishlist.jsx`, `Activity.jsx`, `Picker.jsx`, `CravingChat.jsx` (+`craving.js`) | The features with the same names. |
+| `useGestures.js` (+`gestures.js`), `Toast.jsx` (+`undo.js`), `StoryCard.jsx` (+`foodStory.js`) | Phone polish: swipe-to-close sheets, pull to refresh, Undo toast, the "food story" in the You sheet. |
 | `search.js` | Fuzzy search with scores: exact match, prefix, synonym groups (including Gujarati/Hindi words), substring, typo tolerance. |
 | `MapView.jsx`, `geocode.js` | Leaflet map with OSM tiles. Pin colour comes from the best rating. "Near me" lists the nearest places. |
 | `Login.jsx`, `ResetPassword.jsx`, `ChangePassword.jsx`, `authApi.js` | Login with username or email, sign-up, password reset and change. |
@@ -265,3 +266,50 @@ BiteMark ("Remember every great bite") is a personal food journal PWA, used main
   - **Can't be fixed in code:** Neon Auth's own sign-in (~1.9 s: deliberately slow password hashing plus several US database trips).
     - Option, not decided: move the Neon project to ap-southeast-1 (Singapore), with roughly 70 ms per trip. That needs a new project plus a data and auth-user migration.
 - **SECURITY NOTE (2026-10-26):** Claude accidentally printed `DATABASE_URL` (including the password) into the session output while timing requests. The user was told to reset the `neondb_owner` password in Neon and update `.env` and the Vercel env vars. **Never `source .env` in a shell where variables or background jobs can be echoed.**
+
+### 2026-10-27: phone polish (branch `BiteMark/Mobile_Polish`, cut from origin/main 583950f after PR #5)
+Asked for: cleaner and smoother phone UX with small animations, at least 4 improvements. The picks were Claude's.
+- **Swipe down to close sheets** (`useSheetDrag` in `src/useGestures.js`, maths in `src/gestures.js`, tested). Used on:
+  - the place detail sheet
+  - the filter sheet
+  - the Craving chat
+  - the Spaces / You sheets
+  - **How it behaves:** the sheet follows the finger and the scrim fades with it. On release it closes past ⅓ of its height (at most 140 px), or on a quick flick (>0.5 px/ms). Otherwise it springs back.
+  - **When a drag starts:** only when the content under the finger is scrolled to the top, and never on range sliders, text areas or anything marked `[data-nodrag]`.
+  - **Not on `PlaceForm`**, on purpose: a stray swipe would throw away typed dishes.
+  - **Implementation details:**
+    - The hook writes `style.transform` directly (no React render per move).
+    - It sets `animation:none` first, because the `up` keyframe's fill mode would otherwise override inline transforms.
+    - Phones only (`max-width: 1023.98px`).
+- **Pull to refresh** on Home and Want to try (`usePullRefresh`). A round badge slides out from under the top bar, rotates with the pull, turns green at the refresh point (70 px), then spins while `load()` runs.
+  - The browser's own pull-to-reload is off on phones (`overscroll-behavior-y:none`). It would reload the whole app; installed PWAs never had it.
+  - Ignored while any `.scrim` or dialog is open.
+- **Want to try redesign:**
+  - cards match place cards (category-coloured letter tile, pin + area, the note as a quote, Added by in groups)
+  - "✓ We went", plus a new **Maps** button (Google Maps search for name, area and city)
+  - a trash icon
+  - **Remove has no confirm box any more.** The card slides out and a "Removed X · Undo" toast (`Toast.jsx`, portalled) shows for 5 s. The real delete happens afterwards (`src/undo.js`, tested).
+    - Removing another item deletes the waiting one at once.
+    - Leaving the tab also deletes it at once.
+- **Your food story** in the You sheet (`foodStory.js` (tested) + `StoryCard.jsx`):
+  - places, dishes and cities, which count up once when the sheet opens
+  - favourite dish (best ≥4★; order-again then newest breaks ties)
+  - your go-to food (most common family from the food dictionary, at least 2 dishes; broad moods such as Drinks, Something cold, Spicy, Snacks and Breakfast are excluded)
+  - % order again
+  - most visited city (only if there is more than one city)
+  - It covers the open space.
+  - Phone sheet only; the laptop dropdown is unchanged.
+  - Named `StoryCard.jsx`, not `FoodStory.jsx`: on Windows, `./FoodStory` would resolve to `foodStory.js`.
+- **Small touches:**
+  - The bottom-bar active tab gets a soft green pill that springs open (`.navico`). Groups and You light up while their sheet is open; Home doesn't then.
+  - Switching tabs fades and rises content slightly (`.tabin`, keyed on `view`).
+  - Android gives a short vibration on +, on a sheet dismiss and on refresh (`buzz()`).
+  - New icons: `refresh`, `trash`, `map`, `repeat`.
+- **Verified:**
+  - 123 tests pass; the build passes.
+  - Playwright at 390 px with synthetic touches:
+    - a small drag springs back
+    - a long drag or a flick closes the sheet
+    - a pull refetches places
+    - Undo restores the card with no DELETE request sent
+  - Dark mode and the laptop layout were checked by screenshot.

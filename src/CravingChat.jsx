@@ -5,12 +5,14 @@ import { expandQuery } from './foodLexicon'
 import { docsFromPlaces, parseCraving, rankDishes, relatedSearches } from './smartSearch'
 import { embed } from './embedder'
 import { smartIndex } from './smartIndex'
+import { useSheetDrag } from './useGestures'
 
 const STARTERS = ['South Indian', 'Something cold', 'Spicy snack under ₹100', 'Dessert', 'Healthy breakfast', 'Good coffee']
 
 // "Craving?" — ask in your own words; an on-device AI model + a food dictionary find matching
 // dishes in YOUR journal, even ones you never labelled that way. Tap a result to open the place.
 export default function CravingChat({ places, onOpenPlace, onClose }) {
+  const drag = useSheetDrag(onClose)
   const docs = useMemo(() => docsFromPlaces(places), [places])
   const [ml, setMl] = useState(() => smartIndex.get())   // idle | loading (+ step, pct) | ready | off
   const [messages, setMessages] = useState([])
@@ -57,7 +59,7 @@ export default function CravingChat({ places, onOpenPlace, onClose }) {
   return (
     <>
       <div className="scrim" onMouseDown={onClose} />
-      <section className="drawer lg:!w-[480px]" role="dialog" aria-modal="true" aria-label="Craving something?">
+      <section ref={drag} className="drawer lg:!w-[480px]" role="dialog" aria-modal="true" aria-label="Craving something?">
         <div className="grabber" />
         <div className="flex items-start justify-between gap-3 border-b px-5 pb-3 pt-2 lg:pt-6" style={{ borderColor: 'var(--line)' }}>
           <div className="min-w-0">

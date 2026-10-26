@@ -1,7 +1,7 @@
 import { filterPlaces, sortPlaces, activeFilterCount, SORTS } from './journalFilter'
 import FilterSheet from './FilterSheet'
 import ChipSelect from './ChipSelect'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from './supabase'
 import PlaceForm from './PlaceForm'
 import ShareDish from './ShareDish'
@@ -17,6 +17,8 @@ import { CATEGORIES, priceScale, PriceSlider } from './shared'
 import { smartIndex, shouldAutoWarm } from './smartIndex'
 import { docsFromPlaces } from './smartSearch'
 import { loadJournal, saveJournal } from './fastStart'
+import { foodStory } from './foodStory'
+import { usePullRefresh } from './useGestures'
 
 const store = (() => { try { return window.localStorage } catch { return null } })()
 
@@ -131,7 +133,12 @@ export default function Journal({ me, group, groups, username, view, setView, ad
     onIntentDone()
   }, [addIntent])
 
-  useEffect(() => { onStats({ places: places.length, wish: wishlist.length }) }, [places.length, wishlist.length])
+  useEffect(() => { onStats({ places: places.length, wish: wishlist.length, story: foodStory(places) }) }, [places, wishlist.length])
+
+  // phones: pull Home / Want to try down from the top to fetch the latest (the browser's own
+  // pull-to-reload is turned off in index.css, and installed apps never had one)
+  const pullBall = useRef(null)
+  usePullRefresh(pullBall, load, view !== 'activity')
 
   // prepare the Craving chat's AI in the background once the journal is on screen, when the
   // browser is idle (so the page itself never stutters). Skipped on Data Saver / 2G: then the chat
@@ -153,6 +160,7 @@ export default function Journal({ me, group, groups, username, view, setView, ad
 
   return (
     <div className="pb-6">
+      <div ref={pullBall} className="ptr mobile-only" aria-hidden="true"><span className="ptr-ball"><Icon name="refresh" size={19} stroke={2.4} /></span></div>
       {/* ---------- header ---------- */}
       <div className="flex items-end justify-between gap-4 pb-4 pt-5 lg:pt-8">
         <div className="min-w-0">
@@ -181,6 +189,8 @@ export default function Journal({ me, group, groups, username, view, setView, ad
         </div>
       )}
 
+      {/* a soft change when switching tabs */}
+      <div key={view} className="tabin">
       {view === 'wishlist' && (
         <Wishlist me={me} group={group} items={wishlist} names={names} isOwner={isOwner} onChanged={load}
           onWent={w => setCreating({ prefill: { name: w.name, city: w.city, area: w.area, categories: w.categories || [] }, wishId: w.id })} />
@@ -301,6 +311,7 @@ export default function Journal({ me, group, groups, username, view, setView, ad
           )}
         </>
       )}
+      </div>
 
       {open && (
         <PlaceDetail p={{ ...open, allDishes: open.dishes }} me={me} group={group} names={names} isOwner={isOwner}

@@ -10,13 +10,20 @@
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- open the connections to the login server and the data API early (they're in the US: each new
+         secure connection costs ~0.6–1 s from India) -->
+    <link rel="preconnect" href="https://ep-cool-credit-b40d4jp8.neonauth.c-6.us-east-2.aws.neon.tech/neondb/auth" crossorigin />
+    <link rel="preconnect" href="https://ep-cool-credit-b40d4jp8.apirest.c-6.us-east-2.aws.neon.tech/neondb/rest/v1" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="BiteMark" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <script type="module" crossorigin src="/assets/index-DV5TlUvT.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-CwbwFYqn.css">
+    <script type="module" crossorigin src="/assets/index-BdVBsPLi.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CkgZPyRo.css">
   </head>
   <body>
     <div id="root"></div>

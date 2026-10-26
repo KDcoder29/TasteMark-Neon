@@ -5,10 +5,12 @@ import PlaceBills from './PlaceBills'
 import { Stars } from './shared'
 import { placeSummary, placeWhere } from './placeView'
 import { LovedTag, tileColor } from './PlaceCard'
+import { useSheetDrag } from './useGestures'
 
 // Everything about one place: bottom sheet on phones, right-side panel on laptops.
 export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onClose, onEdit, onAddDish, onShare, onChanged }) {
   const [bills, setBills] = useState(false)
+  const drag = useSheetDrag(onClose)
   const s = placeSummary({ dishes: p.allDishes || p.dishes })
   const dishes = p.allDishes || p.dishes || []
   const where = placeWhere(p)
@@ -25,7 +27,7 @@ export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onC
   return (
     <>
       <div className="scrim" onMouseDown={onClose} />
-      <section className="drawer" role="dialog" aria-modal="true" aria-label={p.name}>
+      <section ref={drag} className="drawer" role="dialog" aria-modal="true" aria-label={p.name}>
         <div className="grabber" />
         <div className="flex items-start gap-3.5 px-5 pb-4 pt-3 lg:pt-6">
           <span className="mono h-16 w-16 text-2xl" style={{ background: tileColor(p) }}>{p.name.trim()[0]?.toUpperCase()}</span>
