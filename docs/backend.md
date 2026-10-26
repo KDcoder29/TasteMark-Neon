@@ -55,3 +55,18 @@ Everything server-side: Neon Postgres (schema, RLS, RPCs, triggers), Neon Auth, 
 - 2026-10-25: Bill scan (`BiteMark/Bill_Scan`) shipped with no backend changes. Playwright wrote one test place to the live Neon DB and deleted it through the UI.
   - There is no separate test or staging database. Any end-to-end save test writes to production, so always clean up afterwards.
 - 2026-10-26: Capture a bill (`BiteMark/Bill_Capture`) needed no backend changes. The photo stays on the device.
+- 2026-10-26: **Bill photos table** (`BiteMark/Bill_Photo`). Migration file: `db/migrations/2026-10-26-bill-photos.sql`. It is also appended to `db/neon-schema.sql` as section 8.
+  - **Table:** `bill_photos(id, place_id → places ON DELETE CASCADE, user_id default auth.uid(), image text, created_at)`.
+    - `image` holds a JPEG data URL (about 150 KB). A CHECK requires the `data:image/jpeg;base64,` prefix and length ≤ 1,500,000.
+    - Index on `(place_id, created_at desc)`.
+  - **Rules (user decision: group bills are visible to all members):**
+    - Read: anyone who can see the place, using the places RLS through `exists`.
+    - Insert: the row must be your own and the place visible to you.
+    - Delete: the person who added it, or the group owner (`is_group_owner`).
+    - `authenticated` is granted select, insert and delete.
+  - **Storage (user decision: store in Neon).** The database was 9 MB with 61 places and 204 dishes on 2026-10-26. At about 150 KB per bill, the ~0.5 GB free tier holds roughly 3,000 bills. Vercel Blob was rejected because its links are public by default and it needs more setup. Phone-only storage was rejected because bills wouldn't sync.
+  - **⚠️ Deploy order:** run the migration BEFORE deploying the frontend. `Journal.jsx` now selects `bill_photos(id)`, and the journal fails to load if the table doesn't exist.
+  - **Status:** APPLIED on 2026-10-26. The user ran the whole `neon-schema.sql` in the SQL Editor and refreshed the Data API schema cache. Claude's own attempt had been blocked by the Claude Code permission check.
+  - **Update:** the user ran the whole `neon-schema.sql` in the SQL Editor, which is re-runnable. Verified read-only: data untouched (61 places, 204 dishes, 5 ratings, 1 wishlist item, 2 groups), `bill_photos` has RLS on and its 3 policies.
+    - Running the whole file also gave `authenticated` UPDATE on the table. That is harmless because no update policy exists.
+  - **Gotcha: the Neon Data API caches the schema.** Right after the migration the app got "Could not find a relationship between 'places' and 'bill_photos' in the schema cache". After any new table or foreign key, refresh it: Neon Console → Data API → Refresh schema cache, or run `NOTIFY pgrst, 'reload schema';`.

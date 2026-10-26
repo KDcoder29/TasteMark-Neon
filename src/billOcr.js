@@ -54,12 +54,23 @@ async function prepare(file) {
   return canvas
 }
 
-// photo file -> raw text. onProgress gets 0..1 while it reads.
-export async function readBillText(file, onProgress = () => {}) {
+// Tesseract's progress messages -> what the person is waiting for. Its percentages only cover the
+// final "recognizing text" step (and jump 1% -> 63% there), so we show steps, not a percentage.
+const PREPARE = ['loading tesseract core', 'initializing tesseract', 'loading language traineddata', 'initializing api']
+export function stageOf(m) {
+  if (!m) return null
+  if (m.status === 'recognizing text') return 'read'
+  if (m.status === 'loading language traineddata' && m.progress < 1) return 'download'
+  return PREPARE.includes(m.status) ? 'prepare' : null
+}
+
+// photo file -> raw text. onStage gets 'prepare' | 'download' | 'read' as it goes.
+export async function readBillText(file, onStage = () => {}) {
+  onStage('prepare')
   const { createWorker } = await import('tesseract.js')   // only downloaded when someone scans
   const canvas = await prepare(file)
   const worker = await createWorker('eng', 1, {
-    logger: m => { if (m.status === 'recognizing text') onProgress(m.progress) },
+    logger: m => { const s = stageOf(m); if (s) onStage(s) },
   })
   try {
     // "6" = one uniform block of text. Tested on a faded receipt: it keeps each dish and its

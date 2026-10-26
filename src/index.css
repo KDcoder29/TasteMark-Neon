@@ -21,6 +21,13 @@ body{margin:0;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antia
 @keyframes fade{from{opacity:0}to{opacity:1}}
 @keyframes sheet{from{opacity:0;transform:translateY(40px) scale(.98)}to{opacity:1;transform:none}}
 @keyframes shimmer{0%{background-position:-300px 0}100%{background-position:300px 0}}
+@keyframes slide{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+
+/* "Reading your bill": no honest percentage exists, so a calm sliding bar instead */
+.scanbar{position:relative;height:6px;overflow:hidden;border-radius:99px;background:color-mix(in srgb,var(--pri) 16%,transparent)}
+.scanbar::after{content:"";position:absolute;inset:0 auto 0 0;width:40%;border-radius:99px;background:var(--pri);
+  animation:slide 1.3s cubic-bezier(.45,.05,.55,.95) infinite}
+@media (prefers-reduced-motion: reduce){.scanbar::after{animation:none;width:100%;opacity:.45}}
 
 .rise{animation:rise .45s cubic-bezier(.2,.7,.2,1) both}
 .fade{animation:fade .25s ease both}
