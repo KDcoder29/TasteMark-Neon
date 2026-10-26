@@ -14,6 +14,8 @@ import PlaceCard from './PlaceCard'
 import PlaceDetail from './PlaceDetail'
 import Icon from './Icons'
 import { CATEGORIES, priceScale, PriceSlider } from './shared'
+import { smartIndex, shouldAutoWarm } from './smartIndex'
+import { docsFromPlaces } from './smartSearch'
 
 const SAMPLE = [
   { name: 'Coffea: Brew on the Rocks', city: 'Vadodara', area: '13 Canal Rd', categories: ['Cafe'],
@@ -123,6 +125,16 @@ export default function Journal({ me, group, groups, username, view, setView, ad
   }, [addIntent])
 
   useEffect(() => { onStats({ places: places.length, wish: wishlist.length }) }, [places.length, wishlist.length])
+
+  // prepare the Craving chat's AI in the background once the journal is on screen, when the
+  // browser is idle (so the page itself never stutters). Skipped on Data Saver / 2G: then the chat
+  // starts it when opened. Only new or edited dishes are ever re-read (cached on the device).
+  useEffect(() => {
+    if (loading || !places.length || !shouldAutoWarm(navigator)) return
+    const run = () => smartIndex.ensure(docsFromPlaces(places))
+    const id = window.requestIdleCallback ? requestIdleCallback(run, { timeout: 4000 }) : setTimeout(run, 1500)
+    return () => (window.cancelIdleCallback ? cancelIdleCallback(id) : clearTimeout(id))
+  }, [loading, places])
 
   const dishTotal = places.reduce((n, p) => n + (p.dishes || []).length, 0)
   const open = openId && places.find(p => p.id === openId)
@@ -311,7 +323,7 @@ export default function Journal({ me, group, groups, username, view, setView, ad
 
       {picking && <Picker places={places} wishlist={wishlist} group={group} onClose={() => setPicking(false)} />}
 
-      {asking && <CravingChat places={places} onClose={() => setAsking(false)} />}
+      {asking && <CravingChat places={places} onClose={() => setAsking(false)} onOpenPlace={id => { setAsking(false); setOpenId(id) }} />}
 
       {(editing || creating) && (
         <PlaceForm me={me} place={editing} prefill={creating?.prefill} wishId={creating?.wishId} initialBill={creating?.billFile}
