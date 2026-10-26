@@ -9,7 +9,8 @@ import { saveBills } from './billApi'
 // place      = existing place being edited (null when adding)
 // prefill    = starting values when adding from the wishlist; wishId = that wishlist item
 // groups     = my groups; defaultGroupId = the open space ('' = Personal)
-export default function PlaceForm({ me, place, cities, groups = [], defaultGroupId = '', prefill, wishId, onClose, onSaved }) {
+// initialBill = a bill photo picked from the + menu; it is scanned as soon as the form opens
+export default function PlaceForm({ me, place, cities, groups = [], defaultGroupId = '', prefill, wishId, initialBill, onClose, onSaved }) {
   const editing = !!place
   const editingGroup = editing && !!place.group_id
   const start = place || prefill || {}
@@ -115,11 +116,13 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
   const title = editing ? 'Edit place' : wishId ? 'We went! Add your visit' : 'Add place'
 
   return (
-    <div className="fade fixed inset-0 z-20 overflow-y-auto" style={{ background: '#0f172a80', backdropFilter: 'blur(3px)' }}
-      onMouseDown={e => e.target === e.currentTarget && onClose()}>
-      <form onSubmit={save} className="sheet mx-auto my-6 w-[calc(100%-24px)] max-w-xl rounded-3xl p-5 shadow-2xl" style={{ background: 'var(--surface)' }}>
+    <>
+    <div className="scrim" onMouseDown={onClose} />
+    <form onSubmit={save} className="drawer" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="grabber" />
+      <div className="flex-1 overflow-y-auto px-5 pb-8 pt-2 lg:pt-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold">{title}</h2>
+          <h2 className="m-0 text-xl font-extrabold">{title}</h2>
           <button type="button" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-full text-xl ghost transition" style={mute}>×</button>
         </div>
 
@@ -159,7 +162,7 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
         ) : (
           <>
             <h3 className="mb-2 text-sm font-semibold">Dishes</h3>
-            <BillScan onPhoto={file => setBillFiles(b => [...b, file])} onDishes={found => {
+            <BillScan initialFile={initialBill} onPhoto={file => setBillFiles(b => [...b, file])} onDishes={found => {
               const fresh = newScannedDishes(dishes, found)
               setDishes(mergeScannedDishes(dishes, fresh))
               return fresh.length
@@ -202,7 +205,8 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
           <button disabled={busy} className="btn btn-pri flex-1">{busy ? 'Saving…' : 'Save'}</button>
           {editing && <button type="button" onClick={remove} className="btn" style={{ color: 'var(--bad)' }}>Delete</button>}
         </div>
-      </form>
-    </div>
+      </div>
+    </form>
+    </>
   )
 }

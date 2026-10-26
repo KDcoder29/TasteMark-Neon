@@ -134,7 +134,7 @@ export default function Groups({ me, groups, onClose, onChanged, onOpen }) {
   const tabs = [['mine', `Your groups${groups.length ? ` (${groups.length})` : ''}`], ['create', 'Create group']]
 
   return (
-    <div className="fade fixed inset-0 z-30 overflow-y-auto" style={{ background: '#0f172a80', backdropFilter: 'blur(3px)' }}
+    <div className="fade fixed inset-0 z-[45] overflow-y-auto" style={{ background: '#0b120f80', backdropFilter: 'blur(3px)' }}
       onMouseDown={e => e.target === e.currentTarget && onClose()}>
       <div className="sheet mx-auto my-6 w-[calc(100%-24px)] max-w-xl rounded-3xl p-5 shadow-2xl" style={{ background: 'var(--surface)' }}>
         <div className="mb-3 flex items-center justify-between">

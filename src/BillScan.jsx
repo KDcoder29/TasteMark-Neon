@@ -8,7 +8,7 @@ import BillViewer from './BillViewer'
 // read on this device (free) and every dish line found is handed to onDishes([{ name, price }]),
 // which returns how many were actually added. Stars and comments are left for you to add.
 // onPhoto(file) gets each photo that added dishes; the form saves it with the place on Save.
-export default function BillScan({ onDishes, onPhoto }) {
+export default function BillScan({ onDishes, onPhoto, initialFile }) {
   const camera = useRef(null)
   const upload = useRef(null)
   const [state, setState] = useState({ step: 'idle' })   // idle | reading | done | empty | error
@@ -22,10 +22,19 @@ export default function BillScan({ onDishes, onPhoto }) {
 
   useEffect(() => () => { if (photo) URL.revokeObjectURL(photo) }, [photo])
 
-  async function scan(e) {
+  // a photo picked from the + menu ("Scan a bill") starts reading as soon as the form opens
+  const started = useRef(false)
+  useEffect(() => {
+    if (initialFile && !started.current) { started.current = true; read(initialFile) }
+  }, [initialFile])
+
+  function scan(e) {
     const file = e.target.files?.[0]
     e.target.value = ''                                     // lets you pick the same photo again
-    if (!file) return
+    if (file) read(file)
+  }
+
+  async function read(file) {
     setPhoto(URL.createObjectURL(file))
     setState({ step: 'reading', stage: 'prepare' })
     let slow

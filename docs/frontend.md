@@ -134,3 +134,72 @@ BiteMark ("Remember every great bite") is a personal food journal PWA, used main
   - **Resilience (2026-10-26):** if the places query fails because of `bill_photos` (migration missing or stale API schema cache), `Journal.load()` retries without `bill_photos(id)`. The journal then loads without 🧾 buttons instead of showing an alert loop.
     - Reproduced first: with the stale cache, the journal showed a repeating alert.
     - Verified after the fix: it loads 44 places with no alerts.
+- 2026-10-26: **Less-scrolling exploration** (user: "57 places, bored of scrolling").
+  - Cause: every journal card shows every dish. The personal journal has 57 places with 3.5 dishes on average (up to 13), which is about 25 phone screens.
+  - Built 3 tappable phone mockups in BiteMark's look on a private Design canvas: https://claude.ai/artifact/GLPx1Z4UobcM8SWWR7i9yV
+    - (1) Compact list: one 60 px row per place (avg ★, ₹ range, dish count); tap to expand its dishes inline.
+    - (2) Category shelves: "Recently added" + Food / Cafe / Dessert / Healthy as sideways-swiping rows; tap a card for a bottom sheet with its dishes.
+    - (3) Tile grid: 2-column tiles with category filter chips; tap a tile for a bottom sheet.
+  - **Status:** waiting for the user to pick one. Nothing is built in the app yet.
+- 2026-10-26: **Full UI revamp** (branch `BiteMark/UI_Revamp`, from `origin/main` after PR #2). The user asked for a Zomato/Swiggy-quality UI: a real laptop layout and a real phone layout, clean, quick motion, a much better experience, and the bill upload near the +.
+  - **Design system** (`src/index.css`, rewritten; old class names kept so every screen restyled):
+    - Colours come from the logo: deep green `--pri` (#1d6b4f; dark mode #4fbf8f) for actions, links and selected chips. Saffron `--accent` (#f26b1d) only for the + button and highlights, because saffron text on white fails contrast. `--accent-ink` (#a8460c) for "Must try".
+    - Rating badge tones `--great/--good/--low`. Shadows `--sh-1..3`. Motion `--ease` and `--spring`.
+    - Font: **Figtree** (Google Fonts link in `index.html`).
+    - Every animation and transition is cut to 1 ms when reduced motion is on.
+  - **Shell** (`App.jsx`):
+    - Laptop (≥1024 px): a sticky left `.sidebar` with Spaces (Personal + groups + "New or join a group"), Browse (Places with count, Want to try with count, Activity in groups), Ask BiteMark (Craving, Where to eat) and an account dropdown (dark mode, password, log out).
+    - Phone: a `.topbar` (logo, space switcher sheet, theme toggle) and a `.bottomnav`: Home · Want to try · **+** (saffron, turns into ×) · Groups / Activity in a group · You (account sheet).
+    - `useDesktop()` (matchMedia) is used ONLY so the + menu mounts once; everything else is responsive in CSS (`.desktop-only` / `.mobile-only`).
+    - `view` is now owned by App and passed to Journal.
+  - **+ menu** (`AddMenu.jsx`): Scan a bill (camera, phones only) · Upload bill photo · Add manually.
+    - The bill choices are real `<label><input type=file>` elements, because phones only open the camera in direct response to a tap.
+    - The picked file goes App `addIntent` → Journal → `PlaceForm initialBill` → `BillScan initialFile`, which starts reading on mount (a ref guard stops React dev mode reading it twice).
+  - **Journal** (layout rewritten; data loading, smart search, filters and sorting are byte-identical):
+    - Header: "Hi, <username>" or the group name, plus the place and dish counts.
+    - Big `.searchbar`, pinned under the phone top bar. A chip row that scrolls sideways on phones: Sort, City, Food/Cafe/Healthy/Dessert, "4★ & up", Order again, Price (inline slider panel), Clear.
+    - On phones, the Craving and Where-to-eat quick cards.
+    - `.place-grid`: 1 column on phones, 2 from 640 px, 3 from 1280 px, 4 from 1680 px. The old 3★+/5★+ chips became a single "4★ & up".
+  - **PlaceCard** (`PlaceCard.jsx`): a coloured monogram by category, name, `RatingBadge`, area · categories, ₹ range, dish count, bill icon, "by X" in groups, and "Must try" (or "Matches: …" while searching or filtering). Cards appear in a quick stagger.
+    - Pure helpers in `placeView.js`, with tests: `placeSummary`, `placeWhere` (hides "-" placeholder areas), `ratingTone`.
+    - "Must try" = an order-again dish, otherwise the best dish rated 4★+, never a low-rated one.
+  - **PlaceDetail** (`PlaceDetail.jsx`): the `.drawer` is a bottom sheet on phones (grabber, 92vh) and a 520 px right panel on laptops.
+    - Contents: header with badge, price and categories; Edit / Bill / + Add a dish (groups); directions; the dish list (personal rows with comment, price, stars and ↗ share; `GroupDish` in groups).
+    - Esc and the backdrop close it, and the page behind doesn't scroll.
+  - **PlaceForm** uses the same `.scrim` + `.drawer`.
+  - **Layers:** topbar 15, bottom bar 20 (42 while the + menu is open), backdrop 40, drawer/menu 41, dialogs 45 (DishForm, ShareDish, Picker, CravingChat, Groups, ChangePassword), bill viewer 50.
+  - **Verified with Playwright** at 1440×900 and 390×844 (touch emulated):
+    - grid, drawer, Esc, + menu, + → Upload bill → form auto-scans 4 dishes, × closes the menu, details sheet;
+    - dark mode with a group and GroupDish; Want to try.
+    - No page errors. 57 tests pass and the build passes.
+  - **Not redesigned yet:** the insides of Wishlist, Groups, Picker, CravingChat, Login, ShareDish, DishForm and Activity. They pick up the new colours, font and controls but keep their old layouts and emoji.
+- 2026-10-26: **Revamp feedback round 1** (user liked the laptop layout and the bottom bar).
+  - **No average rating on cards or in place details (user decision).** One great dish among six bad ones averages out "low", yet the place is still worth going back to.
+    - Cards show `LovedTag`: "♥ N loved" (dishes rated 4★+ or marked order again). Details show "N of M loved".
+    - A place with no ratings shows "Not rated". A place with ratings but nothing loved shows no tag.
+    - `placeSummary().loved` is tested. `RatingBadge`, `ratingTone` and the `.rbadge` / `--great/good/low` styles were removed.
+    - The "Top rated" sort still uses the average dish rating, unchanged.
+  - **Phone filters redesigned** (user: "the sideways filter strip is a mess"). Follows the Zomato / Swiggy / Myntra / Airbnb pattern:
+    - One row: **Filters (count badge) · Sort ▾ · Order again**. Active filters show as removable tags that wrap (no sideways scroll), plus "Clear all".
+    - `FilterSheet.jsx` is a bottom sheet:
+      - Section tabs on the left (Sort by, Category with per-category counts, City only if there are 2+ cities, Price, Rating, More) with an accent dot on active sections.
+      - Options on the right: radios and checkboxes; Price has "Under ₹100/200/500" presets plus the slider; Rating offers Any / 4★ & up / Only 5★.
+      - Footer: **Clear all** and **Show N places**. N is live.
+    - The sheet edits a DRAFT; the list behind it doesn't change until Show.
+    - Laptops keep the chip row unchanged (`.desktop-only`).
+  - **Filtering and sorting moved to `src/journalFilter.js`:** `filterPlaces`, `sortPlaces`, `activeFilterCount`, `NO_FILTERS`, `SORTS`.
+    - Characterisation tests were written first, so the move couldn't change behaviour. Journal and the sheet's live count run the same code.
+  - **Verified (Playwright, 390 px):** the sheet showed 44 → Cafe 9 → Under ₹200 5 with the list unchanged behind it; Show gave 5 cards; the button read "Filters, 2 on" with Cafe × and Under ₹200 × tags; removing a tag and Clear all worked; no page errors. 67 tests pass and the build passes.
+- 2026-10-26: **Revamp feedback round 2.**
+  - **Laptop bug:** the Sort and City chips opened the browser's own `<select>` list, which can't be styled.
+    - Replaced by `ChipSelect.jsx`: a chip plus a styled `.menu` listbox with ✓ on the current value. Keys: ↓ opens, ↑/↓ move, Enter picks, Esc closes. An outside click also closes it.
+    - **Rule: never use a native `<select>` for visible app UI**, because its open list can't be styled. (The form inputs in PlaceForm and the Groups picker still use `select.input`, which is acceptable inside forms.)
+  - **Phone: users got stuck inside a group.** The top-bar switcher went unnoticed.
+    - The bottom bar's 4th tab is now **Personal** inside a group (one tap home) and **Groups** in Personal (opens the spaces sheet).
+    - The group's **Activity** moved to a **Places | Activity** toggle (`role=tablist`) under the group name on phones. The Home tab stays highlighted for both.
+    - The page heading always shows the group name inside a group.
+    - The **You** tab shows your initial in a circle so it doesn't look like the Personal tab.
+  - **Verified (Playwright):**
+    - Laptop: the Sort menu lists 6 options; picking A to Z re-sorts; ↓↓ Enter on City picked Vadodara (37 cards); an outside click closes the menu.
+    - Phone: Groups → Langotiyas shows the toggle and "Personal" in the bar; Activity shows the feed; Personal returns to "Hi, Kandarp".
+    - No page errors. 67 tests pass and the build passes.

@@ -1,16 +1,19 @@
-import { matchScore } from './search'
+import { filterPlaces, sortPlaces, activeFilterCount, SORTS } from './journalFilter'
+import FilterSheet from './FilterSheet'
+import ChipSelect from './ChipSelect'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from './supabase'
 import PlaceForm from './PlaceForm'
 import ShareDish from './ShareDish'
-import GroupDish from './GroupDish'
 import DishForm from './DishForm'
 import Wishlist from './Wishlist'
 import Activity from './Activity'
 import Picker from './Picker'
 import CravingChat from './CravingChat'
-import PlaceBills from './PlaceBills'
-import { CATEGORIES, Stars, priceScale, PriceSlider } from './shared'
+import PlaceCard from './PlaceCard'
+import PlaceDetail from './PlaceDetail'
+import Icon from './Icons'
+import { CATEGORIES, priceScale, PriceSlider } from './shared'
 
 const SAMPLE = [
   { name: 'Coffea: Brew on the Rocks', city: 'Vadodara', area: '13 Canal Rd', categories: ['Cafe'],
@@ -33,20 +36,22 @@ function groupDish(d) {
   return { ...d, avg, nRatings: rs.length, rating: avg, order_again: yes > no ? 'yes' : no > yes ? 'no' : null }
 }
 
-// me = my user id, group = the open group (null = Personal), groups = all my groups
-export default function Journal({ me, group, groups }) {
+// me = my user id, group = the open group (null = Personal), groups = all my groups.
+// view / setView and the + button's addIntent come from the app shell (sidebar / bottom bar).
+export default function Journal({ me, group, groups, username, view, setView, addIntent, onIntentDone, onStats, addButton }) {
   const [places, setPlaces] = useState([])
   const [wishlist, setWishlist] = useState([])
   const [names, setNames] = useState({})
   const [loading, setLoading] = useState(true)
-  const [view, setView] = useState('journal')      // 'journal' | 'wishlist' | 'activity'
   const [editing, setEditing] = useState(null)     // place being edited
-  const [creating, setCreating] = useState(null)   // {} or { prefill, wishId }
+  const [creating, setCreating] = useState(null)   // {} or { prefill, wishId } or { billFile }
   const [sharing, setSharing] = useState(null)     // { place, dish } being added to a group
   const [addingDish, setAddingDish] = useState(null)
   const [picking, setPicking] = useState(false)
   const [asking, setAsking] = useState(false)
-  const [billsOf, setBillsOf] = useState(null)     // place whose bill photos are open
+  const [openId, setOpenId] = useState(null)       // place whose details are open
+  const [priceOpen, setPriceOpen] = useState(false)
+  const [sheetTab, setSheetTab] = useState(null)   // phones: the filter sheet, opened on this section
   const [q, setQ] = useState('')
   const [city, setCity] = useState('All')
   const [cat, setCat] = useState('All')
@@ -104,92 +109,58 @@ export default function Journal({ me, group, groups }) {
   const dirty = q || city !== 'All' || cat !== 'All' || minRate || priceOn || again
   const reset = () => { setQ(''); setCity('All'); setCat('All'); setMinRate(0); setMaxPrice(null); setAgain(false) }
 
-  const results = useMemo(() => {
-    const searching = q.trim().length > 0
-    const dishFilter = minRate > 0 || priceOn || again
-    return places.flatMap(p => {
-      if (city !== 'All' && p.city !== city) return []
-      if (cat !== 'All' && !(p.categories || []).includes(cat)) return []
-      const placeText = [p.name, p.city, p.area, (p.categories || []).join(' '), p.directions].join(' ')
-      let best = 0
-      const dishes = (p.dishes || []).filter(d => {
-        if (minRate && !(d.rating >= minRate)) return false
-        if (priceOn && !(d.price != null && d.price <= maxPrice)) return false
-        if (again && d.order_again !== 'yes') return false
-        if (!searching) return true
-        // smart match: every word must be found in the place or the dish (see search.js)
-        const sc = matchScore(q, placeText, d.name, d.note)
-        best = Math.max(best, sc)
-        return sc > 0
-      })
-      if (dishFilter && !dishes.length) return []
-      if (searching && !dishes.length) {
-        // a place with no dishes yet, or whose dishes were all filtered out, can still match by its own details
-        const ps = matchScore(q, placeText)
-        if (!ps || (p.dishes || []).length) return []
-        best = ps
-      }
-      return [{ ...p, dishes, allDishes: p.dishes, _score: best }]
-    })
-  }, [places, q, city, cat, minRate, maxPrice, priceOn, again])
+  const filters = { q, city, cat, minRate, maxPrice, again }
+  const results = useMemo(() => filterPlaces(places, filters, scale.cap), [places, q, city, cat, minRate, maxPrice, again, scale.cap])
+  const sorted = useMemo(() => sortPlaces(results, sort, q), [results, sort, q])
 
-  // sorting happens on the filtered list; places without a rating/price always go last
-  const sorted = useMemo(() => {
-    const avg = (p, k) => {
-      const v = (p.dishes || []).map(d => d[k]).filter(x => x != null && x > 0)
-      return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null
-    }
-    const num = (k, dir) => (a, b) => {
-      const x = avg(a, k), y = avg(b, k)
-      if (x == null && y == null) return 0
-      if (x == null) return 1
-      if (y == null) return -1
-      return dir * (x - y)
-    }
-    const by = {
-      recent: (a, b) => new Date(b.created_at) - new Date(a.created_at),
-      oldest: (a, b) => new Date(a.created_at) - new Date(b.created_at),
-      rating: num('rating', -1),
-      cheap: num('price', 1),
-      pricey: num('price', -1),
-      name: (a, b) => a.name.localeCompare(b.name),
-    }[sort] || (() => 0)
-    const out = [...results].sort(by)
-    if (q.trim() && sort === 'recent') out.sort((x, y) => (y._score || 0) - (x._score || 0))   // best match first (stable, so ties stay newest-first)
-    return out
-  }, [results, sort, q])
+  // the + button / sidebar tools arrive from the shell as an "intent"
+  useEffect(() => {
+    if (!addIntent) return
+    if (addIntent.tool === 'craving') setAsking(true)
+    else if (addIntent.tool === 'picker') setPicking(true)
+    else setCreating({ billFile: addIntent.file || null })
+    onIntentDone()
+  }, [addIntent])
 
-  const tabs = [
-    ['journal', 'Journal'],
-    ['wishlist', `Wishlist${wishlist.length ? ` (${wishlist.length})` : ''}`],
-    ...(group ? [['activity', 'Activity']] : []),
-  ]
+  useEffect(() => { onStats({ places: places.length, wish: wishlist.length }) }, [places.length, wishlist.length])
+
+  const dishTotal = places.reduce((n, p) => n + (p.dishes || []).length, 0)
+  const open = openId && places.find(p => p.id === openId)
+  const searching = q.trim().length > 0
+  const priceLabel = priceOn ? `Under ₹${maxPrice}` : 'Price'
+  const toggle = (on, set) => set(!on)
+  const cities = opts('city')
+  const nActive = activeFilterCount(filters, scale.cap)
 
   return (
-    <div className="pb-28">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm" style={mute}>
-        <div className="flex items-center gap-2">
-          <span>{group ? '👥' : '👤'}</span>
-          <span>
-            {group
-              ? <>Shared with the members of <b style={{ color: 'var(--ink)' }}>{group.name}</b></>
-              : <>Personal journal <span className="opacity-80">· only you can see this</span></>}
-          </span>
+    <div className="pb-6">
+      {/* ---------- header ---------- */}
+      <div className="flex items-end justify-between gap-4 pb-4 pt-5 lg:pt-8">
+        <div className="min-w-0">
+          <h1 className="m-0 text-[24px] font-extrabold leading-tight lg:text-[30px]">
+            {view === 'wishlist' ? 'Want to try' : group ? group.name : username ? `Hi, ${username}` : 'Your places'}
+          </h1>
+          <p className="m-0 mt-1 text-sm" style={mute}>
+            {view === 'wishlist' ? (group ? `Places ${group.name} wants to visit` : 'Places you want to visit')
+              : view === 'activity' ? `What's new in ${group?.name}`
+              : `${places.length} places · ${dishTotal} dishes · ${group ? `shared with ${group.name}` : 'only you can see this'}`}
+          </p>
         </div>
-        <div className="flex shrink-0 gap-2">
-          <button onClick={() => setAsking(true)} className="chip !py-1">💬 Craving something?</button>
-          <button onClick={() => setPicking(true)} className="chip !py-1">🎲 {group ? 'Where should we eat?' : 'Where to eat?'}</button>
-        </div>
+        {view === 'journal' && addButton}
       </div>
 
-      {/* Journal / Wishlist / Activity */}
-      <div className="mb-4 grid gap-1 rounded-xl p-1" style={{ background: 'var(--head)', gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }} role="tablist">
-        {tabs.map(([k, l]) => (
-          <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)}
-            className="rounded-lg px-3 py-2 text-sm font-semibold transition"
-            style={view === k ? { background: 'var(--surface)', color: 'var(--ink)', boxShadow: '0 1px 3px #0f172a1f' } : mute}>{l}</button>
-        ))}
-      </div>
+      {/* phones, inside a group: its places and its activity side by side (laptops: sidebar) */}
+      {group && view !== 'wishlist' && (
+        <div className="mobile-only mb-4 grid grid-cols-2 gap-1 rounded-xl p-1" role="tablist" aria-label={`${group.name} sections`} style={{ background: 'var(--soft)' }}>
+          {[['journal', 'Places', 'home'], ['activity', 'Activity', 'activity']].map(([k, l, ic]) => (
+            <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)}
+              className="flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold transition"
+              style={view === k ? { background: 'var(--surface)', color: 'var(--pri)', boxShadow: 'var(--sh-1)' } : { color: 'var(--mute)' }}>
+              <Icon name={ic} size={16} />{l}
+            </button>
+          ))}
+        </div>
+      )}
 
       {view === 'wishlist' && (
         <Wishlist me={me} group={group} items={wishlist} names={names} isOwner={isOwner} onChanged={load}
@@ -200,140 +171,134 @@ export default function Journal({ me, group, groups }) {
 
       {view === 'journal' && (
         <>
-          <div className="relative">
-            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 opacity-50">🔍</span>
-            <input type="search" value={q} onChange={e => setQ(e.target.value)}
-              placeholder="Search dish, place, area or note…" className="input !rounded-2xl !py-3.5 !pl-11 shadow-sm" />
+          {/* quick tools: in the sidebar on laptops */}
+          <div className="mobile-only mb-4 grid grid-cols-2 gap-2.5">
+            <button className="quick" onClick={() => setAsking(true)}>
+              <span className="qicon" style={{ background: 'var(--pri-soft)', color: 'var(--pri)' }}><Icon name="chat" /></span>
+              <span className="min-w-0 text-[13px] leading-tight"><b className="block text-[14px]">Craving?</b><span style={mute}>Ask your journal</span></span>
+            </button>
+            <button className="quick" onClick={() => setPicking(true)}>
+              <span className="qicon" style={{ background: 'var(--accent-soft)', color: 'var(--accent-ink)' }}><Icon name="dice" /></span>
+              <span className="min-w-0 text-[13px] leading-tight"><b className="block text-[14px]">Where to eat?</b><span style={mute}>Pick for me</span></span>
+            </button>
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <select className="input" value={city} onChange={e => setCity(e.target.value)}>
-              {['All', ...opts('city')].map(v => <option key={v} value={v}>{v === 'All' ? 'All cities' : v}</option>)}</select>
-            <select className="input" value={cat} onChange={e => setCat(e.target.value)}>
-              {['All', ...CATEGORIES].map(v => <option key={v} value={v}>{v === 'All' ? 'All categories' : v}</option>)}</select>
-          </div>
+          {/* ---------- search + filters ---------- */}
+          <div className="sticky top-[61px] z-10 -mx-4 bg-[var(--bg)] px-4 pb-3 pt-1 lg:static lg:mx-0 lg:px-0">
+            <label className="searchbar">
+              <Icon name="search" size={19} style={mute} />
+              <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search a dish, place, area or note…" aria-label="Search" />
+              {q && <button onClick={() => setQ('')} aria-label="Clear search" className="ghost grid h-7 w-7 place-items-center rounded-full" style={mute}><Icon name="x" size={15} /></button>}
+            </label>
 
-          <div className="mt-2">
-            <select className="input" value={sort} onChange={e => chooseSort(e.target.value)} aria-label="Sort places">
-              <option value="recent">Sort: Newest first</option>
-              <option value="oldest">Sort: Oldest first</option>
-              <option value="rating">Sort: Highest rated</option>
-              <option value="cheap">Sort: Price, low to high</option>
-              <option value="pricey">Sort: Price, high to low</option>
-              <option value="name">Sort: Name A to Z</option>
-            </select>
-          </div>
+            {/* phones: one tidy row + a filter sheet (Zomato / Swiggy pattern) */}
+            <div className="mobile-only mt-3 flex items-center gap-2">
+              <button className={`chip ${nActive ? 'on' : ''}`} onClick={() => setSheetTab('cat')} aria-label={`Filters${nActive ? `, ${nActive} on` : ''}`}>
+                <Icon name="sliders" size={15} /> Filters
+                {nActive > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px] font-bold" style={{ background: 'var(--pri)', color: 'var(--on-pri)' }}>{nActive}</span>}
+              </button>
+              <button className={`chip ${sort !== 'recent' ? 'on' : ''}`} onClick={() => setSheetTab('sort')}>
+                {SORTS.find(([v]) => v === sort)?.[1]} <Icon name="down" size={14} />
+              </button>
+              <button className={`chip ${again ? 'on' : ''}`} aria-pressed={again} onClick={() => setAgain(!again)}>
+                {again && <Icon name="check" size={14} stroke={2.8} />} Order again
+              </button>
+            </div>
+            {nActive > 0 && (
+              <div className="mobile-only mt-2.5 flex flex-wrap gap-1.5">
+                {[
+                  city !== 'All' && [city, () => setCity('All')],
+                  cat !== 'All' && [cat, () => setCat('All')],
+                  priceOn && [`Under ₹${maxPrice}`, () => setMaxPrice(null)],
+                  minRate > 0 && [minRate === 5 ? '5★ dishes' : `${minRate}★ & up`, () => setMinRate(0)],
+                  again && ['Order again', () => setAgain(false)],
+                ].filter(Boolean).map(([label, off]) => (
+                  <button key={label} onClick={off} className="fade inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold"
+                    style={{ background: 'var(--pri-soft)', color: 'var(--pri)' }} aria-label={`Remove filter ${label}`}>
+                    {label} <Icon name="x" size={12} stroke={2.6} />
+                  </button>
+                ))}
+                <button onClick={() => { reset(); setPriceOpen(false) }} className="px-1.5 py-1 text-xs font-semibold" style={mute}>Clear all</button>
+              </div>
+            )}
 
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {[3, 4, 5].map(n => (
-              <button key={n} className={`chip ${minRate === n ? 'on' : ''}`} onClick={() => setMinRate(minRate === n ? 0 : n)}>{n}★+</button>
-            ))}
-            <button className={`chip ${again ? 'on' : ''}`} onClick={() => setAgain(!again)}>Order again</button>
-            {dirty && <button className="chip fade" onClick={reset}>Clear ✕</button>}
-          </div>
+            {/* laptops: everything visible as chips */}
+            <div className="desktop-only mt-3 flex flex-wrap gap-2">
+              <ChipSelect icon="sliders" label="Sort places" value={sort} options={SORTS} onChange={chooseSort} active={sort !== 'recent'} />
+              {cities.length > 1 && (
+                <ChipSelect icon="pin" label="City" value={city} onChange={setCity} active={city !== 'All'}
+                  options={[['All', 'All cities'], ...cities.map(c => [c, c])]} />
+              )}
+              {CATEGORIES.map(c => (
+                <button key={c} className={`chip ${cat === c ? 'on' : ''}`} aria-pressed={cat === c} onClick={() => setCat(cat === c ? 'All' : c)}>{c}</button>
+              ))}
+              <button className={`chip ${minRate === 4 ? 'on' : ''}`} aria-pressed={minRate === 4} onClick={() => setMinRate(minRate === 4 ? 0 : 4)}>4★ & up</button>
+              <button className={`chip ${again ? 'on' : ''}`} aria-pressed={again} onClick={() => toggle(again, setAgain)}>Order again</button>
+              <button className={`chip ${priceOn || priceOpen ? 'on' : ''}`} aria-expanded={priceOpen} onClick={() => setPriceOpen(!priceOpen)}>
+                {priceLabel} <Icon name="down" size={14} style={{ transform: priceOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
+              </button>
+              {dirty && <button className="chip fade" onClick={() => { reset(); setPriceOpen(false) }}><Icon name="x" size={14} /> Clear</button>}
+            </div>
 
-          <div className="mt-3 text-xs font-medium" style={mute}>
-            Max price: <span style={{ color: 'var(--pri)' }}>{priceOn ? '₹' + maxPrice : 'any'}</span>
-            <PriceSlider places={places} scale={scale} maxPrice={maxPrice} onChange={setMaxPrice} />
+            {priceOpen && (
+              <div className="desktop-only sheet mt-3 max-w-xl rounded-2xl border px-4 pb-2 pt-3" style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-semibold">Max price per dish</span>
+                  <span className="font-bold" style={{ color: 'var(--pri)' }}>{priceOn ? '₹' + maxPrice : 'Any'}</span>
+                </div>
+                <PriceSlider places={places} scale={scale} maxPrice={maxPrice} onChange={setMaxPrice} />
+              </div>
+            )}
           </div>
 
           {!loading && places.length > 0 && (
-            <p className="mb-3 mt-2 text-sm" style={mute}>
-              {results.length} place{results.length === 1 ? '' : 's'}
+            <p className="mb-3 mt-1 text-[13px] font-semibold" style={mute}>
+              {sorted.length === places.length ? `${places.length} places` : `${sorted.length} of ${places.length} places`}
             </p>
           )}
 
-          {loading ? <div className="mt-4 space-y-3"><div className="skel" /><div className="skel" /><div className="skel" /></div> :
-            places.length === 0 ? (
-              <div className="rise py-14 text-center">
-                <div className="mb-3 text-5xl">🍽️</div>
-                <p className="font-semibold">{group ? `${group.name} has no entries yet` : 'Your journal is empty'}</p>
-                <p className="mb-5 mt-1 text-sm" style={mute}>
-                  {group ? 'Tap + to add the first shared place.' : 'Tap + to add your first place.'}
-                </p>
-                {!group && <button onClick={seed} className="text-sm font-medium underline" style={{ color: 'var(--pri)' }}>or load sample data</button>}
-              </div>
-            ) : sorted.length === 0 ? (
-              <div className="fade py-14 text-center" style={mute}>Nothing found. Try fewer filters.</div>
-            ) : sorted.map((p, i) => (
-              <div key={p.id} className="rise mb-4 overflow-hidden rounded-2xl border transition duration-300 hover:-translate-y-0.5 hover:shadow-xl"
-                style={{ background: 'var(--surface)', borderColor: 'var(--line)', animationDelay: `${Math.min(i, 8) * 50}ms`, boxShadow: '0 1px 2px #0f172a0a' }}>
-                {/* PARENT: place */}
-                <div className="flex items-start justify-between gap-3 border-b px-4 py-3"
-                  style={{ background: 'var(--head)', borderColor: 'var(--line)' }}>
-                  <div className="min-w-0">
-                    <h3 className="text-base font-bold leading-snug">{p.name}</h3>
-                    <p className="mt-0.5 text-xs" style={mute}>📍 {[p.area, p.city].filter(Boolean).join(', ')}</p>
-                    {group && (
-                      <p className="mt-0.5 text-xs" style={mute}>
-                        Added by {p.user_id === me ? 'you' : (names[p.user_id] || 'a member')}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-                    {(p.categories || []).map(c => <span key={c} className="rounded-full border px-2.5 py-0.5 text-xs font-medium" style={{ background: 'var(--surface)', borderColor: 'var(--line)', color: 'var(--mute)' }}>{c}</span>)}
-                    {p.bill_photos?.length > 0 && (
-                      <button onClick={() => setBillsOf(p)} aria-label={`View ${p.bill_photos.length === 1 ? 'the bill' : `${p.bill_photos.length} bills`} for ${p.name}`}
-                        className="rounded-lg px-2.5 py-1 text-xs font-medium ghost transition" style={{ color: 'var(--pri)' }}>
-                        🧾 {p.bill_photos.length === 1 ? 'Bill' : p.bill_photos.length}
-                      </button>
-                    )}
-                    {canEditPlace(p) && (
-                      <button onClick={() => setEditing({ ...p, dishes: p.allDishes })}
-                        className="rounded-lg px-2.5 py-1 text-xs font-medium ghost transition" style={{ color: 'var(--pri)' }}>Edit</button>
-                    )}
-                  </div>
-                </div>
-                {p.directions && <p className="px-4 py-2 text-sm" style={{ background: 'var(--bg)', color: 'var(--mute)' }}>🧭 {p.directions}</p>}
-
-                {/* CHILDREN: dishes */}
-                <div className="px-4 py-3">
-                  {p.dishes.length === 0 && <p className="text-sm" style={mute}>No dishes added yet.</p>}
-                  <div className="ml-1.5 border-l-2 pl-4" style={{ borderColor: 'var(--line)' }}>
-                    {p.dishes.map((d, j) => (
-                      <div key={d.id} className="relative py-2.5" style={j ? { borderTop: '1px dashed var(--line)' } : null}>
-                        <span className="absolute -left-[23px] top-[18px] h-2 w-2 rounded-full" style={{ background: 'var(--pri)', boxShadow: '0 0 0 4px var(--surface)' }} />
-                        {group ? (
-                          <GroupDish d={d} me={me} names={names} isOwner={isOwner} onChanged={load} />
-                        ) : (
-                          <div className="flex justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-sm font-medium">{d.name}</span>
-                                {d.order_again === 'yes' && <span className="pill pill-ok">Order again</span>}
-                              </div>
-                              {d.note && <p className="mt-0.5 text-sm" style={mute}>{d.note}</p>}
-                            </div>
-                            <div className="flex shrink-0 items-start gap-2">
-                              <div className="text-right">
-                                <div className="text-sm font-semibold">{d.price ? '₹' + d.price : '–'}</div>
-                                <Stars n={d.rating || 0} />
-                              </div>
-                              <button onClick={() => setSharing({ place: p, dish: d })}
-                                title="Add to group" aria-label={`Add ${d.name} to a group`}
-                                className="ghost grid h-8 w-8 shrink-0 place-items-center rounded-full transition active:scale-90"
-                                style={{ color: 'var(--pri)' }}>
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                                  <path d="M7 17L17 7" /><path d="M8 7h9v9" />
-                                </svg>
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  {group && (
-                    <button onClick={() => setAddingDish({ id: p.id, name: p.name, dishes: p.allDishes })}
-                      className="mt-2 text-sm font-semibold" style={{ color: 'var(--pri)' }}>+ Add a dish</button>
-                  )}
-                </div>
-              </div>
-            ))}
+          {loading ? (
+            <div className="place-grid">{[0, 1, 2, 3, 4, 5].map(i => <div key={i} className="skel !h-[104px]" />)}</div>
+          ) : places.length === 0 ? (
+            <div className="rise py-16 text-center">
+              <span className="qicon mx-auto mb-4 !h-16 !w-16" style={{ background: 'var(--accent-soft)', color: 'var(--accent-ink)' }}><Icon name="receipt" size={30} /></span>
+              <p className="m-0 text-lg font-bold">{group ? `${group.name} has no places yet` : 'Your journal is empty'}</p>
+              <p className="mx-auto mb-5 mt-1 max-w-xs text-sm" style={mute}>Tap + to scan a bill or add your first place.</p>
+              {!group && <button onClick={seed} className="tbtn text-sm font-semibold" style={{ color: 'var(--pri)' }}>or load sample data</button>}
+            </div>
+          ) : sorted.length === 0 ? (
+            <div className="fade py-16 text-center" style={mute}>
+              <p className="m-0 font-semibold" style={{ color: 'var(--ink)' }}>Nothing matches</p>
+              <p className="m-0 mt-1 text-sm">Try fewer filters or a different word.</p>
+              <button className="btn mt-4 !py-2 !text-sm" onClick={() => { reset(); setPriceOpen(false) }}>Clear filters</button>
+            </div>
+          ) : (
+            <div className="place-grid">
+              {sorted.map((p, i) => (
+                <PlaceCard key={p.id} p={p} index={i} group={group} me={me} names={names}
+                  searching={searching || minRate > 0 || again || priceOn} onOpen={() => setOpenId(p.id)} />
+              ))}
+            </div>
+          )}
         </>
       )}
 
-      {view === 'journal' && <button className="fab" onClick={() => setCreating({})} aria-label="Add place">+</button>}
+      {open && (
+        <PlaceDetail p={{ ...open, allDishes: open.dishes }} me={me} group={group} names={names} isOwner={isOwner}
+          canEdit={canEditPlace(open)} onClose={() => setOpenId(null)} onChanged={load}
+          onEdit={() => { setOpenId(null); setEditing({ ...open }) }}
+          onAddDish={() => setAddingDish({ id: open.id, name: open.name, dishes: open.dishes })}
+          onShare={d => setSharing({ place: open, dish: d })} />
+      )}
+
+      {sheetTab && (
+        <FilterSheet places={places} filters={filters} sort={sort} scale={scale} cities={cities} start={sheetTab}
+          onClose={() => setSheetTab(null)}
+          onApply={(d, s) => {
+            setCity(d.city); setCat(d.cat); setMinRate(d.minRate); setMaxPrice(d.maxPrice); setAgain(d.again); chooseSort(s)
+            setSheetTab(null)
+          }} />
+      )}
 
       {sharing && (
         <ShareDish me={me} place={sharing.place} dish={sharing.dish} groups={groups} onClose={() => setSharing(null)} />
@@ -346,12 +311,10 @@ export default function Journal({ me, group, groups }) {
 
       {picking && <Picker places={places} wishlist={wishlist} group={group} onClose={() => setPicking(false)} />}
 
-      {billsOf && <PlaceBills place={billsOf} me={me} isOwner={isOwner} names={names} onClose={() => setBillsOf(null)} onChanged={load} />}
-
       {asking && <CravingChat places={places} onClose={() => setAsking(false)} />}
 
       {(editing || creating) && (
-        <PlaceForm me={me} place={editing} prefill={creating?.prefill} wishId={creating?.wishId}
+        <PlaceForm me={me} place={editing} prefill={creating?.prefill} wishId={creating?.wishId} initialBill={creating?.billFile}
           cities={opts('city')} groups={groups} defaultGroupId={group?.id || ''}
           onClose={() => { setEditing(null); setCreating(null) }}
           onSaved={() => { setEditing(null); setCreating(null); load() }} />

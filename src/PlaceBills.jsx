@@ -36,7 +36,7 @@ export default function PlaceBills({ place, me, isOwner, names = {}, onClose, on
 
   // loading / error / (just deleted elsewhere) — same dark sheet the viewer uses, so nothing flashes
   return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="Bill photo" className="fade fixed inset-0 z-40 grid place-items-center p-6 text-center text-sm text-white"
+    <div role="dialog" aria-modal="true" aria-label="Bill photo" className="fade fixed inset-0 z-50 grid place-items-center p-6 text-center text-sm text-white"
       style={{ background: '#0f172ae6' }} onMouseDown={onClose}>
       {error ? <p>{error} Tap anywhere to close.</p> : bills ? <p>No bill photo here any more.</p> : (
         <div className="w-48"><p className="mb-3">Opening bill…</p><div className="scanbar" aria-hidden="true" /></div>
