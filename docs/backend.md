@@ -54,3 +54,4 @@ Everything server-side: Neon Postgres (schema, RLS, RPCs, triggers), Neon Auth, 
 - 2026-10-25: Onboarding session. Read the codebase and started these docs. No code changes yet.
 - 2026-10-25: Bill scan (`BiteMark/Bill_Scan`) shipped with no backend changes. Playwright wrote one test place to the live Neon DB and deleted it through the UI.
   - There is no separate test or staging database. Any end-to-end save test writes to production, so always clean up afterwards.
+- 2026-10-26: Capture a bill (`BiteMark/Bill_Capture`) needed no backend changes. The photo stays on the device.

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { blankDish, mergeScannedDishes, placeFormError } from './placeRules'
+import { blankDish, mergeScannedDishes, newScannedDishes, placeFormError } from './placeRules'
 
 const dish = over => ({ ...blankDish(), ...over })
 const goodPlace = { f: { name: 'Coffea', city: 'Vadodara', area: 'Canal Rd' }, cats: ['Cafe'], editingGroup: false }
@@ -27,6 +27,24 @@ describe('mergeScannedDishes', () => {
   test('leaves the rows untouched when nothing was scanned', () => {
     const rows = [blankDish()]
     expect(mergeScannedDishes(rows, [])).toBe(rows)
+  })
+})
+
+describe('newScannedDishes', () => {
+  test('drops scanned dishes whose name is already in the list, ignoring case and spaces', () => {
+    const rows = [dish({ name: 'Masala Dosa', price: '120' })]
+    const scanned = [{ name: 'masala  dosa ', price: 120 }, { name: 'Filter Coffee', price: 40 }]
+    expect(newScannedDishes(rows, scanned)).toEqual([{ name: 'Filter Coffee', price: 40 }])
+  })
+
+  test('drops repeats within the same scan', () => {
+    const scanned = [{ name: 'Vada Pav', price: 30 }, { name: 'VADA PAV', price: 30 }]
+    expect(newScannedDishes([blankDish()], scanned)).toEqual([{ name: 'Vada Pav', price: 30 }])
+  })
+
+  test('keeps everything when nothing overlaps', () => {
+    const scanned = [{ name: 'Vada Pav', price: 30 }]
+    expect(newScannedDishes([blankDish()], scanned)).toEqual(scanned)
   })
 })
 

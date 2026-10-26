@@ -30,6 +30,17 @@ BiteMark ("Remember every great bite") is a personal food journal PWA, used main
 | `Login.jsx`, `ResetPassword.jsx`, `ChangePassword.jsx`, `authApi.js` | Login with username or email, sign-up, password reset and change. |
 
 ## Decision log
+- **2026-10-26 — Capture a bill** (branch `BiteMark/Bill_Capture`). The user handed the design to Claude. It builds on the bill scan below.
+  - **Two actions in the scan tile.**
+    - **Take photo**: `<input capture="environment">` opens the phone's own rear camera. That gives better focus, flash and HDR than an in-app `getUserMedia` camera, and works in iOS PWAs.
+    - **Upload**: a plain input that opens the gallery or a file.
+    - Take photo is shown only when `matchMedia('(pointer: coarse)')` is true (`src/capture.js` → `canTakePhoto`). Laptops get a single "Upload bill photo", because a webcam is useless for bills and `capture` is ignored there anyway.
+  - **Review against the photo.** After a scan, a thumbnail and a "View bill" link open a full-screen viewer with Zoom in / Fit to screen; Esc or a tap outside closes it.
+    - The photo is an object URL that is revoked on unmount. It is never uploaded or stored.
+    - The viewer is rendered with `createPortal` into `<body>`. Inside the form, the `.sheet` transform animation made `position: fixed` form-sized and drew the form's fields over the photo. This was found with Playwright and fixed.
+  - **Long bills in parts.** The tile turns into "Add more from the bill". `newScannedDishes` (in `placeRules.js`) skips dishes whose name is already in the list (ignoring case and spaces) or is repeated within the same scan. If nothing is new, the message says "Those dishes are already in the list."
+  - `BillScan` calls the form's latest `onDishes` through a ref. OCR takes a few seconds, and an older handler would have overwritten rows typed during that time.
+  - The parent's `onDishes` now returns the number of dishes it added; the message uses that count.
 - **2026-10-25 — Bill scan in the "Add place" window** (branch `BiteMark/Bill_Scan`).
   - **What it does.** A "Scan a bill" tile sits above the dish rows. A photo, from the camera or the gallery, fills in **only the dish name and price** for each line found on the bill.
     - If the form has only the empty starter row, the scanned rows replace it. Rows you already typed are kept.
@@ -89,4 +100,14 @@ BiteMark ("Remember every great bite") is a personal food journal PWA, used main
     - After review, Save stored all 4 dishes with the correct prices, stars and comments.
     - The test place "ZZ Bill Scan Test" was then deleted, and the journal was back to 44 places.
   - **Watch out:** `dist/` is tracked in git, and running `vite build` rewrites it. Restore it before committing unless a new build is wanted.
+  - **Tip:** to verify a build without touching the tracked `dist/`, run `npx vite build --outDir <scratch dir> --emptyOutDir`. This was used from 2026-10-26.
   - **Next ideas (not agreed):** scan in the group "Add a dish" window; read the place name from the bill header; test more real bill photos from the user and add their text as parser test cases.
+- 2026-10-26: **Capture a bill built on `BiteMark/Bill_Capture`** (created with `--no-track`). Not committed.
+  - 37 unit tests pass and the build passes.
+  - Playwright at 390 px with a touch screen emulated through a `matchMedia` override:
+    - Take photo and Upload are both shown, and the camera input asks for the rear camera.
+    - A captured bill added 4 dishes, and a row typed while it was reading survived.
+    - Re-scanning added nothing.
+    - The viewer covers the full screen and sits on top of the form; zoom works and Esc closes it.
+  - Desktop at 1280 px shows only "Upload bill photo".
+  - No database writes this time. The save path is unchanged from the bill scan run, which was already verified.
