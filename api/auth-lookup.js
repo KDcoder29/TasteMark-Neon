@@ -11,6 +11,13 @@ export default async function handler(req, res) {
   const { username, available } = req.query || {}
 
   try {
+    // GET /api/auth-lookup?ping=1 — sent when the login page opens, so the database (which sleeps
+    // when idle on Neon's free plan, ~2.5 s to wake) is awake by the time "Log in" is pressed
+    if (req.query?.ping !== undefined) {
+      await sql`select 1`
+      return res.status(200).json({ ok: true })
+    }
+
     if (available !== undefined) {                     // GET /api/auth-lookup?available=kandarp29
       if (!USERNAME.test(available)) return res.status(200).json({ available: false })
       const rows = await sql`select 1 from public.profiles where lower(username) = lower(${available}) limit 1`

@@ -9,6 +9,7 @@ import Logo from './Logo'
 import Icon from './Icons'
 import AddMenu from './AddMenu'
 import { tint } from './shared'
+import { clearFastStart } from './fastStart'
 
 function useTheme() {
   const [dark, setDark] = useState(() => {
@@ -133,9 +134,11 @@ export default function App() {
 
   useEffect(() => {
     if (!uid) { setUsername(''); return }
-    // first login: create my profile row from the sign-up name, then read my username
-    supabase.rpc('ensure_profile')
-      .then(() => supabase.from('profiles').select('username').eq('id', uid).maybeSingle())
+    // read my username; only on the very first login is the profile row missing — then create it
+    // from the sign-up name and read again (saves a US round trip on every other app start)
+    const read = () => supabase.from('profiles').select('username').eq('id', uid).maybeSingle()
+    read()
+      .then(r => (r.data ? r : supabase.rpc('ensure_profile').then(read)))
       .then(({ data }) => setUsername(data?.username || ''))
   }, [uid])
 
@@ -149,6 +152,7 @@ export default function App() {
   // sign out and go straight back to the login page (do not wait for an auth-change event)
   async function logout() {
     loggedOut.current = true
+    try { clearFastStart(window.localStorage) } catch {}      // no journal snapshot stays on this device
     try { await supabase.auth.signOut() } catch (e) { console.error(e) }
     setSession(null); setGroups([]); setGroupsReady(false); setUsername(''); setGroupsOpen(false)
     window.location.replace('/')   // fresh start: nothing from the old session is left in memory
@@ -277,7 +281,8 @@ export default function App() {
 
         <main className="main">
           <div className="wrap">
-            {groupsReady
+            {/* Personal doesn't need the groups list first: start loading it right away */}
+            {groupsReady || space === 'personal'
               ? <Journal key={activeGroup?.id || 'personal'} me={uid} group={activeGroup} groups={groups} username={username}
                   view={view} setView={go} addIntent={addIntent} onIntentDone={() => setAddIntent(null)} onStats={setStats}
                   addButton={(

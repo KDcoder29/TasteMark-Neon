@@ -243,3 +243,25 @@ BiteMark ("Remember every great bite") is a personal food journal PWA, used main
     - After a reload the chat opens already showing "Smart matching on".
     - Measured in the page, button press to answer on screen took 55–63 ms, including the first question. Earlier 2–4 s readings came from Playwright's own waiting, not the app.
     - The job itself: embedding a question 11–18 ms, ranking 200 dishes 4 ms. 92 tests pass and the build passes.
+- 2026-10-26: **Login and app-start speed** (branch `BiteMark/Login_Speed`). The user asked for under 1 s.
+  - **Measured root causes** (from India; Neon is in AWS us-east-2, Ohio):
+    - Each request is a ~0.25 s round trip, and each NEW secure connection costs 1–3 s.
+    - The free-plan Neon database sleeps when idle (~2.5 s to wake).
+    - Requests ran one after another: session → groups → places.
+    - Baseline from opening the app to the first card: 4.4 s cold, 1.6 s warm.
+  - **`src/fastStart.js`** (tested):
+    - `rememberLogin` / `recallEmail`: username → email on the device, so the next login skips `/api/auth-lookup`. Login retries with a fresh lookup if the remembered email fails.
+    - `saveJournal` / `loadJournal`: a per-person, per-space snapshot (`bm.snap.<uid>.<space>`), shown at once and then refreshed.
+    - `clearFastStart`: called on log out; removes the snapshots and keeps the login memory.
+  - **Login page:** on mount it calls `/api/auth-lookup?ping=1` (new: `select 1` to wake the database) and `get-session` to open the auth connection while the user types.
+  - **`index.html`:** `<link rel=preconnect>` to `%VITE_NEON_AUTH_URL%` and `%VITE_NEON_DATA_API_URL%`, filled in at build time.
+  - **App:** Personal no longer waits for `groupsReady`. The profile is read first and `ensure_profile` runs only if the row is missing. Log out calls `clearFastStart`.
+  - **Journal:** starts from the snapshot; places, wishlist and (in groups) profile names load in parallel; it saves a snapshot after each load.
+  - **Results (Playwright):**
+    - Opening the app while logged in: first card in **0.62–0.65 s** (was 1.6–4.4 s).
+    - Login with username, first time on the device: lookup 0.87 s (database already woken), Neon Auth `sign-in/email` **1.94 s**, `get-session` 0.30 s, data 0.68 s in parallel. Every connection was already open (conn 0 ms).
+    - Next logins skip the lookup.
+    - Log out removed the snapshot.
+  - **Can't be fixed in code:** Neon Auth's own sign-in (~1.9 s: deliberately slow password hashing plus several US database trips).
+    - Option, not decided: move the Neon project to ap-southeast-1 (Singapore), with roughly 70 ms per trip. That needs a new project plus a data and auth-user migration.
+- **SECURITY NOTE (2026-10-26):** Claude accidentally printed `DATABASE_URL` (including the password) into the session output while timing requests. The user was told to reset the `neondb_owner` password in Neon and update `.env` and the Vercel env vars. **Never `source .env` in a shell where variables or background jobs can be echoed.**
