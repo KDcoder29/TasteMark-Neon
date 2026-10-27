@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import Icon from './Icons'
 import { useEscape, useScrollLock } from './layers'
 import { supabase } from './supabase'
+import { askConfirm } from './dialogs'
+import { optimistic } from './optimistic'
 
 const fmt = c => (c ? c.slice(0, 4) + '-' + c.slice(4) : '')
 const hue = s => { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) % 360; return h }
@@ -15,7 +17,10 @@ function Avatar({ text, color, size = 40, round = false }) {
   )
 }
 
-export default function Groups({ me, groups, onClose, onChanged, onOpen }) {
+export default function Groups({ me, groups: allGroups, onClose, onChanged, onOpen }) {
+  const [gone, setGone] = useState(() => new Set())     // groups just deleted / left (server catching up)
+  const groups = allGroups.filter(g => !gone.has(g.id))
+  const hide = (id, on) => setGone(s => { const n = new Set(s); on ? n.add(id) : n.delete(id); return n })
   useEscape(onClose)
   useScrollLock()
   const [tab, setTab] = useState(groups.length ? 'mine' : 'create')   // 'mine' | 'create'
@@ -92,30 +97,40 @@ export default function Groups({ me, groups, onClose, onChanged, onOpen }) {
   }
 
   async function leave(g) {
-    if (!confirm(`Leave "${g.name}"? Your entries stay in the group for the others.`)) return
-    const { error } = await supabase.from('group_members').delete().eq('group_id', g.id).eq('user_id', me)
-    if (error) return say('err', error.message)
-    setSelectedId(null)
-    onChanged()
+    if (!(await askConfirm({ title: `Leave “${g.name}”?`, message: 'Your entries stay in the group for the others.', confirmLabel: 'Leave', danger: true }))) return
+    await dropGroup(g, () => supabase.from('group_members').delete().eq('group_id', g.id).eq('user_id', me), `You left “${g.name}”.`)
+  }
+
+  // leaving / deleting: the group vanishes from the list at once; it comes back if the server says no
+  async function dropGroup(g, run, done) {
+    const ok = await optimistic({
+      apply: () => { hide(g.id, true); setSelectedId(null) },
+      run,
+      undo: () => hide(g.id, false),
+      fail: e => say('err', e.message || 'Please try again.'),
+    })
+    if (ok) { say('ok', done); onChanged() }
   }
 
   async function removeGroup(g) {
-    if (!confirm(`Delete "${g.name}" for everyone? All entries in this group will be deleted permanently.`)) return
-    const { error } = await supabase.from('groups').delete().eq('id', g.id)
-    if (error) return say('err', error.message)
-    setSelectedId(null)
-    onChanged()
+    if (!(await askConfirm({ title: `Delete “${g.name}” for everyone?`, message: 'All entries in this group are deleted permanently.', confirmLabel: 'Delete group', danger: true }))) return
+    await dropGroup(g, () => supabase.from('groups').delete().eq('id', g.id), `“${g.name}” was deleted.`)
   }
 
   async function removeMember(g, uid) {
-    if (!confirm(`Remove ${names[uid] || 'this member'} from "${g.name}"?`)) return
-    const { error } = await supabase.from('group_members').delete().eq('group_id', g.id).eq('user_id', uid)
-    if (error) return say('err', error.message)
-    loadPeople()
+    if (!(await askConfirm({ title: `Remove ${names[uid] || 'this member'}?`, message: `They leave “${g.name}”. Their entries stay in the group.`, confirmLabel: 'Remove', danger: true }))) return
+    const before = members
+    const ok = await optimistic({
+      apply: () => setMembers(ms => ms.filter(m => !(m.group_id === g.id && m.user_id === uid))),
+      run: () => supabase.from('group_members').delete().eq('group_id', g.id).eq('user_id', uid),
+      undo: () => setMembers(before),
+      fail: e => say('err', e.message || 'Please try again.'),
+    })
+    if (ok) loadPeople()
   }
 
   async function regenerate(g) {
-    if (!confirm(`Create a new invite code for "${g.name}"? The old code will stop working. Current members stay in the group.`)) return
+    if (!(await askConfirm({ title: 'Create a new invite code?', message: `The old code for “${g.name}” stops working. Current members stay in the group.`, confirmLabel: 'New code' }))) return
     const { error } = await supabase.rpc('regenerate_invite', { gid: g.id })
     if (error) return say('err', error.message)
     await onChanged()
@@ -123,7 +138,7 @@ export default function Groups({ me, groups, onClose, onChanged, onOpen }) {
   }
 
   async function makeOwner(g, uid) {
-    if (!confirm(`Make ${names[uid] || 'this member'} the owner of "${g.name}"? You will become a regular member, and you can then leave the group if you want.`)) return
+    if (!(await askConfirm({ title: `Make ${names[uid] || 'this member'} the owner?`, message: `You become a regular member of “${g.name}”, and can then leave it if you want.`, confirmLabel: 'Make owner' }))) return
     const { error } = await supabase.rpc('transfer_ownership', { gid: g.id, new_owner: uid })
     if (error) return say('err', error.message)
     await onChanged()

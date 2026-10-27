@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
 import { Stars, Avatar, tint, timeAgo, priceInput, priceProps, StarPicker, OrderAgain, ORDER_AGAIN } from './shared'
+import { askConfirm, showAlert } from './dialogs'
+import { optimistic } from './optimistic'
 
 const EMOJIS = ['👍', '😋', '🔥', '😐', '👎']
 const ok = r => { if (r.error) throw r.error; return r }
@@ -18,6 +20,7 @@ export default function GroupDish({ d, me, names, isOwner, onChanged }) {
   const [ep, setEp] = useState(d.price ?? '')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [gone, setGone] = useState(false)          // deleted (the server may still be catching up)
 
   const who = uid => (uid === me ? 'You' : names[uid] || 'A member')
   const ratings = d.dish_ratings || []
@@ -68,11 +71,19 @@ export default function GroupDish({ d, me, names, isOwner, onChanged }) {
     })
   }
 
-  const deleteDish = () => {
-    if (!confirm(`Delete "${d.name}" with all its ratings and comments for everyone in the group?`)) return
-    return run(async () => ok(await supabase.from('dishes').delete().eq('id', d.id)))
+  // gone at once; the server delete runs behind and the dish comes back if it fails
+  const deleteDish = async () => {
+    if (!(await askConfirm({ title: `Delete “${d.name}”?`, message: 'Its ratings and comments are deleted for everyone in the group.', confirmLabel: 'Delete', danger: true }))) return
+    const done = await optimistic({
+      apply: () => setGone(true),
+      run: () => supabase.from('dishes').delete().eq('id', d.id),
+      undo: () => setGone(false),
+      fail: e => showAlert({ title: `Couldn’t delete “${d.name}”`, message: e.message || 'Please try again.' }),
+    })
+    if (done) onChanged()
   }
 
+  if (gone) return <div className="gone" aria-hidden="true" />     // its list row collapses (see PlaceDetail)
   return (
     <div>
       {/* summary row */}

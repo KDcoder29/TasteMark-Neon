@@ -10,6 +10,7 @@ import MapsLinkField, { MapsButton, MapsWhere } from './MapsLinkField'
 import { isMapsLink } from './mapsLink'
 import { MAPS_HINT } from './placeRules'
 import { skipUnknownMaps } from './mapsSave'
+import { showAlert } from './dialogs'
 
 const EMPTY = { name: '', city: '', area: '', note: '', maps_url: '' }
 
@@ -30,7 +31,7 @@ export default function Wishlist({ me, group, items, names, isOwner, onChanged, 
     onChange: setGone,
     commit: async item => {
       const { error: err } = await supabase.from('wishlist').delete().eq('id', item.id)
-      if (err) alert(err.message)
+      if (err) showAlert({ title: 'Couldn’t remove it', message: err.message })
       changed.current()
     },
   })

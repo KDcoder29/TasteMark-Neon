@@ -342,3 +342,23 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 .mapswhere{display:inline-flex;align-items:center;gap:4px;color:inherit;text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 35%,transparent);
   text-underline-offset:3px;border-radius:6px;transition:color .15s}
 .mapswhere:hover{color:var(--pri)}
+
+/* place details: action buttons keep their label on one line (the row wraps instead) */
+.detail-actions .btn{white-space:nowrap}
+
+/* ---------- the app's own confirm / message box (replaces the browser's) ---------- */
+@keyframes dlgin{from{opacity:0;transform:translateY(10px) scale(.92)}to{opacity:1;transform:none}}
+@keyframes dlgout{to{opacity:0;transform:scale(.96)}}
+@keyframes dlgshake{0%,100%{transform:none}25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+.dlg-scrim{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:20px;background:#0b120f8c;backdrop-filter:blur(3px);
+  animation:fade .18s ease both}
+.dlg-scrim.out{animation:fade .14s ease reverse both;pointer-events:none}
+.dlg{width:100%;max-width:360px;padding:22px 20px 18px;border-radius:22px;background:var(--surface);color:var(--ink);
+  border:1px solid var(--line);box-shadow:var(--sh-3);animation:dlgin .3s var(--spring) both}
+.dlg.out{animation:dlgout .14s ease both}
+.dlg-icon{display:grid;place-items:center;width:46px;height:46px;border-radius:15px}
+/* a little wiggle on the trash can, once, when a delete is asked */
+.dlg-icon.danger svg{animation:dlgshake .4s .25s ease both}
+.btn-danger{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn-danger:hover:not(:disabled){filter:brightness(.95);border-color:var(--bad)}
+:root[data-theme="dark"] .btn-danger{color:#1a0d07}

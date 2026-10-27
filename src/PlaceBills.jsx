@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import BillViewer from './BillViewer'
 import { loadBills, deleteBill } from './billApi'
 import { canDeleteBill } from './billPhoto'
+import { optimistic } from './optimistic'
+import { showAlert } from './dialogs'
 
 const day = iso => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 
@@ -15,12 +17,17 @@ export default function PlaceBills({ place, me, isOwner, names = {}, onClose, on
     loadBills(place.id).then(setBills).catch(err => setError(err.message || 'Could not load the bill.'))
   }, [place.id])
 
-  async function remove(photo) {
-    await deleteBill(photo.id)
+  // the photo disappears at once (the next one shows, or the viewer closes after the last);
+  // the server delete runs behind and the photo comes back if it fails
+  function remove(photo) {
+    const before = bills
     const left = bills.filter(b => b.id !== photo.id)
-    setBills(left)
-    onChanged()
-    if (!left.length) onClose()
+    optimistic({
+      apply: () => { setBills(left); if (!left.length) onClose() },
+      run: () => deleteBill(photo.id),
+      undo: () => setBills(before),
+      fail: err => showAlert({ title: 'Couldn’t delete the bill', message: err.message || 'Please try again.' }),
+    }).then(() => onChanged())
   }
 
   if (bills?.length) {

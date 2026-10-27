@@ -20,6 +20,9 @@ import { loadJournal, saveJournal } from './fastStart'
 import { foodStory } from './foodStory'
 import { mergeSpokenDishes } from './placeRules'
 import { usePullRefresh } from './useGestures'
+import { showAlert } from './dialogs'
+import { optimistic } from './optimistic'
+import Toast from './Toast'
 
 const store = (() => { try { return window.localStorage } catch { return null } })()
 
@@ -62,6 +65,22 @@ export default function Journal({ me, group, groups, username, view, setView, ad
   const [picking, setPicking] = useState(false)
   const [asking, setAsking] = useState(false)
   const [openId, setOpenId] = useState(null)       // place whose details are open
+  const [notice, setNotice] = useState(null)       // { text } a short "Deleted …" message
+
+  useEffect(() => { if (!notice) return; const t = setTimeout(() => setNotice(null), 2600); return () => clearTimeout(t) }, [notice])
+
+  // Delete a place: the form and details close and the card disappears at once; the server delete
+  // runs behind. If it fails (no connection…) the place comes back and the reason is shown.
+  function deletePlace(p) {
+    setEditing(null); setCreating(null); setOpenId(null)
+    setNotice({ text: `Deleted “${p.name}”` })
+    optimistic({
+      apply: () => setPlaces(ps => ps.filter(x => x.id !== p.id)),
+      run: () => supabase.from('places').delete().eq('id', p.id),
+      undo: () => { setNotice(null); load() },
+      fail: err => showAlert({ title: `Couldn’t delete “${p.name}”`, message: /fetch|network/i.test(err.message || '') ? 'No connection. It’s back in your journal; try again when you’re online.' : err.message }),
+    }).then(ok => { if (ok) load() })                // fresh copy for the next app start
+  }
   const [priceOpen, setPriceOpen] = useState(false)
   const [sheetTab, setSheetTab] = useState(null)   // phones: the filter sheet, opened on this section
   const [q, setQ] = useState('')
@@ -112,7 +131,7 @@ export default function Journal({ me, group, groups, username, view, setView, ad
   async function seed() {
     for (const { dishes, ...place } of SAMPLE) {
       const { data, error } = await supabase.from('places').insert(place).select().single()
-      if (error) return alert(error.message)
+      if (error) return showAlert({ title: 'Couldn’t load the sample data', message: error.message })
       await supabase.from('dishes').insert(dishes.map(d => ({ ...d, place_id: data.id })))
     }
     load()
@@ -360,6 +379,8 @@ export default function Journal({ me, group, groups, username, view, setView, ad
 
       {picking && <Picker places={places} wishlist={wishlist} group={group} onClose={() => setPicking(false)} />}
 
+      {notice && <Toast key={notice.text} text={notice.text} />}
+
       {asking && <CravingChat places={places} onClose={() => setAsking(false)} onOpenPlace={id => { setAsking(false); setOpenId(id) }} />}
 
       {(editing || creating) && (
@@ -373,7 +394,8 @@ export default function Journal({ me, group, groups, username, view, setView, ad
           }}
           cities={opts('city')} groups={groups} defaultGroupId={group?.id || ''}
           onClose={() => { setEditing(null); setCreating(null) }}
-          onSaved={() => { setEditing(null); setCreating(null); load() }} />
+          onSaved={() => { setEditing(null); setCreating(null); load() }}
+          onDelete={deletePlace} />
       )}
     </div>
   )
