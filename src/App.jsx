@@ -11,6 +11,10 @@ import AddMenu from './AddMenu'
 import { tint } from './shared'
 import { clearFastStart, rememberUser, recallUser } from './fastStart'
 import StoryCard from './StoryCard'
+import Tour from './Tour'
+import FeatureGuide from './FeatureGuide'
+import DemoVideo from './DemoVideo'
+import { shouldAutoTour, tourSeen, markTourSeen } from './tourPlan'
 import { useSheetDrag, buzz } from './useGestures'
 import { useEscape } from './layers'
 
@@ -39,7 +43,7 @@ function useDesktop() {
 }
 
 // Account details + settings: a dropdown on laptops, a sheet from the "You" tab on phones.
-function AccountPanel({ email, username, dark, setDark, onPassword, onLogout, onDone, story }) {
+function AccountPanel({ email, username, dark, setDark, onPassword, onLogout, onDone, onGuide, story }) {
   return (
     <>
       <div className="flex items-center gap-3 px-3 pb-3 pt-2">
@@ -59,6 +63,9 @@ function AccountPanel({ email, username, dark, setDark, onPassword, onLogout, on
       </button>
       <button className="menu-item" onClick={() => { onDone(); onPassword() }}>
         <span className="flex items-center gap-2.5"><Icon name="key" size={18} /> Change password</span>
+      </button>
+      <button className="menu-item" onClick={() => { onDone(); onGuide() }}>
+        <span className="flex items-center gap-2.5"><Icon name="help" size={18} /> How BiteMark works</span>
       </button>
       <div className="my-1 h-px" style={{ background: 'var(--line)' }} />
       <button className="menu-item" style={{ color: 'var(--bad)' }} onClick={() => { onDone(); onLogout() }}>
@@ -114,9 +121,18 @@ export default function App() {
   const [addIntent, setAddIntent] = useState(null)        // { file? } -> Journal opens the place form
   const [sheet, setSheet] = useState(null)                // phones: 'spaces' | 'you'
   const [acctOpen, setAcctOpen] = useState(false)         // laptops: account dropdown
-  const [stats, setStats] = useState({ places: 0, wish: 0, story: null })
+  const [stats, setStats] = useState({ places: 0, wish: 0, story: null, ready: false })
+  const [help, setHelp] = useState(null)                  // 'tour' | 'guide' | 'video'
   const acctRef = useRef(null)
   const desktop = useDesktop()
+  const uid0 = session?.user?.id
+
+  // a brand-new account (empty journal, nothing to try) gets the 1-minute tour once, by itself
+  useEffect(() => {
+    if (!uid0 || space !== 'personal') return
+    const store = (() => { try { return window.localStorage } catch { return null } })()
+    if (shouldAutoTour({ ...stats, seen: tourSeen(store, uid0) })) { markTourSeen(store, uid0); setHelp('tour') }
+  }, [uid0, space, stats.ready, stats.places, stats.wish])
 
   // App start. No connection to the login server (it throws "Failed to fetch") is NOT "logged out":
   // whoever is logged in on this device gets their saved journal (with a "No connection" banner),
@@ -243,7 +259,30 @@ export default function App() {
   const activeGroup = groups.find(g => g.id === space) || null
   const pickAdd = intent => { setAdding(false); setView('journal'); setAddIntent(intent) }
   const go = v => { setView(v); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-  const account = { email: session.user.email, username, dark, setDark, onPassword: () => setPwOpen(true), onLogout: logout }
+  const account = { email: session.user.email, username, dark, setDark, onPassword: () => setPwOpen(true), onLogout: logout, onGuide: () => setHelp('guide') }
+
+  // "Try it" in the Feature guide: open the real thing
+  const tryIt = action => {
+    setHelp(null)
+    const focusSearch = () => setTimeout(() => document.querySelector('.searchbar input')?.focus(), 350)
+    switch (action) {
+      case 'add': go('journal'); setAdding(true); break
+      case 'voice': pickAdd({ voice: true }); break
+      case 'manual': pickAdd({}); break
+      case 'search': go('journal'); focusSearch(); break
+      case 'filters': go('journal'); setAddIntent({ tool: 'filters' }); break
+      case 'craving': setAddIntent({ tool: 'craving' }); break
+      case 'picker': setAddIntent({ tool: 'picker' }); break
+      case 'wishlist': go('wishlist'); break
+      case 'groups': setGroupsOpen(true); break
+      case 'you': if (desktop) setAcctOpen(true); else setSheet('you'); break
+      case 'dark': setDark(!dark); break
+    }
+  }
+  const tourDone = next => {
+    setHelp(next === 'guide' ? 'guide' : null)
+    if (next === 'add') { go('journal'); setAdding(true) }
+  }
 
   const spaceList = (onPicked = () => {}) => (
     <>
@@ -290,11 +329,12 @@ export default function App() {
         <div className="side-h">ASK BITEMARK</div>
         <button className="side-item" onClick={() => setAddIntent({ tool: 'craving' })}><Icon name="chat" size={18} /> Craving something?</button>
         <button className="side-item" onClick={() => setAddIntent({ tool: 'picker' })}><Icon name="dice" size={18} /> {activeGroup ? 'Where should we eat?' : 'Where to eat?'}</button>
+        <button className="side-item" onClick={() => setHelp('guide')}><Icon name="help" size={18} /> How BiteMark works</button>
 
         <div ref={acctRef} className="relative mt-auto pt-4">
           {acctOpen && (
             <AccountMenu onClose={() => setAcctOpen(false)}>
-              <AccountPanel {...account} onDone={() => setAcctOpen(false)} />
+              <AccountPanel {...account} onDone={() => setAcctOpen(false)} story={<StoryCard story={stats.story} space={activeGroup ? activeGroup.name : 'Personal'} />} />
             </AccountMenu>
           )}
           <button className="side-item" onClick={() => setAcctOpen(!acctOpen)} aria-label="Account menu" aria-expanded={acctOpen}>
@@ -322,10 +362,16 @@ export default function App() {
                 </span>
               </button>
             </div>
-            <button onClick={() => setDark(!dark)} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="ghost grid h-10 w-10 place-items-center rounded-full" style={{ color: 'var(--mute)' }}>
-              <Icon name={dark ? 'sun' : 'moon'} size={20} />
-            </button>
+            <span className="flex items-center">
+              <button onClick={() => setHelp('guide')} aria-label="How BiteMark works"
+                className="ghost grid h-10 w-10 place-items-center rounded-full" style={{ color: 'var(--mute)' }}>
+                <Icon name="help" size={21} />
+              </button>
+              <button onClick={() => setDark(!dark)} aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+                className="ghost grid h-10 w-10 place-items-center rounded-full" style={{ color: 'var(--mute)' }}>
+                <Icon name={dark ? 'sun' : 'moon'} size={20} />
+              </button>
+            </span>
           </div>
         </header>
 
@@ -334,7 +380,7 @@ export default function App() {
             {/* Personal doesn't need the groups list first: start loading it right away */}
             {groupsReady || space === 'personal'
               ? <Journal key={activeGroup?.id || 'personal'} me={uid} group={activeGroup} groups={groups} username={username}
-                  view={view} setView={go} addIntent={addIntent} onIntentDone={() => setAddIntent(null)} onStats={setStats}
+                  view={view} setView={go} addIntent={addIntent} onIntentDone={() => setAddIntent(null)} onStats={setStats} onHelp={setHelp}
                   addButton={(
                     <div className="relative desktop-only">
                       <button data-addbtn className="btn btn-accent" onClick={() => setAdding(!adding)} aria-expanded={adding}>
@@ -379,6 +425,9 @@ export default function App() {
       </Sheet>}
 
       {pwOpen && <ChangePassword onClose={() => setPwOpen(false)} />}
+      {help === 'guide' && <FeatureGuide onClose={() => setHelp(null)} onTour={() => setHelp('tour')} onVideo={() => setHelp('video')} onTry={tryIt} />}
+      {help === 'tour' && <Tour onDone={tourDone} />}
+      {help === 'video' && <DemoVideo onClose={() => setHelp('guide')} />}
       {groupsOpen && <Groups me={uid} groups={groups} onClose={() => setGroupsOpen(false)}
         onChanged={groupsChanged} onOpen={chooseSpace} />}
     </div>

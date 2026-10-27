@@ -389,3 +389,37 @@ User report: the Yes / Maybe / No buttons on a dish didn't say what they were fo
   12. **A crash in any screen blanked the whole app.** `ErrorBoundary.jsx` around App now shows "Something went wrong. Your journal is safe" with a Reload button.
 - **Seen but left alone:** Activity's emoji event badges (a playful feed, kept on purpose) and data typos in group entries.
 - **Verified:** 173 tests pass; the build passes. Each fix was re-checked in Playwright, including blocked-network runs (Personal and group).
+
+### 2026-10-28: First-visit tour, Feature guide and screen recording (branch `BiteMark/Feature_Tour`, cut from origin/main bbf1010 after PR #8)
+Asked for: new users with an empty journal don't know what the app does. Wanted: a demo video of the important features on first signup, a guide explaining every feature, and the video always available. User's choice: **A + C**, an animated in-app walkthrough for first-timers plus a real screen recording in the guide.
+- **The tour** (`Tour.jsx`, scenes in `TourScenes.jsx`, logic in `tourPlan.js`, tested).
+  - 11 scenes, about 60 s, played like stories: progress bars (tap one to jump), tap right/left for next/back, hold (or Space) to pause, ← → keys, Escape or ✕ to close, "Skip the tour".
+  - Each scene is a small animated copy of a real screen with sample data (CSS-only `.ts-*` motion; reduced motion shows the final state), plus a title and one sentence.
+  - Scenes: welcome, scan, voice, rate, find, craving, pick, wish, groups, send, story.
+  - The last scene waits for you (it doesn't auto-close) and offers **Add my first place** (opens the + menu) and **See all features**.
+  - **Opens by itself only for a brand-new account** (`shouldAutoTour`): only once Journal reports `ready` (loaded, not failed), with 0 places and 0 Want to try, in Personal, and only if not seen before on this device. Stored in localStorage `bm.tour.<uid>`, which Log out does **not** clear. Existing users are never interrupted.
+  - Named `tourPlan.js`, not `tour.js`: on Windows `./Tour` resolved to `tour.js` and broke the build (third time this happened; saved to memory).
+- **Feature guide** (`FeatureGuide.jsx`, content in `features.js`, tested).
+  - A sheet (right panel on laptops) titled "How BiteMark works": ▶ Play the tour and 🎬 Watch it in action at the top, then 17 features in 4 groups (Add what you ate, Find it again, Plan and share, Handy extras), each with one plain sentence.
+  - Most items have **Try it**, which opens the real thing (App `tryIt`): the + menu, Say it, the Add place form, the focused search, the filter sheet (phones), Craving, Where to eat, Want to try, Groups, You (the laptop account menu now also shows the food story), and dark mode.
+  - **Always reachable** from:
+    - a **?** button in the phone top bar
+    - "How BiteMark works" in the You sheet / laptop account menu
+    - a sidebar item on laptops
+    - the empty journal ("Play the 1-minute tour" and "See all features")
+- **Screen recording** (`DemoVideo.jsx`): `public/demo/bitemark-demo.mp4` (H.264, 430×932, 53 s, 1.6 MB, plays everywhere) plus `poster.jpg`.
+  - It shows search, filters, place details, Send, Craving, Where to eat, Say it, Want to try and the food story, with captions and a tap marker.
+  - **Recorded with no real data and no writes:** `e2e/demo/record-demo.js` runs in a separate Playwright browser session where every Neon Auth and Data API request is answered locally. It returns a fake session (with a `set-auth-jwt` header and CORS headers) and the fictional journal in `e2e/demo/demo-data.json` ("Aanya": 8 places, 19 dishes).
+  - **How to re-record** after UI changes is written at the top of that file. Playwright needs its own ffmpeg once, revision 1011 matching the MCP's playwright-core (`node <playwright-core>/cli.js install ffmpeg`). The MP4 conversion used npm `ffmpeg-static` in a temp folder, not a project dependency.
+  - The video is recorded at the page's CSS size; deviceScaleFactor is ignored, which is why it uses a 430 px "large phone".
+- **Also fixed:** Picker, Groups, Change password, Add a dish and Add to group overlays now have `role="dialog"`, `aria-modal` and a label (screen readers didn't know they were dialogs; pull-to-refresh now also pauses under them).
+- **New icons:** play, pause, help, film.
+- **Verified:**
+  - 189 tests pass; the build passes.
+  - Playwright on phone and laptop:
+    - all 11 scenes rendered
+    - a simulated new account (places and wishlist answered empty) got the tour automatically, and not on the next visit
+    - your real account (44 places) never did
+    - the last scene's "Add my first place" opens the + menu
+    - every Try it opens the right screen
+    - the video plays (no error); closing it returns to the guide
