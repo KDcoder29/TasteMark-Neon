@@ -362,3 +362,12 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 .btn-danger{background:var(--bad);border-color:var(--bad);color:#fff}
 .btn-danger:hover:not(:disabled){filter:brightness(.95);border-color:var(--bad)}
 :root[data-theme="dark"] .btn-danger{color:#1a0d07}
+
+/* ---------- the public demo ---------- */
+.demo-try{margin-top:16px}
+.demo-or{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:12px;font-weight:600;color:var(--faint)}
+.demo-or::before,.demo-or::after{content:"";flex:1;height:1px;background:var(--line)}
+.demobar{display:flex;align-items:center;justify-content:center;gap:8px;padding:7px 14px;font-size:12.5px;font-weight:600;text-align:center;
+  background:var(--accent-soft);color:var(--accent-ink);border-bottom:1px solid color-mix(in srgb,var(--accent) 25%,transparent)}
+.demobar button{border:0;background:none;padding:2px 4px;font:inherit;font-weight:700;color:inherit;text-decoration:underline;text-underline-offset:2px}
+.demo-wait{display:grid;min-height:100vh;place-items:center;padding:24px;text-align:center}

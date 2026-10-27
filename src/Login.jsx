@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import Logo from './Logo'
 import { recallEmail, rememberLogin } from './fastStart'
+import { DEMO } from './demoAccount'
+import Icon from './Icons'
 
 const store = (() => { try { return window.localStorage } catch { return null } })()
 
@@ -45,6 +47,19 @@ export default function Login({ onSession }) {
       throw new Error('You were signed in, but the session was not saved. In the Neon Console (Auth), add this site address as a trusted domain, then try again.')
     }
     onSession?.(s)
+  }
+
+  // "Try the demo": straight into the shared sample account (same as typing test / test1234)
+  async function tryDemo() {
+    setBusy(true); setError(''); setInfo('')
+    try {
+      const { data, error: e1 } = await supabase.auth.signInWithPassword({ email: DEMO.email, password: DEMO.password })
+      if (e1) throw new Error('The demo isn’t available right now. Please try again in a moment.')
+      await finish(data)
+    } catch (err) {
+      setError(err.message || 'Something went wrong. Please try again.')
+    }
+    setBusy(false)
   }
 
   async function submit(e) {
@@ -176,6 +191,17 @@ export default function Login({ onSession }) {
             <button onClick={() => { setIsSignup(!isSignup); setError(''); setInfo(''); setPassword('') }}
               className="tbtn font-semibold" style={{ color: 'var(--pri)' }}>{isSignup ? 'Log in' : 'Create an account'}</button>
           </p>}
+          {!forgot && !isSignup && (
+            <div className="demo-try">
+              <span className="demo-or"><span>or</span></span>
+              <button type="button" disabled={busy} onClick={tryDemo} className="btn w-full">
+                <Icon name="play" size={16} /> Try the demo
+              </button>
+              <p className="m-0 mt-1.5 text-center text-xs" style={{ color: 'var(--mute)' }}>
+                A sample journal with 72 places in Vadodara and Ahmedabad. No sign-up needed.
+              </p>
+            </div>
+          )}
         </div>
       </div>
       </div>

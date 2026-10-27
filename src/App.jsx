@@ -10,6 +10,10 @@ import Icon from './Icons'
 import AddMenu from './AddMenu'
 import { tint } from './shared'
 import { clearFastStart, rememberUser, recallUser } from './fastStart'
+import { isDemoUser, demoNeedsReset, markDemoReady, forgetDemoReady } from './demoAccount'
+import { askConfirm } from './dialogs'
+
+const sessionStore = (() => { try { return window.sessionStorage } catch { return null } })()
 import StoryCard from './StoryCard'
 import Tour from './Tour'
 import FeatureGuide from './FeatureGuide'
@@ -43,7 +47,7 @@ function useDesktop() {
 }
 
 // Account details + settings: a dropdown on laptops, a sheet from the "You" tab on phones.
-function AccountPanel({ email, username, dark, setDark, onPassword, onLogout, onDone, onGuide, story }) {
+function AccountPanel({ email, username, dark, setDark, onPassword, onLogout, onDone, onGuide, story, demo }) {
   return (
     <>
       <div className="flex items-center gap-3 px-3 pb-3 pt-2">
@@ -61,9 +65,16 @@ function AccountPanel({ email, username, dark, setDark, onPassword, onLogout, on
         <span className="flex items-center gap-2.5"><Icon name={dark ? 'moon' : 'sun'} size={18} /> Dark mode</span>
         <span className={`switch ${dark ? 'on' : ''}`} />
       </button>
-      <button className="menu-item" onClick={() => { onDone(); onPassword() }}>
-        <span className="flex items-center gap-2.5"><Icon name="key" size={18} /> Change password</span>
-      </button>
+      {demo ? (
+        // the demo is shared by everyone: one visitor must not lock the others out
+        <p className="m-0 flex items-center gap-2.5 px-3 py-2.5 text-[13px]" style={{ color: 'var(--mute)' }}>
+          <Icon name="key" size={18} /> Password can’t be changed in the demo
+        </p>
+      ) : (
+        <button className="menu-item" onClick={() => { onDone(); onPassword() }}>
+          <span className="flex items-center gap-2.5"><Icon name="key" size={18} /> Change password</span>
+        </button>
+      )}
       <button className="menu-item" onClick={() => { onDone(); onGuide() }}>
         <span className="flex items-center gap-2.5"><Icon name="help" size={18} /> How BiteMark works</span>
       </button>
@@ -115,6 +126,7 @@ export default function App() {
     try { return localStorage.getItem('space') || 'personal' } catch { return 'personal' }
   })
   const uid = session?.user?.id
+  const isDemo = isDemoUser(session?.user)
   // last known username on this device, so "Hi, Kandarp" shows at once (checked against uid below)
   const [username, setUsername] = useState(() => { try { return recallUser(window.localStorage)?.username || '' } catch { return '' } })
   const [view, setView] = useState('journal')            // journal | wishlist | activity
@@ -130,7 +142,7 @@ export default function App() {
 
   // a brand-new account (empty journal, nothing to try) gets the 1-minute tour once, by itself
   useEffect(() => {
-    if (!uid0 || space !== 'personal') return
+    if (!uid0 || space !== 'personal' || isDemo) return      // the demo offers the tour in its welcome popup
     const store = (() => { try { return window.localStorage } catch { return null } })()
     if (shouldAutoTour({ ...stats, seen: tourSeen(store, uid0) })) { markTourSeen(store, uid0); setHelp('tour') }
   }, [uid0, space, stats.ready, stats.places, stats.wish])
@@ -191,6 +203,29 @@ export default function App() {
   // (again when the connection comes back after an offline start)
   useEffect(() => { setGroupsReady(false); loadGroups() }, [loadGroups, session?.offline])
 
+  // The public demo: every visit starts from the sample journal (whatever the last visitor did), then
+  // a popup says changes aren't kept. A reload in the same tab keeps your changes (sessionStorage).
+  const [demoBusy, setDemoBusy] = useState(false)
+  const demoWaiting = isDemo && !!uid && !session?.offline && demoNeedsReset(sessionStore, uid)
+  useEffect(() => {
+    if (!demoWaiting || demoBusy) return
+    setDemoBusy(true)
+    supabase.rpc('reset_demo').then(({ error }) => {
+      if (error) console.error('Demo reset failed (is db/migrations/2026-10-29-demo-account.sql applied?)', error)
+      markDemoReady(sessionStore, uid)
+      try { clearFastStart(window.localStorage) } catch {}      // no snapshot of the last visitor's journal
+      setSpace('personal'); try { localStorage.setItem('space', 'personal') } catch {}
+      loadGroups()
+      setDemoBusy(false)
+      if (error) console.error(error)
+      return askConfirm({
+        title: 'Welcome to the BiteMark demo',
+        message: 'This is a shared sample journal with 72 places in Vadodara and Ahmedabad. Add, edit and delete anything you like: nothing you change is kept. The demo resets when you log out.',
+        confirmLabel: 'Play the tour', cancelLabel: 'Explore on my own',
+      }).then(tour => { if (tour) setHelp('tour') })
+    })
+  }, [demoWaiting, demoBusy])
+
   useEffect(() => {
     if (!uid) { if (session === null) setUsername(''); return }   // undefined = still checking: keep the remembered name
     const store = (() => { try { return window.localStorage } catch { return null } })()
@@ -219,6 +254,11 @@ export default function App() {
   async function logout() {
     loggedOut.current = true
     try { clearFastStart(window.localStorage) } catch {}      // no journal snapshot stays on this device
+    if (isDemo) {
+      // the shared demo goes back to its sample journal (best effort: never more than 5 s)
+      forgetDemoReady(sessionStore)
+      await Promise.race([supabase.rpc('reset_demo'), new Promise(r => setTimeout(r, 5000))]).catch(() => {})
+    }
     try { await supabase.auth.signOut() } catch (e) { console.error(e) }
     setSession(null); setGroups([]); setGroupsReady(false); setUsername(''); setGroupsOpen(false)
     window.location.replace('/')   // fresh start: nothing from the old session is left in memory
@@ -255,12 +295,21 @@ export default function App() {
   }
 
   if (session === undefined) return <div className="p-10"><div className="skel mx-auto max-w-md" /></div>
+  if (session && demoWaiting) return (
+    <div className="demo-wait">
+      <div>
+        <div className="scanbar mx-auto mb-4 w-40" aria-hidden="true" />
+        <p className="m-0 font-semibold">Setting up the demo journal…</p>
+        <p className="m-0 mt-1 text-sm" style={{ color: 'var(--mute)' }}>72 places in Vadodara and Ahmedabad</p>
+      </div>
+    </div>
+  )
   if (!session) return <Login onSession={s => { loggedOut.current = false; setSession(s) }} />
 
   const activeGroup = groups.find(g => g.id === space) || null
   const pickAdd = intent => { setAdding(false); setView('journal'); setAddIntent(intent) }
   const go = v => { setView(v); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-  const account = { email: session.user.email, username, dark, setDark, onPassword: () => setPwOpen(true), onLogout: logout, onGuide: () => setHelp('guide') }
+  const account = { email: session.user.email, username, dark, setDark, onPassword: () => setPwOpen(true), onLogout: logout, onGuide: () => setHelp('guide'), demo: isDemo }
 
   // "Try it" in the Feature guide: open the real thing
   const tryIt = action => {
@@ -350,6 +399,12 @@ export default function App() {
 
       {/* ---------- content ---------- */}
       <div className="min-w-0">
+        {isDemo && (
+          <div className="demobar" role="note">
+            <span>Demo account: changes reset when you log out.</span>
+            <button onClick={logout}>Log out</button>
+          </div>
+        )}
         <header className="topbar mobile-only">
           <div className="flex items-center justify-between gap-3 px-4 py-2.5">
             <div className="flex min-w-0 items-center gap-2.5">
