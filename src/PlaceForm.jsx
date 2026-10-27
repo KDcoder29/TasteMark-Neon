@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { supabase } from './supabase'
 import { CATEGORIES, priceInput, priceProps } from './shared'
 import { findGroupPlace, addDishWithRating } from './groupApi'
-import { blankDish, mergeScannedDishes, newScannedDishes, placeFormError } from './placeRules'
+import { blankDish, mergeScannedDishes, mergeSpokenDishes, newScannedDishes, placeFormError } from './placeRules'
+import VoiceAdd from './VoiceAdd'
 import BillScan from './BillScan'
 import { saveBills } from './billApi'
 
@@ -10,7 +11,9 @@ import { saveBills } from './billApi'
 // prefill    = starting values when adding from the wishlist; wishId = that wishlist item
 // groups     = my groups; defaultGroupId = the open space ('' = Personal)
 // initialBill = a bill photo picked from the + menu; it is scanned as soon as the form opens
-export default function PlaceForm({ me, place, cities, groups = [], defaultGroupId = '', prefill, wishId, initialBill, onClose, onSaved }) {
+// initialVoice = opened with "Say it" from the + menu: start listening at once
+// knownPlaces = my personal places (voice: "Sankalp" -> offer to add to that card, no duplicate)
+export default function PlaceForm({ me, place, cities, groups = [], defaultGroupId = '', prefill, wishId, initialBill, initialVoice, knownPlaces = [], onUseExisting, onClose, onSaved }) {
   const editing = !!place
   const editingGroup = editing && !!place.group_id
   const start = place || prefill || {}
@@ -27,10 +30,23 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [billFiles, setBillFiles] = useState([])   // bill photos scanned here, saved with the place
+  const [existing, setExisting] = useState(null)   // voice named a place already in the journal
   const toggleCat = c => setCats(cats.includes(c) ? cats.filter(x => x !== c) : [...cats, c])
 
   const setField = k => e => setF({ ...f, [k]: e.target.value })
   const setDish = (i, k, v) => setDishes(dishes.map((d, j) => (j === i ? { ...d, [k]: v } : d)))
+
+  // what was said -> the form. The place name is only filled when empty; a place you already have
+  // also brings its city, area and categories, and is offered as "add these dishes there instead".
+  function spoken({ place: said, dishes: heard }) {
+    const match = said && knownPlaces.find(p => p.name.trim().toLowerCase() === said.trim().toLowerCase())
+    if (said && !f.name.trim()) {
+      setF(v => ({ ...v, name: match?.name || said, city: v.city || match?.city || '', area: v.area || match?.area || '' }))
+      if (match && !cats.length) setCats(match.categories || [])
+    }
+    setDishes(ds => mergeSpokenDishes(ds, heard))
+    setExisting(!editing && !target && match ? match : null)
+  }
 
   async function save(e) {
     e.preventDefault()
@@ -137,8 +153,17 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
           </div>
         )}
 
+        {!editingGroup && <VoiceAdd auto={initialVoice} knownPlaces={knownPlaces.map(p => p.name)} onResult={spoken} />}
+        {existing && onUseExisting && (
+          <div className="fade mb-4 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm" style={{ background: 'var(--accent-soft)' }}>
+            <p className="m-0 flex-1"><b>{existing.name}</b> is already in your journal.</p>
+            <button type="button" className="btn btn-pri !px-3 !py-1.5 !text-sm"
+              onClick={() => onUseExisting(existing, dishes.filter(d => String(d.name).trim()))}>Add dishes there</button>
+          </div>
+        )}
+
         <label className={label} style={mute}>Place name *</label>
-        <input required autoFocus placeholder="e.g. Coffea: Brew on the Rocks" value={f.name} onChange={setField('name')} className="input mb-3" />
+        <input required autoFocus={!initialVoice} placeholder="e.g. Coffea: Brew on the Rocks" value={f.name} onChange={setField('name')} className="input mb-3" />
         <div className="mb-3 grid grid-cols-2 gap-2">
           <div><label className={label} style={mute}>City *</label>
             <input required list="cities" placeholder="Vadodara" value={f.city} onChange={setField('city')} className="input" /></div>

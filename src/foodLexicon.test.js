@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { expandQuery } from './foodLexicon'
+import { expandQuery, dishWordIndex } from './foodLexicon'
 
 describe('expandQuery', () => {
   test('knows that south indian means dosa, idli, uttapam…', () => {
@@ -27,5 +27,19 @@ describe('expandQuery', () => {
   test('returns nothing extra for words it does not know', () => {
     expect(expandQuery('qwerty zzz')).toEqual({ topics: [], terms: [] })
     expect(expandQuery('')).toEqual({ topics: [], terms: [] })
+  })
+})
+
+describe('dishWordIndex (where a dish name starts in a sentence)', () => {
+  test('finds the first word of the earliest known dish', () => {
+    expect(dishWordIndex('sankalp masala dosa')).toBe(1)
+    expect(dishWordIndex('very crispy paneer tikka')).toBe(2)
+    expect(dishWordIndex('crispy idli')).toBe(1)
+    expect(dishWordIndex('coffea hazelnut cold coffee')).toBe(2)
+  })
+
+  test('0 when the sentence starts with a dish, -1 when there is none', () => {
+    expect(dishWordIndex('idli sambar')).toBe(0)
+    expect(dishWordIndex('sankalp special thali')).toBe(-1)
   })
 })
