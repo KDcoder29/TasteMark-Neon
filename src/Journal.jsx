@@ -46,7 +46,7 @@ function groupDish(d) {
 
 // me = my user id, group = the open group (null = Personal), groups = all my groups.
 // view / setView and the + button's addIntent come from the app shell (sidebar / bottom bar).
-export default function Journal({ me, group, groups, username, view, setView, addIntent, onIntentDone, onStats, addButton }) {
+export default function Journal({ me, group, groups, username, view, setView, addIntent, onIntentDone, onStats, addButton, onHelp = () => {} }) {
   // last time's journal for this person + space, shown at once while the fresh copy loads
   const spaceKey = group?.id || 'personal'
   const [snap] = useState(() => loadJournal(store, me, spaceKey))
@@ -133,11 +133,15 @@ export default function Journal({ me, group, groups, username, view, setView, ad
     if (!addIntent) return
     if (addIntent.tool === 'craving') setAsking(true)
     else if (addIntent.tool === 'picker') setPicking(true)
+    else if (addIntent.tool === 'filters') { if (window.matchMedia?.('(max-width: 1023.98px)').matches) setSheetTab('cat') }
     else setCreating({ billFile: addIntent.file || null, voice: !!addIntent.voice })
     onIntentDone()
   }, [addIntent])
 
-  useEffect(() => { onStats({ places: places.length, wish: wishlist.length, story: foodStory(places) }) }, [places, wishlist.length])
+  // ready = we really know what's in this journal (loaded, not failed): the first-visit tour waits for it
+  useEffect(() => {
+    onStats({ places: places.length, wish: wishlist.length, story: foodStory(places), ready: !loading && !netErr })
+  }, [places, wishlist.length, loading, netErr])
 
   // phones: pull Home / Want to try down from the top to fetch the latest (the browser's own
   // pull-to-reload is turned off in index.css, and installed apps never had one)
@@ -303,7 +307,11 @@ export default function Journal({ me, group, groups, username, view, setView, ad
             <div className="rise py-16 text-center">
               <span className="qicon mx-auto mb-4 !h-16 !w-16" style={{ background: 'var(--accent-soft)', color: 'var(--accent-ink)' }}><Icon name="receipt" size={30} /></span>
               <p className="m-0 text-lg font-bold">{group ? `${group.name} has no places yet` : 'Your journal is empty'}</p>
-              <p className="mx-auto mb-5 mt-1 max-w-xs text-sm" style={mute}>Tap + to scan a bill or add your first place.</p>
+              <p className="mx-auto mb-5 mt-1 max-w-xs text-sm" style={mute}>Tap + to scan a bill, say it, or add your first place by hand.</p>
+              <div className="mb-4 flex flex-wrap justify-center gap-2">
+                <button className="btn btn-pri !py-2 !text-sm" onClick={() => onHelp('tour')}><Icon name="play" size={16} /> Play the 1-minute tour</button>
+                <button className="btn !py-2 !text-sm" onClick={() => onHelp('guide')}><Icon name="help" size={16} /> See all features</button>
+              </div>
               {!group && <button onClick={seed} className="tbtn text-sm font-semibold" style={{ color: 'var(--pri)' }}>or load sample data</button>}
             </div>
           ) : sorted.length === 0 ? (
