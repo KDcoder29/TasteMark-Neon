@@ -10,6 +10,7 @@ import MapsLinkField from './MapsLinkField'
 import { skipUnknownMaps } from './mapsSave'
 import BillScan from './BillScan'
 import { saveBills } from './billApi'
+import { askConfirm, showAlert } from './dialogs'
 
 // place      = existing place being edited (null when adding)
 // prefill    = starting values when adding from the wishlist; wishId = that wishlist item
@@ -17,7 +18,7 @@ import { saveBills } from './billApi'
 // initialBill = a bill photo picked from the + menu; it is scanned as soon as the form opens
 // initialVoice = opened with "Say it" from the + menu: start listening at once
 // knownPlaces = my personal places (voice: "Sankalp" -> offer to add to that card, no duplicate)
-export default function PlaceForm({ me, place, cities, groups = [], defaultGroupId = '', prefill, wishId, initialBill, initialVoice, knownPlaces = [], onUseExisting, onClose, onSaved }) {
+export default function PlaceForm({ me, place, cities, groups = [], defaultGroupId = '', prefill, wishId, initialBill, initialVoice, knownPlaces = [], onUseExisting, onClose, onSaved, onDelete }) {
   useEscape(onClose)
   useScrollLock()
   const editing = !!place
@@ -115,23 +116,23 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
       if (wishId) await supabase.from('wishlist').update({ went_at: new Date().toISOString() }).eq('id', wishId)
       // the place is saved either way; a failed bill upload must not undo it
       try { await saveBills(savedId, billFiles) }
-      catch (err) { console.error(err); alert('The place was saved, but the bill photo could not be saved: ' + (err.message || 'unknown error')) }
+      catch (err) { console.error(err); showAlert({ title: 'Place saved, bill photo not saved', message: err.message || 'Please add the bill again from Edit.' }) }
       setBusy(false)
       onSaved()
     } catch (err) {
       setBusy(false)
-      alert(err.message || 'Could not save. Please try again.')
+      showAlert({ title: 'Couldn’t save', message: err.message || 'Please try again.' })
     }
   }
 
   async function remove() {
-    const msg = editingGroup
-      ? `Delete "${place.name}" with all its dishes, ratings and comments for everyone in the group?`
-      : `Delete "${place.name}" and all its dishes?`
-    if (!confirm(msg)) return
-    const { error: err } = await supabase.from('places').delete().eq('id', place.id)
-    if (err) return alert(err.message)
-    onSaved()
+    const ok = await askConfirm({
+      title: `Delete “${place.name}”?`,
+      message: editingGroup ? 'All its dishes, ratings and comments are deleted for everyone in the group.' : 'All its dishes are deleted too. This can’t be undone.',
+      confirmLabel: 'Delete', danger: true,
+    })
+    // the journal removes it from the screen at once and deletes it in the background
+    if (ok) onDelete(place)
   }
 
   const label = 'mb-1 block text-xs font-medium'

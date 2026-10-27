@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useEscape, useScrollLock } from './layers'
+import { askConfirm } from './dialogs'
 
 // Full-screen bill photo(s): zoom, "1 of 2" arrows, and delete for whoever may delete.
 // photos = [{ id, src, caption, canDelete }]. Esc / tap outside closes; ← → move between bills.
@@ -15,7 +16,6 @@ const glass = { background: '#ffffff1f' }
 function Panel({ photos, onClose, onDelete }) {
   const [i, setI] = useState(0)
   const [zoom, setZoom] = useState(false)
-  const [busy, setBusy] = useState(false)
   const n = photos.length
   const at = Math.min(i, n - 1)
   const photo = photos[at]
@@ -33,10 +33,9 @@ function Panel({ photos, onClose, onDelete }) {
   })
 
   async function remove() {
-    if (!confirm('Delete this bill photo? This cannot be undone.')) return
-    setBusy(true)
-    try { await onDelete(photo) } catch (err) { alert(err.message || 'Could not delete the bill.') }
-    setBusy(false)
+    if (!(await askConfirm({ title: 'Delete this bill photo?', message: 'This can’t be undone.', confirmLabel: 'Delete', danger: true }))) return
+    setZoom(false)
+    onDelete(photo)                      // instant: PlaceBills removes it and deletes it in the background
   }
 
   if (!photo) return null
@@ -56,7 +55,7 @@ function Panel({ photos, onClose, onDelete }) {
         )}
         <div className="flex items-center gap-2">
           {onDelete && photo.canDelete && (
-            <button type="button" onClick={remove} disabled={busy} aria-label="Delete this bill"
+            <button type="button" onClick={remove} aria-label="Delete this bill"
               className="grid h-9 w-9 place-items-center rounded-full disabled:opacity-50" style={glass}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />

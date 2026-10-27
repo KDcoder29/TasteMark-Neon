@@ -449,3 +449,44 @@ Asked for: every screen with address or location fields should open Google Maps 
   - 209 tests pass; the build passes.
   - Playwright on phone and laptop: place-details Maps and address links, the caption map line, Want to try Maps, a bad link flagged, pasted WhatsApp text reduced to the link, Check in the forms, picker Directions, and the scroll lock with nested layers (details → Send).
   - Real saving of a link still needs the migration (next item).
+- **Bug (user report, same branch): "Maps button doesn't appear after I add a dish."**
+  - The place-details action row didn't wrap. Send only shows once a place has a dish (and Add a dish shows in groups, Bill when a bill exists), so with 4 buttons Maps was pushed off a 390 px screen: it ended at 409 px. "Add a dish" was also squeezed to 3 lines.
+  - Fixed: `.detail-actions` now wraps and its buttons keep their label on one line. Checked at 390 and 320 px, personal and group: nothing off-screen.
+
+### 2026-10-28: App-styled confirm and message boxes (branch `BiteMark/App_Dialogs`, cut from origin/main b74c404 after PR #10)
+Asked for: on delete, an "Are you sure?" popup with a bit of animation instead of the browser's own; replace every browser popup with an app-themed one.
+- **Carried into this branch:** the uncommitted Maps-wrapping fix (`.detail-actions`) from `BiteMark/Maps_Links`, which was merged without it.
+- **`dialogs.js` (tested):** a queue of boxes. `await askConfirm({ title, message, confirmLabel, danger })` → true / false; `showAlert({ title, message })` resolves when closed (default tone "error"). Several at once wait their turn.
+- **`DialogHost.jsx`** is mounted once in `main.jsx` next to App, so it also works on the Login page. It's drawn in a portal at z-70, above sheets, the tour and the video.
+  - The card pops in with a spring (scale .92 → 1); on answer it plays a 140 ms fade/shrink, then resolves.
+  - Icons: a trash can with a single wiggle for deletes (`danger`: red icon and red **Delete** button `.btn-danger`), a warning triangle for errors, a question mark for other confirms.
+  - Deletes focus **Cancel** (a stray Enter never deletes); other boxes focus the main button.
+  - Escape or tapping outside cancels. It uses `useEscape` (top layer only, so the form behind stays open) and `useScrollLock`.
+  - `role=alertdialog` / `dialog`, labelled by the title and message.
+- **Replaced all 16 browser popups (none left; grep confirmed):**
+  - **Deletes:** place (personal and group), group dish, bill photo, group, leave group, remove member.
+  - **Other confirms:** new invite code, make owner.
+  - **Errors:** save failed, place saved without its bill photo, delete failed, remove from Want to try failed, sample data failed.
+  - **Maps link:** "saved without the map link" (before the migration), now worded for users.
+  - Titles are now short questions ("Delete “Sankalp”?"), with the consequence in the message.
+- **New icon:** alert.
+- **Verified:**
+  - 215 tests pass; the build passes.
+  - Playwright, phone and laptop, light and dark: Edit place → Delete shows the box (Cancel focused).
+    - Escape and Cancel close only the box, the form stays, and nothing is deleted.
+    - The Groups "Delete group" box sits above the Groups dialog; Cancel leaves the group untouched.
+    - The error box closes with Enter.
+    - No native browser dialog fired at any point.
+- **Instant deletes (user report, same branch): "After Delete in the popup, the Edit form shows again for about a second, then it's deleted."**
+  - Cause 1: PlaceForm awaited the server delete (a US round trip) before closing.
+  - Cause 2: the dialog waited for its 140 ms fade before answering.
+  - Fixes:
+    - **DialogHost answers at once**; a leftover copy plays the fade (click-through).
+    - **`optimistic.js` (tested):** apply on screen → run on the server → on error, undo and explain.
+  - Applied to every delete:
+    - **Place** (personal and group): PlaceForm hands it to `Journal.deletePlace`. Form and details close, the card disappears, and a "Deleted “X”" toast shows, all at once. The DELETE runs behind, then a fresh load. On failure the place comes back with "Couldn’t delete … It’s back in your journal".
+    - **Group dish:** it hides at once (its list row collapses via `has-[.gone]:hidden`) and comes back on failure.
+    - **Bill photo:** the next photo shows at once, or the viewer closes after the last.
+    - **Groups:** Delete group and Leave vanish from the list at once (a `gone` set over the `groups` prop); Remove member drops the member at once. Each comes back with the error if the server refuses.
+  - **Measured:** the form closes 35 ms after tapping Delete while the server takes 1.5 s (in-page timing; route-delayed DELETE).
+  - **Verified with intercepted requests, so no real data was deleted:** the slow success hides the card plus the toast; the failure brings the place back with the error dialog; a group dish collapses at once and comes back on failure.

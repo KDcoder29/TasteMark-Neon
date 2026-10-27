@@ -44,7 +44,9 @@ export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onC
           </button>
         </div>
 
-        <div className="flex gap-2 px-5 pb-4">
+        {/* wraps onto a second line when there are many actions (Edit, Bill, Add a dish, Send, Maps),
+            so none is pushed off a phone screen */}
+        <div className="detail-actions flex flex-wrap gap-2 px-5 pb-4">
           {canEdit && <button className="btn !py-2 !text-sm" onClick={onEdit}><Icon name="pencil" size={16} /> Edit</button>}
           {p.bill_photos?.length > 0 && (
             <button className="btn !py-2 !text-sm" onClick={() => setBills(true)}>
@@ -70,7 +72,7 @@ export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onC
           {dishes.length === 0 && <p className="text-sm" style={mute}>No dishes added yet.</p>}
           <ul className="m-0 list-none p-0">
             {dishes.map((d, i) => (
-              <li key={d.id} className="rise py-3.5" style={{ borderTop: i ? '1px dashed var(--line)' : 0, animationDelay: `${Math.min(i, 8) * 30}ms` }}>
+              <li key={d.id} className="rise py-3.5 has-[.gone]:hidden" style={{ borderTop: i ? '1px dashed var(--line)' : 0, animationDelay: `${Math.min(i, 8) * 30}ms` }}>
                 {group ? (
                   <GroupDish d={d} me={me} names={names} isOwner={isOwner} onChanged={onChanged} />
                 ) : (
