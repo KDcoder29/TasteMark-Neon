@@ -490,3 +490,32 @@ Asked for: on delete, an "Are you sure?" popup with a bit of animation instead o
     - **Groups:** Delete group and Leave vanish from the list at once (a `gone` set over the `groups` prop); Remove member drops the member at once. Each comes back with the error if the server refuses.
   - **Measured:** the form closes 35 ms after tapping Delete while the server takes 1.5 s (in-page timing; route-delayed DELETE).
   - **Verified with intercepted requests, so no real data was deleted:** the slow success hides the card plus the toast; the failure brings the place back with the error dialog; a group dish collapses at once and comes back on failure.
+
+### 2026-10-29: Public demo account (branch `BiteMark/Demo_Account`, cut from origin/main 2f4e6e5 after PR #11)
+Asked for: a public sample user with plenty of data so every feature can be tried. More than 70 places with 2+ dishes each, every category and rating, half Vadodara and half Ahmedabad, with real well-known places (researched).
+- **Q&A with the user:**
+  - "test" / "test" isn't possible: Neon Auth refuses short passwords. The user chose a **"Try the demo" button**, with **test / test1234** typed in opening the same demo.
+  - Wanted: a popup saying changes aren't kept after log out.
+- **Account:** username `test`, password `test1234`, email `demo@example.com` (a reserved domain, so mail can't reach a real person). Created through the app's normal sign-up on 2026-10-29 (no email verification needed).
+- **`src/demoAccount.js` (tested):** `DEMO`, `isDemoUser` (by email), and "fresh once per visit" kept in sessionStorage (`bm.demo.ready`): `demoNeedsReset` / `markDemoReady` / `forgetDemoReady`.
+- **Login:** an "or" divider and **Try the demo** (signs in with the demo credentials), with the hint "A sample journal with 72 places…".
+- **App, when the demo is logged in:**
+  - **A new visit** (a new tab, or after log out) shows "Setting up the demo journal…" while the `reset_demo()` RPC restores the sample journal. It then clears local snapshots, switches to Personal, and reloads groups.
+  - **The welcome popup** (an app dialog) says it's a shared journal, nothing is kept, and it resets on log out, with **Play the tour** or **Explore on my own**. The automatic first-visit tour is off for the demo, so they never stack.
+  - **A reload** in the same tab keeps your changes (no reset, no popup).
+  - **An orange banner** on every screen says "Demo account: changes reset when you log out", with a Log out link.
+  - **Log out** calls `reset_demo()` (at most 5 s wait) before signing out.
+  - **Change password** is replaced by "Password can’t be changed in the demo", so one visitor can't lock everyone out.
+- **Data:** `db/demo/demo-seed.mjs`. Its coverage is tested in `src/demoSeed.test.js`:
+  - 72 places (36 Vadodara, 36 Ahmedabad) and 220 dishes, 3–4 per place.
+  - Every category: Food 47, Cafe 18, Healthy 6, Dessert 7 (some places have two).
+  - Every rating: 1★ 10, 2★ 19, 3★ 56, 4★ 87, 5★ 48. Order-again yes / maybe / no all appear.
+  - Prices ₹15–₹1500; Craving families (dosa, idli, khaman, dabeli, pav bhaji, pizza, momos, cold coffee, kulfi, salad, thali, paneer); visit dates spread over 6 months.
+  - Plus 6 Want to try places and a **"Weekend Foodies"** group: 5 places with ratings, reactions, comments and 2 wishes. Its Activity feed fills through the existing triggers.
+  - Places come from food guides (Culture Trip, MakeMyTrip, Swiggy, EazyDiner, Wanderlog, Outlook Traveller, magicpin): Mandap, Sasumaa, Kai Asia, 22nd Parallel, Jagdish Farsan, Mahakali Sev Usal, Duliram Pedawala, Kaffa…, and Agashiye, Vishalla, Gordhan Thal, Das Khaman, Swati Snacks, Chandravilas, Manek Chowk, Lucky, Jasuben…
+  - Areas and prices are approximate; the ratings and comments are invented.
+- **Known limit (by design):** one shared account. Two visitors at the same time see each other's changes, and one visitor's log out resets the other's view on their next load. Fine for a demo.
+- **Verified:**
+  - 231 tests pass; the build passes.
+  - Playwright in fresh browser sessions: Try the demo → welcome popup (no tour behind) and banner; the You sheet shows no Change password; the banner's Log out → login page; typing test / test1234 → the same demo; a reload → no new reset or popup.
+  - **The reset itself isn't verified yet:** it needs the SQL below to be run.
