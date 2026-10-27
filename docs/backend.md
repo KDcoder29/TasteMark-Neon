@@ -70,3 +70,11 @@ Everything server-side: Neon Postgres (schema, RLS, RPCs, triggers), Neon Auth, 
   - **Update:** the user ran the whole `neon-schema.sql` in the SQL Editor, which is re-runnable. Verified read-only: data untouched (61 places, 204 dishes, 5 ratings, 1 wishlist item, 2 groups), `bill_photos` has RLS on and its 3 policies.
     - Running the whole file also gave `authenticated` UPDATE on the table. That is harmless because no update policy exists.
   - **Gotcha: the Neon Data API caches the schema.** Right after the migration the app got "Could not find a relationship between 'places' and 'bill_photos' in the schema cache". After any new table or foreign key, refresh it: Neon Console → Data API → Refresh schema cache, or run `NOTIFY pgrst, 'reload schema';`.
+
+### 2026-10-28: `maps_url` on places and wishlist (branch `BiteMark/Maps_Links`)
+- **Migration:** `db/migrations/2026-10-28-maps-url.sql`, also added to `db/neon-schema.sql` as section 9. It adds a nullable `maps_url text` to `places` and `wishlist`.
+  - A check constraint allows only https Google Maps links (`maps.app.goo.gl/`, `goo.gl/maps`, `maps.google.*/`, `google.*/maps`) of at most 500 characters, so nothing else can be stored through the Data API.
+  - The existing grants and RLS policies cover the column; no policy changes.
+  - It ends with `notify pgrst, 'reload schema'`.
+- **STATUS: not yet applied. The user runs it** in Neon Console → SQL Editor, then refreshes the Data API schema cache if the NOTIFY doesn't take.
+  - Until then the app saves places without the link (`src/mapsSave.js` retries without `maps_url` on "column not found") and opens Maps by name + area + city instead.

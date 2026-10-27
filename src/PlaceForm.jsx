@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import Icon from './Icons'
-import { useEscape } from './layers'
+import { useEscape, useScrollLock } from './layers'
 import { supabase } from './supabase'
 import { CATEGORIES, priceInput, priceProps, StarPicker, OrderAgain, GroupBadge } from './shared'
 import { findGroupPlace, addDishWithRating } from './groupApi'
 import { blankDish, mergeScannedDishes, mergeSpokenDishes, newScannedDishes, placeFormError } from './placeRules'
 import VoiceAdd from './VoiceAdd'
+import MapsLinkField from './MapsLinkField'
+import { skipUnknownMaps } from './mapsSave'
 import BillScan from './BillScan'
 import { saveBills } from './billApi'
 
@@ -17,12 +19,13 @@ import { saveBills } from './billApi'
 // knownPlaces = my personal places (voice: "Sankalp" -> offer to add to that card, no duplicate)
 export default function PlaceForm({ me, place, cities, groups = [], defaultGroupId = '', prefill, wishId, initialBill, initialVoice, knownPlaces = [], onUseExisting, onClose, onSaved }) {
   useEscape(onClose)
+  useScrollLock()
   const editing = !!place
   const editingGroup = editing && !!place.group_id
   const start = place || prefill || {}
 
   const [f, setF] = useState({
-    name: start.name || '', city: start.city || '', area: start.area || '', directions: start.directions || '',
+    name: start.name || '', city: start.city || '', area: start.area || '', directions: start.directions || '', maps_url: start.maps_url || '',
   })
   const [dishes, setDishes] = useState(
     editing && place.dishes?.length
@@ -60,10 +63,11 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
     let savedId = editing ? place.id : null
     try {
       const clean = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.trim() || null]))
+      if (!clean.maps_url && !place?.maps_url) delete clean.maps_url    // nothing to save or clear
       clean.categories = cats
 
       if (editing) {
-        const { error: e1 } = await supabase.from('places').update(clean).eq('id', place.id)
+        const { error: e1 } = await skipUnknownMaps(row => supabase.from('places').update(row).eq('id', place.id), clean)
         if (e1) throw e1
         if (!editingGroup) {                       // personal place: dishes are edited here
           await supabase.from('dishes').delete().eq('place_id', place.id)
@@ -79,7 +83,7 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
         let placeId = existing?.id
         let created = false
         if (!placeId) {
-          const { data, error: e1 } = await supabase.from('places').insert({ ...clean, group_id: target }).select('id').single()
+          const { data, error: e1 } = await skipUnknownMaps(row => supabase.from('places').insert(row).select('id').single(), { ...clean, group_id: target })
           if (e1) throw e1
           placeId = data.id; created = true
         }
@@ -98,7 +102,7 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
         }
       } else {
         // PERSONAL
-        const { data, error: e1 } = await supabase.from('places').insert({ ...clean, group_id: null }).select('id').single()
+        const { data, error: e1 } = await skipUnknownMaps(row => supabase.from('places').insert(row).select('id').single(), { ...clean, group_id: null })
         if (e1) throw e1
         savedId = data.id
         const rows = dishes.filter(d => d.name.trim()).map(d => ({
@@ -185,6 +189,7 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
             <button key={c} type="button" onClick={() => toggleCat(c)} className={`chip ${cats.includes(c) ? 'on' : ''}`}>{c}</button>
           ))}
         </div>
+        <MapsLinkField value={f.maps_url} onChange={v => setF(x => ({ ...x, maps_url: v }))} place={f} />
         <label className={label} style={mute}>Directions / timing</label>
         <textarea rows={2} placeholder="Optional" value={f.directions} onChange={setField('directions')} className="input mb-5" />
         <datalist id="cities">{cities.map(c => <option key={c} value={c} />)}</datalist>

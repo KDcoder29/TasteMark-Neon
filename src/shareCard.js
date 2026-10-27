@@ -1,6 +1,7 @@
 // "Send to friends": what goes on the shareable picture and in the WhatsApp caption.
 // Pure helpers (tested); shareImage.js draws the picture with them.
 import { placeWhere } from './placeView'
+import { mapsUrl } from './mapsLink'
 
 // a dish's stars: your rating in Personal, the group's average in a group
 const starsOf = d => (d.nRatings != null || d.avg != null ? Math.round((d.avg || 0) * 10) / 10 : d.rating || 0)
@@ -17,8 +18,8 @@ export function pickShareDishes(place, max = 4) {
 
 const starText = n => (Number.isInteger(n) ? `${n}★` : `${n.toFixed(1)}★`)
 
-// WhatsApp text: *bold* place, one line per dish
-export function shareCaption(place, shown, { prices, notes }) {
+// WhatsApp text: *bold* place, one line per dish, and (map) a tappable map link
+export function shareCaption(place, shown, { prices, notes, map }) {
   const where = placeWhere(place)
   const lines = [`*${place.name}*${where ? ` · ${where}` : ''}`]
   for (const d of shown) {
@@ -27,6 +28,8 @@ export function shareCaption(place, shown, { prices, notes }) {
     if (notes && d.note?.trim()) bits.push(d.note.trim())
     lines.push('• ' + bits.join(' · '))
   }
+  const link = map && mapsUrl(place)
+  if (link) lines.push(`Map: ${link}`)
   return lines.join('\n') + '\n\nFrom my BiteMark food journal'
 }
 

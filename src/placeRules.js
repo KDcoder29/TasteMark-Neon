@@ -1,4 +1,7 @@
 // Rules for the Add / Edit place form, kept apart from the UI so they can be tested.
+import { isMapsLink } from './mapsLink'
+
+export const MAPS_HINT = 'That isn’t a Google Maps link. In Google Maps tap Share, then Copy link, and paste it here (or leave it empty).'
 
 export const blankDish = () => ({ name: '', price: '', rating: 0, order_again: '', note: '' })
 
@@ -32,6 +35,7 @@ export function mergeScannedDishes(dishes, scanned) {
 export function placeFormError({ f, cats, dishes, editingGroup }) {
   if (!f.name.trim() || !f.city.trim() || !f.area.trim()) return 'Please fill in place name, city and area.'
   if (!cats.length) return 'Pick at least one category.'
+  if (f.maps_url?.trim() && !isMapsLink(f.maps_url.trim())) return MAPS_HINT
   if (editingGroup) return ''
   for (const d of dishes) {
     if (!String(d.name).trim() || d.price === '') return 'Every dish needs a name and a price.'

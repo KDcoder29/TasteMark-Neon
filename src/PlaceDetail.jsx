@@ -7,7 +7,8 @@ import { placeSummary, placeWhere } from './placeView'
 import { LovedTag, tileColor } from './PlaceCard'
 import { useSheetDrag } from './useGestures'
 import ShareSheet from './ShareSheet'
-import { useEscape } from './layers'
+import { useEscape, useScrollLock } from './layers'
+import { MapsButton, MapsWhere } from './MapsLinkField'
 
 // Everything about one place: bottom sheet on phones, right-side panel on laptops.
 export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onClose, onEdit, onAddDish, onShare, onChanged }) {
@@ -19,11 +20,7 @@ export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onC
   const where = placeWhere(p)
   const mute = { color: 'var(--mute)' }
 
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'                   // the page behind stays put
-    return () => { document.body.style.overflow = prev }
-  }, [])
+  useScrollLock()                                             // the page behind stays put
   useEscape(onClose)
 
   return (
@@ -35,7 +32,7 @@ export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onC
           <span className="mono h-16 w-16 text-2xl" style={{ background: tileColor(p) }}>{p.name.trim()[0]?.toUpperCase()}</span>
           <div className="min-w-0 flex-1">
             <h2 className="m-0 text-[22px] font-extrabold leading-tight">{p.name}</h2>
-            {where && <p className="mt-1 flex items-center gap-1 text-sm" style={mute}><Icon name="pin" size={14} /> {where}</p>}
+            {where && <p className="mt-1 text-sm" style={mute}><MapsWhere place={p} where={where} /></p>}
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
               <LovedTag s={s} of />
               {s.price && <span className="font-semibold">{s.price}</span>}
@@ -60,6 +57,7 @@ export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onC
               <Icon name="send" size={16} /> Send
             </button>
           )}
+          <MapsButton place={p} className="!py-2 !text-sm" />
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-8">

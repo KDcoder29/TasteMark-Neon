@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import Icon from './Icons'
-import { useEscape } from './layers'
+import { useEscape, useScrollLock } from './layers'
 
 // The screen recording of the app (made with sample data, no one's real journal). The MP4 (H.264,
 // plays on every phone) and its poster live in public/demo/; e2e/demo/record-demo.js re-records it.
 export default function DemoVideo({ onClose }) {
   const [failed, setFailed] = useState(false)
   useEscape(onClose)
+  useScrollLock()
 
   return createPortal(
     <div className="fade fixed inset-0 z-[60] grid place-items-center p-4" style={{ background: '#0b120fe6' }}

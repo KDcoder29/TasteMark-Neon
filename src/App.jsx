@@ -16,7 +16,7 @@ import FeatureGuide from './FeatureGuide'
 import DemoVideo from './DemoVideo'
 import { shouldAutoTour, tourSeen, markTourSeen } from './tourPlan'
 import { useSheetDrag, buzz } from './useGestures'
-import { useEscape } from './layers'
+import { useEscape, useScrollLock } from './layers'
 
 function useTheme() {
   const [dark, setDark] = useState(() => {
@@ -85,6 +85,7 @@ function AccountMenu({ onClose, children }) {
 function Sheet({ title, onClose, children }) {
   const drag = useSheetDrag(onClose)
   useEscape(onClose)
+  useScrollLock()
   return (
     <>
       <div className="scrim" onMouseDown={onClose} />

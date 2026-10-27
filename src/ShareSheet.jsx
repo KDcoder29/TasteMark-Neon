@@ -4,7 +4,7 @@ import Toast from './Toast'
 import { useSheetDrag } from './useGestures'
 import { pickShareDishes, shareCaption, shareFileName } from './shareCard'
 import { drawShareCard } from './shareImage'
-import { useEscape } from './layers'
+import { useEscape, useScrollLock } from './layers'
 
 const pref = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v === '1' } catch { return d } }
 const keep = (k, v) => { try { localStorage.setItem(k, v ? '1' : '0') } catch {} }
@@ -19,7 +19,8 @@ export default function ShareSheet({ place, group, onClose }) {
   const [img, setImg] = useState(null)            // { url, blob }
   const [toast, setToast] = useState('')
   const { shown, more } = pickShareDishes(place)
-  const caption = shareCaption(place, shown, { prices, notes })
+  const [map, setMap] = useState(() => pref('share.map', true))
+  const caption = shareCaption(place, shown, { prices, notes, map })
   const file = img && new File([img.blob], shareFileName(place.name), { type: 'image/png' })
   const canSendFile = !!(file && navigator.canShare?.({ files: [file] }))
 
@@ -31,6 +32,7 @@ export default function ShareSheet({ place, group, onClose }) {
   }, [prices, notes])
 
   useEscape(onClose)
+  useScrollLock()
 
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 2600); return () => clearTimeout(t) }, [toast])
 
@@ -72,6 +74,10 @@ export default function ShareSheet({ place, group, onClose }) {
             </button>
             <button className={`chip ${notes ? 'on' : ''}`} aria-pressed={notes} onClick={() => toggle(notes, setNotes, 'share.notes')}>
               {notes && <Icon name="check" size={14} stroke={2.8} />} My comments
+            </button>
+            {/* the map link goes in the text (a picture can't hold a link) */}
+            <button className={`chip ${map ? 'on' : ''}`} aria-pressed={map} onClick={() => toggle(map, setMap, 'share.map')}>
+              {map && <Icon name="check" size={14} stroke={2.8} />} Map link
             </button>
           </div>
         </div>

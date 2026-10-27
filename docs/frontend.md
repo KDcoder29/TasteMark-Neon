@@ -423,3 +423,29 @@ Asked for: new users with an empty journal don't know what the app does. Wanted:
     - the last scene's "Add my first place" opens the + menu
     - every Try it opens the right screen
     - the video plays (no error); closing it returns to the guide
+
+### 2026-10-28: Open in Google Maps everywhere + exact Maps links (branch `BiteMark/Maps_Links`, cut from origin/main ad3aad2 after PR #9)
+Asked for: every screen with address or location fields should open Google Maps directly, plus an exact Maps link (the user agreed to the "paste the real link" idea).
+- **`mapsLink.js` (tested):**
+  - `mapsUrl(place)` returns the saved `maps_url` if it's a valid Google Maps link. Otherwise it builds a free Google "Maps URLs" search (`/maps/search/?api=1&query=`) for name + area + city (`placeWhere`, so "-" placeholders are skipped). It returns null when there's no name (no button then).
+  - `isMapsLink` accepts https links only: `maps.app.goo.gl/…`, `goo.gl/maps…`, `maps.google.*`, and `google.*/maps…`, up to 500 characters.
+  - `findMapsLink(text)` picks the link out of a pasted WhatsApp message.
+- **Where Maps opens:**
+  - **Place details:** a Maps button next to Edit / Send, and the address line itself is a link (`MapsWhere`, `.mapswhere`).
+  - **Want to try:** the card's Maps button (it now uses the saved link too) and the address.
+  - **Where to eat:** the picked place's address plus a **Directions** button.
+  - **Send to friends:** a new **Map link** chip (on by default, remembered as `share.map`) adds `Map: <link>` to the WhatsApp text. A picture can't hold a link.
+  - **Place cards themselves:** no map button, because the whole card is already a button and nested buttons are invalid. One tap opens details, which has Maps.
+- **Optional exact link** (`MapsLinkField.jsx`) in Add/Edit place and Add to Want to try.
+  - Pasting a whole WhatsApp message keeps only the Maps link. A **Check** button opens what Maps will show.
+  - Wrong links are flagged in red. `placeFormError` / the Want to try form refuse them (`MAPS_HINT`).
+  - It carries over: Want to try → "We went" → the place, and a personal place → a group card (ShareDish).
+- **Before the DB migration runs** (`mapsSave.js`, tested): `skipUnknownMaps` retries the insert/update without `maps_url` when the API says the column is unknown, and says once that the link wasn't saved. Nothing else breaks. `maps_url` is only sent when there's a link (or one is being cleared).
+- **Also fixed:** some dialogs didn't stop the page behind from scrolling. On phones a scroll inside Where to eat / Groups / Craving etc. dragged the page, and on laptops the page scrollbar pushed the picker off the edge.
+  - New `useScrollLock()` in `layers.js` (counted, so nested layers unlock only when the last closes; tested) is used by every sheet and dialog.
+  - It replaces the hand-written locks in PlaceDetail, FilterSheet and Tour. The laptop + menu dropdown isn't locked on purpose (it would make the page jump).
+- **Feature guide:** a new "Directions" item.
+- **Verified:**
+  - 209 tests pass; the build passes.
+  - Playwright on phone and laptop: place-details Maps and address links, the caption map line, Want to try Maps, a bad link flagged, pasted WhatsApp text reduced to the link, Check in the forms, picker Directions, and the scroll lock with nested layers (details → Send).
+  - Real saving of a link still needs the migration (next item).

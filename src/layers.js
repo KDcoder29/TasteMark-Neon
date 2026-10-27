@@ -36,3 +36,22 @@ export function useEscape(onClose) {
     return layers.open(() => latest.current())
   }, [])
 }
+
+// While any sheet or dialog is open the page behind must not scroll (on phones a scroll inside a
+// dialog otherwise drags the page along). Counted, so nested layers unlock only when the last closes.
+export function createScrollLock(style) {
+  let open = 0, saved = ''
+  return () => {
+    if (open++ === 0) { saved = style.overflow; style.overflow = 'hidden' }
+    let done = false
+    return () => { if (done) return; done = true; if (--open === 0) style.overflow = saved }
+  }
+}
+
+let lockBody = null
+export function useScrollLock() {
+  useEffect(() => {
+    lockBody ??= createScrollLock(document.body.style)
+    return lockBody()
+  }, [])
+}

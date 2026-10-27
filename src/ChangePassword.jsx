@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import Icon from './Icons'
-import { useEscape } from './layers'
+import { useEscape, useScrollLock } from './layers'
 import { supabase } from './supabase'
 import { changePassword } from './authApi'
 
 export default function ChangePassword({ onClose }) {
   useEscape(onClose)
+  useScrollLock()
   const [cur, setCur] = useState('')
   const [pw, setPw] = useState('')
   const [pw2, setPw2] = useState('')
