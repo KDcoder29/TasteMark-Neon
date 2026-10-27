@@ -40,3 +40,19 @@ export function placeFormError({ f, cats, dishes, editingGroup }) {
   }
   return ''
 }
+
+// Add by voice -> dish rows. Unlike a bill, voice brings stars, comment and order-again too.
+// A dish you already have in the list only gets its EMPTY parts filled; what you typed stays.
+export function mergeSpokenDishes(dishes, spoken) {
+  if (!spoken?.length) return dishes
+  const out = dishes.filter(d => !isBlank(d)).map(d => ({ ...d }))
+  for (const s of spoken) {
+    const same = out.find(d => key(d.name) === key(s.name))
+    if (!same) { out.push({ ...blankDish(), ...s }); continue }
+    if (same.price === '' && s.price !== '') same.price = s.price
+    if (!same.rating && s.rating) same.rating = s.rating
+    if (!same.order_again && s.order_again) same.order_again = s.order_again
+    if (!String(same.note).trim() && s.note) same.note = s.note
+  }
+  return out
+}

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { blankDish, mergeScannedDishes, newScannedDishes, placeFormError } from './placeRules'
+import { blankDish, mergeScannedDishes, mergeSpokenDishes, newScannedDishes, placeFormError } from './placeRules'
 
 const dish = over => ({ ...blankDish(), ...over })
 const goodPlace = { f: { name: 'Coffea', city: 'Vadodara', area: 'Canal Rd' }, cats: ['Cafe'], editingGroup: false }
@@ -77,5 +77,28 @@ describe('placeFormError', () => {
 
   test('skips dish checks when editing a group place (dishes are edited on the card)', () => {
     expect(placeFormError({ ...goodPlace, editingGroup: true, dishes: [blankDish()] })).toBe('')
+  })
+})
+
+describe('mergeSpokenDishes (voice -> dish rows)', () => {
+  test('replaces the empty starter row and keeps stars, comment and order-again', () => {
+    const spoken = [dish({ name: 'Masala Dosa', price: '180', rating: 5, note: 'Crispy', order_again: 'yes' })]
+    expect(mergeSpokenDishes([blankDish()], spoken)).toEqual(spoken)
+  })
+
+  test('saying a dish already in the list fills its empty parts, never overwrites typed ones', () => {
+    const typed = dish({ name: 'Masala dosa', price: '170', rating: 0, note: '' })
+    const out = mergeSpokenDishes([typed], [dish({ name: 'Masala Dosa', price: '180', rating: 4, note: 'Crispy' })])
+    expect(out).toEqual([dish({ name: 'Masala dosa', price: '170', rating: 4, note: 'Crispy' })])
+  })
+
+  test('new dishes go after the ones you typed', () => {
+    const typed = dish({ name: 'Vada Pav', price: '30', rating: 5, note: 'Spicy' })
+    expect(mergeSpokenDishes([typed], [dish({ name: 'Chai', price: '20' })]).map(d => d.name)).toEqual(['Vada Pav', 'Chai'])
+  })
+
+  test('nothing said, nothing changes', () => {
+    const list = [blankDish()]
+    expect(mergeSpokenDishes(list, [])).toBe(list)
   })
 })

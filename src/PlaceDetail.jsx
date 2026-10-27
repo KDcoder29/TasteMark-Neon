@@ -6,10 +6,12 @@ import { Stars } from './shared'
 import { placeSummary, placeWhere } from './placeView'
 import { LovedTag, tileColor } from './PlaceCard'
 import { useSheetDrag } from './useGestures'
+import ShareSheet from './ShareSheet'
 
 // Everything about one place: bottom sheet on phones, right-side panel on laptops.
 export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onClose, onEdit, onAddDish, onShare, onChanged }) {
   const [bills, setBills] = useState(false)
+  const [sending, setSending] = useState(false)    // "Send to friends" open
   const drag = useSheetDrag(onClose)
   const s = placeSummary({ dishes: p.allDishes || p.dishes })
   const dishes = p.allDishes || p.dishes || []
@@ -17,12 +19,12 @@ export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onC
   const mute = { color: 'var(--mute)' }
 
   useEffect(() => {
-    const key = e => { if (e.key === 'Escape' && !bills) onClose() }
+    const key = e => { if (e.key === 'Escape' && !bills && !sending) onClose() }
     document.addEventListener('keydown', key)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'                   // the page behind stays put
     return () => { document.removeEventListener('keydown', key); document.body.style.overflow = prev }
-  }, [onClose, bills])
+  }, [onClose, bills, sending])
 
   return (
     <>
@@ -53,6 +55,11 @@ export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onC
             </button>
           )}
           {group && <button className="btn btn-pri !py-2 !text-sm" onClick={onAddDish}><Icon name="plus" size={16} /> Add a dish</button>}
+          {dishes.length > 0 && (
+            <button className="btn !py-2 !text-sm" onClick={() => setSending(true)} aria-label={`Send ${p.name} to friends`}>
+              <Icon name="send" size={16} /> Send
+            </button>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-8">
@@ -94,6 +101,7 @@ export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onC
           </ul>
         </div>
       </section>
+      {sending && <ShareSheet place={{ ...p, dishes }} group={group} onClose={() => setSending(false)} />}
       {bills && <PlaceBills place={p} me={me} isOwner={isOwner} names={names} onClose={() => setBills(false)} onChanged={onChanged} />}
     </>
   )

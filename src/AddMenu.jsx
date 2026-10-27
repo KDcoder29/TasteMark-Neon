@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react'
 import Icon from './Icons'
 import { canTakePhoto } from './capture'
+import { speechSupported } from './speech'
 
-// What the + button offers: scan a bill (camera on phones), upload a bill photo, or add by hand.
+// What the + button offers: scan a bill (camera on phones), upload a bill photo, say it (voice,
+// where the browser can), or add by hand.
 // The bill choices are real file inputs, so the photo is picked in the same tap (phones refuse to
 // open the camera from code that runs later) and handed over with onPick({ file }).
 export default function AddMenu({ onPick, onClose }) {
@@ -42,6 +44,11 @@ export default function AddMenu({ onPick, onClose }) {
           <input type="file" accept="image/*" className="hidden" onChange={file} data-testid="add-upload" />
           {row('upload', 'var(--accent-soft)', 'var(--accent-ink)', phone ? 'Upload bill photo' : 'Scan a bill photo', 'From your gallery or files')}
         </label>
+        {speechSupported(window) && (
+          <button type="button" className="actrow" role="menuitem" onClick={() => onPick({ voice: true })}>
+            {row('mic', 'var(--pri-soft)', 'var(--pri)', 'Say it', '“Sankalp, masala dosa, 180 rupees, 5 stars”')}
+          </button>
+        )}
         <button type="button" className="actrow" role="menuitem" onClick={() => onPick({})}>
           {row('pencil', 'var(--pri-soft)', 'var(--pri)', 'Add manually', 'Type in the place and dishes')}
         </button>

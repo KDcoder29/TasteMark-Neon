@@ -241,3 +241,19 @@ button:not(:disabled),[role=button],select,label[for]{cursor:pointer}
 .story-nums b{font-size:26px;font-weight:800;line-height:1.1;letter-spacing:-.02em;color:var(--pri);font-variant-numeric:tabular-nums}
 .story-nums span{font-size:12.5px;color:var(--mute)}
 .story-row{display:flex;align-items:center;gap:11px;padding:8px 0 0}
+
+/* ---------- Add by voice ---------- */
+@keyframes listen{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 45%,transparent)}100%{box-shadow:0 0 0 16px transparent}}
+.voicebar{display:flex;align-items:center;gap:12px;padding:10px 12px;border:2px dashed var(--line);border-radius:16px;background:var(--bg);
+  transition:border-color .2s,background .2s}
+.voicebar.on{border-style:solid;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));background:var(--accent-soft)}
+.micbtn{flex:none;display:grid;place-items:center;width:46px;height:46px;border:0;border-radius:50%;background:var(--pri-soft);color:var(--pri);
+  transition:background .2s,color .2s,transform .15s var(--ease)}
+.micbtn:active{transform:scale(.92)}
+.micbtn.on{background:var(--accent);color:#fff;animation:listen 1.3s ease-out infinite}
+
+/* ---------- Send to friends ---------- */
+.sharepreview{display:grid;place-items:center;min-height:240px;border-radius:16px;overflow:hidden;border:1px solid var(--line);
+  background:var(--surface-2);box-shadow:var(--sh-2)}
+.sharepreview img{display:block;max-width:100%;max-height:52vh;object-fit:contain}
+.sharepreview .skel{width:100%;height:360px}

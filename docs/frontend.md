@@ -313,3 +313,45 @@ Asked for: cleaner and smoother phone UX with small animations, at least 4 impro
     - a pull refetches places
     - Undo restores the card with no DELETE request sent
   - Dark mode and the laptop layout were checked by screenshot.
+
+### 2026-10-27: Send to friends + Add by voice (branch `BiteMark/Share_Voice`, cut from origin/main 0bfccc7 after PR #6)
+Asked for: "Share to WhatsApp" (a clean picture of a place card for friends who don't use BiteMark) and "Add a dish by voice" (free browser speech, Hinglish), "without hindering UX". The defaults below were Claude's calls.
+- **Send to friends.** A **Send** button in place details (only when the place has dishes) opens `ShareSheet.jsx`, a preview first, so you see exactly what goes out.
+  - **Toggles:** Prices and My comments. Remembered per device in localStorage `share.prices` / `share.notes`.
+  - **Phones:** "Share picture" uses the Web Share API with the PNG file plus a caption, so WhatsApp gets the picture with the text.
+  - **No file sharing:** the button becomes "Download picture" and copies the caption.
+  - **Always offered:** "Send as text" (a `wa.me/?text=` link, which also opens WhatsApp Web) and "Copy text". A cancelled share (AbortError) is silent.
+  - **Picture** (`shareImage.js`, canvas, 1080 px wide, height fits the content):
+    - a green band with a letter tile, name, area and categories
+    - "What to order" with up to 4 dishes rated 4★ and up (best first, order-again breaks a tie), each with partial stars for group averages, price, a "Would order again" pill and a 2-line comment
+    - "+N more dishes in my journal"
+    - a BiteMark footer saying "My own ratings" or "Rated by <group>"
+    - If no dish has 4★, it shows the best 3 under "What I tried" (honest rather than empty).
+    - Fixed light colours, whatever theme the sender uses.
+  - Logic in `shareCard.js` (tested): `pickShareDishes`, `shareCaption` (WhatsApp `*bold*`), `wrapLines`, `shareFileName`.
+- **Add by voice.**
+  - **Where:** **Say it** in the + menu starts listening at once, and the place-name field does NOT autofocus, so no keyboard pops up. The same bar (`VoiceAdd.jsx`) sits at the top of the Add / Edit place form (not for group cards, whose dishes aren't edited there).
+  - **Hidden where unsupported:** shown only when `SpeechRecognition` / `webkitSpeechRecognition` exists (`speech.js`, tested). Firefox doesn't have it.
+  - **Recogniser setup:** `lang = en-IN` (best for Hinglish), continuous, with interim words shown live. It stops after 2.5 s of silence, on Done, or at 45 s.
+  - **Privacy:** Chrome sends the audio to its own speech service. It's free, but not on-device.
+  - **Parser** `voiceParse.js` (tested, 18 cases):
+    - each pause or comma is a piece; "next" / "next dish" / "and then" starts a dish
+    - price: rs/₹/rupees/rupaye/20rs/"two hundred fifty", or a bare number above 5 (capped at 9999)
+    - stars: digits, English, Hindi/Gujarati (ek, do, teen, char, paanch), "3 out of 5", "rating 4"; clamped to 1–5
+    - order again: "will order again", "dobara lenge", "phir se" → yes; "never again", "kabhi nahi" → no
+    - Number words only count next to a price or stars, so "paneer do pyaza" stays as it is.
+  - **How the place is found:**
+    1. a place already in your journal at the start
+    2. "… at <place>"
+    3. a first piece that isn't a known dish
+    4. all in one breath: `dishWordIndex` (new in `foodLexicon.js`; "masala dosa" and "rava dosa" were added) finds where the dish starts
+  - **Into the form:** `mergeSpokenDishes` (placeRules, tested). It fills only the empty parts of a dish already in the list; new dishes are appended. The place name is filled only if empty.
+  - **A place you already have** fills its city, area and categories, and offers **"Add dishes there"**, which opens that place in Edit with the new dishes merged in (no duplicate card). This needed `key={editing?.id || 'new'}` on `PlaceForm`.
+  - Nothing is saved until you press Save.
+- **New icons:** mic, send, download, copy.
+- **Verified:**
+  - 165 tests pass; the build passes.
+  - Playwright on phone and laptop:
+    - Send preview and caption; the toggles redraw the picture.
+    - Voice via a fake recogniser installed in the page (Chrome now also has the unprefixed `SpeechRecognition`, so both names must be faked): live transcript → place + dish + stars + Order again; the "already in your journal" → Edit place path.
+  - Real microphone and the real WhatsApp share are left for the user's phone.

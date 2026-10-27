@@ -18,6 +18,7 @@ import { smartIndex, shouldAutoWarm } from './smartIndex'
 import { docsFromPlaces } from './smartSearch'
 import { loadJournal, saveJournal } from './fastStart'
 import { foodStory } from './foodStory'
+import { mergeSpokenDishes } from './placeRules'
 import { usePullRefresh } from './useGestures'
 
 const store = (() => { try { return window.localStorage } catch { return null } })()
@@ -129,7 +130,7 @@ export default function Journal({ me, group, groups, username, view, setView, ad
     if (!addIntent) return
     if (addIntent.tool === 'craving') setAsking(true)
     else if (addIntent.tool === 'picker') setPicking(true)
-    else setCreating({ billFile: addIntent.file || null })
+    else setCreating({ billFile: addIntent.file || null, voice: !!addIntent.voice })
     onIntentDone()
   }, [addIntent])
 
@@ -344,7 +345,14 @@ export default function Journal({ me, group, groups, username, view, setView, ad
       {asking && <CravingChat places={places} onClose={() => setAsking(false)} onOpenPlace={id => { setAsking(false); setOpenId(id) }} />}
 
       {(editing || creating) && (
-        <PlaceForm me={me} place={editing} prefill={creating?.prefill} wishId={creating?.wishId} initialBill={creating?.billFile}
+        <PlaceForm key={editing?.id || 'new'} me={me} place={editing} prefill={creating?.prefill} wishId={creating?.wishId} initialBill={creating?.billFile}
+          initialVoice={!!creating?.voice} knownPlaces={group ? [] : places}
+          onUseExisting={(p, said) => {
+            // voice named a place you already have: open THAT place with the new dishes added
+            const rows = (p.dishes || []).map(d => ({ name: d.name, price: d.price ?? '', rating: d.rating || 0, order_again: d.order_again || '', note: d.note || '' }))
+            setCreating(null)
+            setEditing({ ...p, dishes: mergeSpokenDishes(rows, said) })
+          }}
           cities={opts('city')} groups={groups} defaultGroupId={group?.id || ''}
           onClose={() => { setEditing(null); setCreating(null) }}
           onSaved={() => { setEditing(null); setCreating(null); load() }} />

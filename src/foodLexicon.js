@@ -4,7 +4,7 @@
 
 const TOPICS = [
   { name: 'South Indian', say: ['south indian', 'south', 'madrasi', 'udupi', 'tamil', 'kerala'],
-    dishes: ['dosa', 'idli', 'uttapam', 'vada', 'medu vada', 'sambar', 'appam', 'upma', 'rasam', 'filter coffee', 'pongal', 'paniyaram', 'mysore pak'] },
+    dishes: ['dosa', 'masala dosa', 'rava dosa', 'idli', 'uttapam', 'vada', 'medu vada', 'sambar', 'appam', 'upma', 'rasam', 'filter coffee', 'pongal', 'paniyaram', 'mysore pak'] },
   { name: 'North Indian', say: ['north indian', 'punjabi', 'mughlai'],
     dishes: ['paneer', 'butter chicken', 'dal makhani', 'naan', 'roti', 'paratha', 'kulcha', 'chole', 'rajma', 'tikka', 'biryani', 'lassi'] },
   { name: 'Gujarati', say: ['gujarati', 'kathiyawadi', 'kathiawadi'],
@@ -48,4 +48,18 @@ export function expandQuery(text) {
 export function topicsOfDish(name) {
   const t = clean(name)
   return TOPICS.filter(tp => tp.dishes.some(d => has(t, d))).map(tp => tp.name)
+}
+
+// where a dish name starts inside a sentence: "sankalp masala dosa" -> 1 (used by Add by voice
+// to tell the place from the dish). The earliest known dish wins; -1 when there is none.
+export function dishWordIndex(text) {
+  const words = clean(text).trim().split(' ')
+  let best = -1
+  for (const tp of TOPICS) for (const d of tp.dishes) {
+    const dw = d.split(' ')
+    for (let i = 0; i + dw.length <= words.length && (best < 0 || i < best); i++) {
+      if (dw.every((w, j) => words[i + j] === w)) { best = i; break }
+    }
+  }
+  return best
 }
