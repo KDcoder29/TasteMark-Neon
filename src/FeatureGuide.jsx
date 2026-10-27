@@ -2,7 +2,7 @@ import Icon from './Icons'
 import { FEATURES } from './features'
 import { TOUR } from './tourPlan'
 import { useSheetDrag } from './useGestures'
-import { useEscape } from './layers'
+import { useEscape, useScrollLock } from './layers'
 
 const tourSeconds = Math.round(TOUR.reduce((s, x) => s + x.ms, 0) / 1000)
 
@@ -11,6 +11,7 @@ const tourSeconds = Math.round(TOUR.reduce((s, x) => s + x.ms, 0) / 1000)
 export default function FeatureGuide({ onClose, onTour, onVideo, onTry }) {
   const drag = useSheetDrag(onClose)
   useEscape(onClose)
+  useScrollLock()
   const mute = { color: 'var(--mute)' }
 
   return (

@@ -3,7 +3,7 @@ import Icon from './Icons'
 import { CATEGORIES, PriceSlider } from './shared'
 import { filterPlaces, activeFilterCount, NO_FILTERS, SORTS } from './journalFilter'
 import { useSheetDrag } from './useGestures'
-import { useEscape } from './layers'
+import { useEscape, useScrollLock } from './layers'
 
 // Phone filters, the Zomato / Swiggy way: sections on the left, options on the right, and a live
 // "Show N places" so you know what you'll get before applying. Works on a draft; nothing changes
@@ -19,11 +19,7 @@ export default function FilterSheet({ places, filters, sort, scale, cities, star
   const catCount = c => places.filter(p => (p.categories || []).includes(c)).length
   const priceOn = d.maxPrice != null && d.maxPrice < scale.cap
 
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
-  }, [onClose])
+  useScrollLock()
 
   const tabs = [
     ['sort', 'Sort by', s !== 'recent'],

@@ -520,3 +520,14 @@ create policy "bills remove" on bill_photos for delete to authenticated
   using (user_id = auth.uid() or exists (
     select 1 from places p where p.id = bill_photos.place_id
       and p.group_id is not null and is_group_owner(p.group_id)));
+
+-- 9. EXACT MAPS LINKS (added 2026-10-28; same as db/migrations/2026-10-28-maps-url.sql) --------
+-- optional; empty = the app searches Google Maps for name + area + city
+alter table places   add column if not exists maps_url text;
+alter table wishlist add column if not exists maps_url text;
+alter table places   drop constraint if exists places_maps_url_check;
+alter table places   add  constraint places_maps_url_check check (
+  maps_url is null or (length(maps_url) <= 500 and maps_url ~ '^https://(maps\.app\.goo\.gl/|goo\.gl/maps|maps\.google\.[a-z.]+/|(www\.)?google\.[a-z.]+/maps)'));
+alter table wishlist drop constraint if exists wishlist_maps_url_check;
+alter table wishlist add  constraint wishlist_maps_url_check check (
+  maps_url is null or (length(maps_url) <= 500 and maps_url ~ '^https://(maps\.app\.goo\.gl/|goo\.gl/maps|maps\.google\.[a-z.]+/|(www\.)?google\.[a-z.]+/maps)'));

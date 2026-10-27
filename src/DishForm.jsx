@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Icon from './Icons'
-import { useEscape } from './layers'
+import { useEscape, useScrollLock } from './layers'
 import { supabase } from './supabase'
 import { addDishWithRating } from './groupApi'
 import { norm, priceInput, priceProps, StarPicker, OrderAgain } from './shared'
@@ -9,6 +9,7 @@ import { norm, priceInput, priceProps, StarPicker, OrderAgain } from './shared'
 // If the dish already exists there, my rating is added to it.
 export default function DishForm({ me, place, onClose, onSaved }) {
   useEscape(onClose)
+  useScrollLock()
   const [f, setF] = useState({ name: '', price: '', rating: 0, order_again: '', note: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')

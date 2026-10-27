@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import Icon from './Icons'
 import TourScene from './TourScenes'
 import { TOUR, tourStart, tourStep } from './tourPlan'
-import { useEscape } from './layers'
+import { useEscape, useScrollLock } from './layers'
 
 // The 1-minute tour, played like stories: bars at the top, tap right / left to skip, hold to pause.
 // onDone(next): next = 'add' (start the first entry), 'guide' (see all features) or undefined.
@@ -15,11 +15,7 @@ export default function Tour({ onDone }) {
 
   useEscape(() => onDone())
   useEffect(() => { if (s.done) onDone() }, [s.done])
-  useEffect(() => {                                   // the page behind stays put
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
-  }, [])
+  useScrollLock()                                     // the page behind stays put
 
   // the clock: one requestAnimationFrame loop, paused while the tab is hidden
   useEffect(() => {

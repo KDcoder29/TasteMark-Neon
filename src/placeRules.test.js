@@ -102,3 +102,20 @@ describe('mergeSpokenDishes (voice -> dish rows)', () => {
     expect(mergeSpokenDishes(list, [])).toBe(list)
   })
 })
+
+describe('placeFormError: the optional Google Maps link', () => {
+  const base = { f: { name: 'Coffea', city: 'Vadodara', area: 'Canal Rd' }, cats: ['Cafe'], editingGroup: false,
+    dishes: [{ ...blankDish(), name: 'Cold Coffee', price: '200', rating: 4, note: 'Nice' }] }
+
+  test('empty is fine (Maps searches the name and area instead)', () => {
+    expect(placeFormError({ ...base, f: { ...base.f, maps_url: '' } })).toBe('')
+  })
+
+  test('a real Google Maps link is fine', () => {
+    expect(placeFormError({ ...base, f: { ...base.f, maps_url: 'https://maps.app.goo.gl/AbC123' } })).toBe('')
+  })
+
+  test('any other link is refused with a hint', () => {
+    expect(placeFormError({ ...base, f: { ...base.f, maps_url: 'https://zomato.com/x' } })).toMatch(/Google Maps link/)
+  })
+})

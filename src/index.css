@@ -337,3 +337,8 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
 .guide-play.video-card{background:var(--accent-soft);color:var(--ink)}
 .guide-item{display:flex;gap:12px;padding:12px 4px;border-top:1px solid var(--line)}
 .guide-item:first-of-type{border-top:0}
+
+/* an address line that opens Google Maps */
+.mapswhere{display:inline-flex;align-items:center;gap:4px;color:inherit;text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 35%,transparent);
+  text-underline-offset:3px;border-radius:6px;transition:color .15s}
+.mapswhere:hover{color:var(--pri)}

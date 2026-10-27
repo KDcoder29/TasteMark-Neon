@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useEscape } from './layers'
+import { useEscape, useScrollLock } from './layers'
 
 // Full-screen bill photo(s): zoom, "1 of 2" arrows, and delete for whoever may delete.
 // photos = [{ id, src, caption, canDelete }]. Esc / tap outside closes; ← → move between bills.
@@ -22,6 +22,7 @@ function Panel({ photos, onClose, onDelete }) {
   const go = d => { setZoom(false); setI((at + d + n) % n) }
 
   useEscape(onClose)
+  useScrollLock()
   useEffect(() => {
     const key = e => {
       if (n > 1 && e.key === 'ArrowRight') go(1)

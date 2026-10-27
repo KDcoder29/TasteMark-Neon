@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import Icon from './Icons'
-import { useEscape } from './layers'
+import { useEscape, useScrollLock } from './layers'
 import { supabase } from './supabase'
 import { findGroupPlace, addDishWithRating } from './groupApi'
 import { GroupBadge } from './shared'
+import { skipUnknownMaps } from './mapsSave'
 
 // Shares one dish (and its place, if the group doesn't have it yet) with a group.
 // The place is shared as ONE card, and your rating is added next to your friends' ratings.
 // Your personal entry is left untouched.
 export default function ShareDish({ me, place, dish, groups, onClose }) {
   useEscape(onClose)
+  useScrollLock()
   const [target, setTarget] = useState(null)   // group chosen, waiting for confirmation
   const [done, setDone] = useState(null)       // { group, status }
   const [busy, setBusy] = useState(false)
@@ -22,10 +24,10 @@ export default function ShareDish({ me, place, dish, groups, onClose }) {
     try {
       let match = await findGroupPlace(target.id, place.name, place.city)
       if (!match) {
-        const { data, error: e2 } = await supabase.from('places').insert({
-          name: place.name, city: place.city, area: place.area, directions: place.directions,
-          categories: place.categories || [], group_id: target.id,
-        }).select('id').single()
+        const row = { name: place.name, city: place.city, area: place.area, directions: place.directions,
+          categories: place.categories || [], group_id: target.id }
+        if (place.maps_url) row.maps_url = place.maps_url          // the exact map link travels with it
+        const { data, error: e2 } = await skipUnknownMaps(r => supabase.from('places').insert(r).select('id').single(), row)
         if (e2) throw e2
         match = { id: data.id, dishes: [] }
         createdId = data.id

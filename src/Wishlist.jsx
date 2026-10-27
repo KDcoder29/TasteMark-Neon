@@ -6,14 +6,18 @@ import Toast from './Toast'
 import { tileColor } from './PlaceCard'
 import { placeWhere } from './placeView'
 import { createUndo } from './undo'
+import MapsLinkField, { MapsButton, MapsWhere } from './MapsLinkField'
+import { isMapsLink } from './mapsLink'
+import { MAPS_HINT } from './placeRules'
+import { skipUnknownMaps } from './mapsSave'
 
-const mapsLink = w => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent([w.name, w.area, w.city].filter(Boolean).join(', '))
+const EMPTY = { name: '', city: '', area: '', note: '', maps_url: '' }
 
 // "Want to try" list. In a group everybody sees it; in Personal only you do.
 // Remove is instant with a 5-second Undo (no "are you sure?" box); the real delete happens after.
 export default function Wishlist({ me, group, items, names, isOwner, onChanged, onWent }) {
   const [open, setOpen] = useState(false)
-  const [f, setF] = useState({ name: '', city: '', area: '', note: '' })
+  const [f, setF] = useState(EMPTY)
   const [cats, setCats] = useState([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -41,14 +45,17 @@ export default function Wishlist({ me, group, items, names, isOwner, onChanged, 
   async function add(e) {
     e.preventDefault()
     if (!f.name.trim()) return setError('Enter the place name.')
+    if (f.maps_url.trim() && !isMapsLink(f.maps_url.trim())) return setError(MAPS_HINT)
     setBusy(true); setError('')
-    const { error: err } = await supabase.from('wishlist').insert({
+    const row = {
       name: f.name.trim(), city: f.city.trim() || null, area: f.area.trim() || null,
       note: f.note.trim() || null, categories: cats, group_id: group?.id ?? null,
-    })
+    }
+    if (f.maps_url.trim()) row.maps_url = f.maps_url.trim()
+    const { error: err } = await skipUnknownMaps(r => supabase.from('wishlist').insert(r), row)
     setBusy(false)
     if (err) return setError(err.message)
-    setF({ name: '', city: '', area: '', note: '' }); setCats([]); setOpen(false)
+    setF(EMPTY); setCats([]); setOpen(false)
     onChanged()
   }
 
@@ -81,6 +88,7 @@ export default function Wishlist({ me, group, items, names, isOwner, onChanged, 
             {CATEGORIES.map(c => <button key={c} type="button" onClick={() => toggleCat(c)} className={`chip ${cats.includes(c) ? 'on' : ''}`}>{c}</button>)}
           </div>
           <input value={f.note} onChange={setField('note')} placeholder="Why? (optional, e.g. Riya recommended it)" className="input mb-3" />
+          <MapsLinkField value={f.maps_url} onChange={v => setF(x => ({ ...x, maps_url: v }))} place={f} />
           {error && <p className="fade mb-3 rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--errbg)', color: 'var(--bad)' }}>{error}</p>}
           <button disabled={busy} className="btn btn-pri w-full">{busy ? 'Adding…' : 'Add to Want to try'}</button>
         </form>
@@ -105,14 +113,14 @@ export default function Wishlist({ me, group, items, names, isOwner, onChanged, 
                       <h3 className="m-0 text-[16px] font-bold leading-snug">{w.name}</h3>
                       {(w.categories || []).length > 0 && <span className="flex shrink-0 gap-1">{w.categories.map(c => <span key={c} className="pill">{c}</span>)}</span>}
                     </div>
-                    {where && <p className="m-0 mt-0.5 flex items-center gap-1 text-[13px]" style={mute}><Icon name="pin" size={13} /> {where}</p>}
+                    {where && <p className="m-0 mt-0.5 text-[13px]" style={mute}><MapsWhere place={w} where={where} size={13} /></p>}
                     {w.note && <p className="wnote">{w.note}</p>}
                     {group && <p className="m-0 mt-1.5 text-xs" style={mute}>Added by {w.user_id === me ? 'you' : (names[w.user_id] || 'a member')}</p>}
                   </div>
                 </div>
                 <div className="mt-3 flex items-center gap-2">
                   <button onClick={() => onWent(w)} className="btn btn-pri !px-3.5 !py-2 !text-sm"><Icon name="check" size={16} stroke={2.6} /> We went</button>
-                  <a href={mapsLink(w)} target="_blank" rel="noopener noreferrer" className="btn !px-3.5 !py-2 !text-sm"><Icon name="map" size={16} /> Maps</a>
+                  <MapsButton place={w} className="!px-3.5 !py-2 !text-sm" />
                   {(w.user_id === me || isOwner) && (
                     <button onClick={() => remove(w)} aria-label={`Remove ${w.name}`} className="ghost ml-auto grid h-9 w-9 place-items-center rounded-full" style={mute}>
                       <Icon name="trash" size={18} />

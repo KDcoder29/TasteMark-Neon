@@ -53,6 +53,13 @@ describe('shareCaption (the WhatsApp text)', () => {
       '*Sankalp* · Alkapuri, Vadodara\n• Masala dosa · 5★\n\nFrom my BiteMark food journal')
   })
 
+  test('a map line when asked: the exact saved link, or a Maps search', () => {
+    const { shown } = pickShareDishes(place)
+    expect(shareCaption({ ...place, maps_url: 'https://maps.app.goo.gl/AbC' }, shown.slice(0, 1), { prices: false, notes: false, map: true })).toBe(
+      '*Sankalp* · Alkapuri, Vadodara\n• Masala dosa · 5★\nMap: https://maps.app.goo.gl/AbC\n\nFrom my BiteMark food journal')
+    expect(shareCaption(place, [], { map: true })).toContain('Map: https://www.google.com/maps/search/?api=1&query=Sankalp%2C%20Alkapuri%2C%20Vadodara')
+  })
+
   test('an average shows one decimal', () => {
     const p = { name: 'X', dishes: [] }
     expect(shareCaption(p, [{ name: 'A', stars: 4.5 }], { prices: true, notes: true })).toBe('*X*\n• A · 4.5★\n\nFrom my BiteMark food journal')

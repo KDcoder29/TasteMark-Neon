@@ -201,7 +201,7 @@ export default function Journal({ me, group, groups, username, view, setView, ad
       <div key={view} className="tabin">
       {view === 'wishlist' && (
         <Wishlist me={me} group={group} items={wishlist} names={names} isOwner={isOwner} onChanged={load}
-          onWent={w => setCreating({ prefill: { name: w.name, city: w.city, area: w.area, categories: w.categories || [] }, wishId: w.id })} />
+          onWent={w => setCreating({ prefill: { name: w.name, city: w.city, area: w.area, categories: w.categories || [], maps_url: w.maps_url || '' }, wishId: w.id })} />
       )}
 
       {view === 'activity' && group && <Activity me={me} group={group} names={names} />}

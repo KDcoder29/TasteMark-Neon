@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Icon from './Icons'
-import { useEscape } from './layers'
+import { useEscape, useScrollLock } from './layers'
 import ChipSelect from './ChipSelect'
+import { MapsButton, MapsWhere } from './MapsLinkField'
+import { placeWhere } from './placeView'
 import { CATEGORIES, Stars, priceScale, PriceSlider } from './shared'
 
 // "Where should we eat?": picks a random place from favorites, the wishlist, or everything.
 export default function Picker({ places, wishlist, group, onClose }) {
   useEscape(onClose)
+  useScrollLock()
   const [src, setSrc] = useState('fav')            // 'fav' | 'new' | 'any'
   const [city, setCity] = useState('All')
   const [cat, setCat] = useState('All')
@@ -36,13 +39,13 @@ export default function Picker({ places, wishlist, group, onClose }) {
         if (src === 'fav' && !dishes.some(d => d.rating >= 4)) continue
         if (priceOn && !dishes.some(d => d.price != null && d.price <= maxPrice)) continue
         const top = [...dishes].sort((a, b) => (b.rating || 0) - (a.rating || 0)).slice(0, 2)
-        out.push({ key: 'p' + p.id, kind: 'place', name: p.name, city: p.city, area: p.area, directions: p.directions, categories: p.categories, top })
+        out.push({ key: 'p' + p.id, kind: 'place', name: p.name, city: p.city, area: p.area, directions: p.directions, maps_url: p.maps_url, categories: p.categories, top })
       }
     }
     if (src !== 'fav') {
       for (const w of wishlist) {
         if (!okCity(w) || !okCat(w)) continue
-        out.push({ key: 'w' + w.id, kind: 'wish', name: w.name, city: w.city, area: w.area, note: w.note, categories: w.categories, top: [] })
+        out.push({ key: 'w' + w.id, kind: 'wish', name: w.name, city: w.city, area: w.area, note: w.note, maps_url: w.maps_url, categories: w.categories, top: [] })
       }
     }
     return out
@@ -114,7 +117,10 @@ export default function Picker({ places, wishlist, group, onClose }) {
                 <span className={`pill ${shown.kind === 'wish' ? '' : 'pill-ok'}`}>{shown.kind === 'wish' ? 'From your wishlist' : 'A favorite'}</span>
               </div>
               <div className="text-xl font-bold leading-snug">{shown.name}</div>
-              {(shown.area || shown.city) && <div className="flex items-center gap-1 text-sm" style={mute}><Icon name="pin" size={14} /> {[shown.area, shown.city].filter(Boolean).join(', ')}</div>}
+              <div className="flex items-center justify-between gap-2 text-sm" style={mute}>
+                <MapsWhere place={shown} where={placeWhere(shown)} />
+                <MapsButton place={shown} className="shrink-0 !px-3 !py-1.5 !text-[13px]" label="Directions" />
+              </div>
               {shown.directions && <div className="mt-1 text-sm" style={mute}>{shown.directions}</div>}
               {shown.note && <div className="mt-1 text-sm" style={mute}>{shown.note}</div>}
               {shown.top.length > 0 && (

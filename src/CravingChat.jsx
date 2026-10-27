@@ -6,7 +6,7 @@ import { docsFromPlaces, parseCraving, rankDishes, relatedSearches } from './sma
 import { embed } from './embedder'
 import { smartIndex } from './smartIndex'
 import { useSheetDrag } from './useGestures'
-import { useEscape } from './layers'
+import { useEscape, useScrollLock } from './layers'
 
 const STARTERS = ['South Indian', 'Something cold', 'Spicy snack under ₹100', 'Dessert', 'Healthy breakfast', 'Good coffee']
 
@@ -32,6 +32,7 @@ export default function CravingChat({ places, onOpenPlace, onClose }) {
   }, [docs])
 
   useEscape(onClose)
+  useScrollLock()
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [messages])
 
   async function send(text) {

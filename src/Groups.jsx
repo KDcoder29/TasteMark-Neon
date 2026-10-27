@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import Icon from './Icons'
-import { useEscape } from './layers'
+import { useEscape, useScrollLock } from './layers'
 import { supabase } from './supabase'
 
 const fmt = c => (c ? c.slice(0, 4) + '-' + c.slice(4) : '')
@@ -17,6 +17,7 @@ function Avatar({ text, color, size = 40, round = false }) {
 
 export default function Groups({ me, groups, onClose, onChanged, onOpen }) {
   useEscape(onClose)
+  useScrollLock()
   const [tab, setTab] = useState(groups.length ? 'mine' : 'create')   // 'mine' | 'create'
   const [selectedId, setSelectedId] = useState(null)                   // group opened in the detail view
   const [mode, setMode] = useState('new')                              // inside Create: 'new' | 'join'
