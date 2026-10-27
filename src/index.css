@@ -257,3 +257,16 @@ button:not(:disabled),[role=button],select,label[for]{cursor:pointer}
   background:var(--surface-2);box-shadow:var(--sh-2)}
 .sharepreview img{display:block;max-width:100%;max-height:52vh;object-fit:contain}
 .sharepreview .skel{width:100%;height:360px}
+
+/* "Order again?" Yes / Maybe / No */
+.seg{display:inline-flex;padding:3px;gap:2px;border-radius:12px;background:var(--soft);border:1px solid var(--line)}
+.seg button{padding:6px 12px;border:0;border-radius:9px;background:transparent;font:inherit;font-size:13px;font-weight:600;color:var(--mute);
+  transition:background .18s,color .18s,box-shadow .18s,transform .12s var(--ease)}
+.seg button:active{transform:scale(.95)}
+.seg button.on{background:var(--surface);box-shadow:var(--sh-1)}
+.seg .seg-yes.on{color:var(--ok);background:var(--okbg)}
+.seg .seg-maybe.on{color:var(--ink)}
+.seg .seg-no.on{color:var(--bad);background:var(--errbg)}
+
+/* the browser's own clear (✕) in search boxes: we draw our own */
+input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-search-decoration{-webkit-appearance:none;appearance:none;display:none}

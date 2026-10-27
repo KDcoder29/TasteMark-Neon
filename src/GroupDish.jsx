@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from './supabase'
-import { Stars, Avatar, tint, timeAgo, priceInput, priceProps } from './shared'
+import { Stars, Avatar, tint, timeAgo, priceInput, priceProps, StarPicker, OrderAgain, ORDER_AGAIN } from './shared'
 
 const EMOJIS = ['👍', '😋', '🔥', '😐', '👎']
 const ok = r => { if (r.error) throw r.error; return r }
@@ -92,7 +92,7 @@ export default function GroupDish({ d, me, names, isOwner, onChanged }) {
         </div>
         <div className="flex shrink-0 items-start gap-2">
           <div className="text-right">
-            <div className="text-sm font-semibold">{d.price ? '₹' + d.price : '–'}</div>
+            <div className="text-sm font-semibold">{d.price ? '₹' + d.price : ''}</div>
             {d.nRatings > 0 ? (
               <div className="flex items-center justify-end gap-1">
                 <Stars n={Math.round(d.avg)} />
@@ -120,7 +120,7 @@ export default function GroupDish({ d, me, names, isOwner, onChanged }) {
                     <div className="flex flex-wrap items-center gap-x-2 text-sm">
                       <span className="font-medium">{who(r.user_id)}</span>
                       <Stars n={r.rating} />
-                      {r.order_again && <span className="text-xs capitalize" style={mute}>order again: {r.order_again}</span>}
+                      {r.order_again && <span className="text-xs" style={mute}>Order again: {ORDER_AGAIN.find(([v]) => v === r.order_again)?.[1]}</span>}
                     </div>
                     {r.note && <p className="text-sm" style={mute}>{r.note}</p>}
                   </div>
@@ -132,21 +132,8 @@ export default function GroupDish({ d, me, names, isOwner, onChanged }) {
           {/* my rating */}
           <div className="rounded-xl border p-3" style={{ borderColor: 'var(--line)', background: 'var(--surface)' }}>
             <div className="mb-1 text-xs font-medium" style={mute}>{mine ? 'Your rating' : 'Rate this dish'}</div>
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex">
-                {[1, 2, 3, 4, 5].map(n => (
-                  <button key={n} type="button" onClick={() => setRate(rate === n ? 0 : n)}
-                    className="px-0.5 text-2xl transition hover:scale-125 active:scale-90"
-                    style={{ color: n <= rate ? 'var(--star)' : 'var(--star-off)' }}>★</button>
-                ))}
-              </div>
-              <div className="flex gap-1">
-                {['yes', 'maybe', 'no'].map(v => (
-                  <button key={v} type="button" onClick={() => setAgain(again === v ? '' : v)}
-                    className={`chip !px-2.5 !py-1 capitalize ${again === v ? 'on' : ''}`}>{v}</button>
-                ))}
-              </div>
-            </div>
+            <StarPicker value={rate} onChange={setRate} />
+            <div className="mt-1.5"><OrderAgain value={again} onChange={setAgain} /></div>
             <input value={note} onChange={e => setNote(e.target.value)} placeholder="Your take (optional)" className="input mt-2 !py-2" />
             <div className="mt-2 flex gap-2">
               <button disabled={busy} onClick={saveRating} className="btn btn-pri !py-2 !text-sm">{busy ? '…' : mine ? 'Update' : 'Save rating'}</button>

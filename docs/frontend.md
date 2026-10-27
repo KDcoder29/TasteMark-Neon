@@ -355,3 +355,37 @@ Asked for: "Share to WhatsApp" (a clean picture of a place card for friends who 
     - Send preview and caption; the toggles redraw the picture.
     - Voice via a fake recogniser installed in the page (Chrome now also has the unprefixed `SpeechRecognition`, so both names must be faked): live transcript → place + dish + stars + Order again; the "already in your journal" → Edit place path.
   - Real microphone and the real WhatsApp share are left for the user's phone.
+
+### 2026-10-27: Order-again label + full smoke test (branch `BiteMark/Smoke_Fixes`, cut from origin/main 37744f8 after PR #7)
+User report: the Yes / Maybe / No buttons on a dish didn't say what they were for. The user then asked for a full smoke test and to fix every UI and functional bug on phone and laptop.
+- **Order again, labelled.**
+  - New shared `StarPicker` and `OrderAgain` in `shared.jsx`, used by Add/Edit place, group "Add a dish" and group "Rate this dish".
+  - Layout: "Your rating *" with stars, then "Order again?" with a Yes / Maybe / No segmented control (Yes green, No red).
+  - Both are radio groups with aria labels; stars have "N stars" labels.
+  - Group ratings list now says "Order again: Yes" (was "order again: yes").
+- **Smoke test.** Playwright at 390 px and 1280 px, light and dark:
+  - Phone: every Home tool, filters, sort, place details, Add to group, Add/Edit/Delete place, Want to try (add, We went), Craving, Where to eat, Spaces, a group (places, a dish, ratings, Activity), You, Change password.
+  - Laptop: sidebar, the dropdowns, Price, the + menu, place details, Groups dialog, the account menu.
+  - Logged-out Login / Sign up / Forgot password, in a separate browser session.
+  - Real writes were limited to one test place ("ZZ Smoke Test Cafe"), saved then deleted.
+- **Bugs found and fixed:**
+  1. **Being offline at start looked like being logged out.** Neon Auth's `getSession` throws "Failed to fetch" and emits `INITIAL_SESSION:null`, so App showed the Login page.
+     - Now App remembers who is logged in on this device (`rememberUser` / `recallUser` in `fastStart.js`: id, email and username only, never tokens; removed by Log out). If the server is unreachable, the saved journal opens with a banner.
+     - It re-checks on the `online` event and every 15 s. Only a real "no session" answer shows Login.
+     - "No session" events before the first answer, or while offline, are ignored.
+  2. **A failed load popped a raw `alert("Failed to fetch")`.** On a first open without a saved copy, it also showed "Your journal is empty" with "load sample data". Now a calm banner says "No connection. Showing your journal from this device." or "Couldn't load your journal.", with Try again, and never the empty state.
+  3. **A failed group-list load counted as "you're in no groups"** and threw you out of a group space into Personal. `loadGroups` now returns null on error, the space is only reset after a real answer (`groupsKnown`), and groups reload when the connection returns.
+  4. **The greeting flashed "Your places" for 1–4 s on every open.** The username is now remembered on the device. The "still checking" state (`session === undefined`) no longer clears it, and a failed username read is no longer treated as a missing profile (which used to call `ensure_profile` for nothing).
+  5. **Escape closed every layer at once** (Add to group also closed the place details). New `layers.js` (tested): `useEscape(onClose)` in every sheet and dialog closes only the top one. Added to the dialogs that had no Escape (Change password, Add a dish, Groups, Where to eat, Add to group, Add/Edit place) and to the laptop account menu.
+  6. **The search box showed two ✕ buttons** (Chrome's own plus ours). The native one is hidden in CSS.
+  7. **Where to eat used plain browser dropdowns** for City and Category (the same complaint as the laptop filters before). They are now `ChipSelect`. ChipSelect now opens leftwards when there's no room on the right; it used to run off the phone screen and cause sideways scroll.
+  8. **The laptop account menu was wider than the sidebar,** so it was cut off with a sideways scrollbar. It now matches the sidebar width.
+  9. **Groups said "0 members" while loading.** It now says "Loading members…".
+  10. **Dishes with no price showed a lone "–"** (Craving results, place details, group dish). Now nothing is shown.
+  11. **Leftover emoji icons:**
+      - The Add to group list (👥) and its done ✓, Where to eat (📍 🧭 🎲), the Groups empty state and the "Save to" select (👤 👥) now use line icons and a shared `GroupBadge`.
+      - "Save to" in Add place is now a row of chips instead of a native select.
+      - Dialogs' bare "×" close buttons are now the x icon with `aria-label="Close"`.
+  12. **A crash in any screen blanked the whole app.** `ErrorBoundary.jsx` around App now shows "Something went wrong. Your journal is safe" with a Reload button.
+- **Seen but left alone:** Activity's emoji event badges (a playful feed, kept on purpose) and data typos in group entries.
+- **Verified:** 173 tests pass; the build passes. Each fix was re-checked in Playwright, including blocked-network runs (Personal and group).

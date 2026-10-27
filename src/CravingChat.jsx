@@ -6,6 +6,7 @@ import { docsFromPlaces, parseCraving, rankDishes, relatedSearches } from './sma
 import { embed } from './embedder'
 import { smartIndex } from './smartIndex'
 import { useSheetDrag } from './useGestures'
+import { useEscape } from './layers'
 
 const STARTERS = ['South Indian', 'Something cold', 'Spicy snack under ₹100', 'Dessert', 'Healthy breakfast', 'Good coffee']
 
@@ -30,11 +31,7 @@ export default function CravingChat({ places, onOpenPlace, onClose }) {
     return off
   }, [docs])
 
-  useEffect(() => {
-    const key = e => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', key)
-    return () => document.removeEventListener('keydown', key)
-  }, [onClose])
+  useEscape(onClose)
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }) }, [messages])
 
   async function send(text) {
@@ -126,7 +123,7 @@ function Answer({ a, onOpen, onAsk }) {
             </span>
           </span>
           <span className="shrink-0 text-right">
-            <span className="block font-bold">{doc.dish.price ? `₹${doc.dish.price}` : '–'}</span>
+            <span className="block font-bold">{doc.dish.price ? `₹${doc.dish.price}` : ''}</span>
             <Stars n={Math.round(doc.dish.rating || 0)} />
           </span>
           <Icon name="chevron" size={16} style={mute} />

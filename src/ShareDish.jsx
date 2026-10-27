@@ -1,11 +1,15 @@
 import { useState } from 'react'
+import Icon from './Icons'
+import { useEscape } from './layers'
 import { supabase } from './supabase'
 import { findGroupPlace, addDishWithRating } from './groupApi'
+import { GroupBadge } from './shared'
 
 // Shares one dish (and its place, if the group doesn't have it yet) with a group.
 // The place is shared as ONE card, and your rating is added next to your friends' ratings.
 // Your personal entry is left untouched.
 export default function ShareDish({ me, place, dish, groups, onClose }) {
+  useEscape(onClose)
   const [target, setTarget] = useState(null)   // group chosen, waiting for confirmation
   const [done, setDone] = useState(null)       // { group, status }
   const [busy, setBusy] = useState(false)
@@ -45,7 +49,7 @@ export default function ShareDish({ me, place, dish, groups, onClose }) {
 
         {done ? (
           <div className="text-center">
-            <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full text-xl" style={{ background: 'var(--okbg)', color: 'var(--ok)' }}>✓</div>
+            <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full" style={{ background: 'var(--okbg)', color: 'var(--ok)' }}><Icon name="check" size={24} stroke={2.6} /></div>
             <h2 className="text-lg font-bold">Added to {done.group.name}</h2>
             <p className="mb-5 mt-1 text-sm" style={mute}>
               {done.status === 'created'
@@ -75,7 +79,7 @@ export default function ShareDish({ me, place, dish, groups, onClose }) {
           <div>
             <div className="mb-1 flex items-center justify-between">
               <h2 className="text-lg font-bold">Add to group</h2>
-              <button onClick={onClose} className="ghost grid h-8 w-8 place-items-center rounded-full text-xl" style={mute}>×</button>
+              <button onClick={onClose} className="ghost grid h-8 w-8 place-items-center rounded-full" style={mute} aria-label="Close"><Icon name="x" size={18} /></button>
             </div>
             <p className="mb-4 text-sm" style={mute}>Choose a group for “{dish.name}”.</p>
             {groups.length === 0 ? (
@@ -89,8 +93,8 @@ export default function ShareDish({ me, place, dish, groups, onClose }) {
                     <button onClick={() => setTarget(g)}
                       className="flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left transition hover:-translate-y-0.5"
                       style={{ borderColor: 'var(--line)', background: 'var(--dish)' }}>
-                      <span className="truncate font-medium">👥 {g.name}</span>
-                      <span style={mute}>›</span>
+                      <span className="flex min-w-0 items-center gap-2.5 font-medium"><GroupBadge g={g} /> <span className="truncate">{g.name}</span></span>
+                      <Icon name="chevron" size={16} style={mute} />
                     </button>
                   </li>
                 ))}

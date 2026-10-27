@@ -1,8 +1,11 @@
 import { useState } from 'react'
+import Icon from './Icons'
+import { useEscape } from './layers'
 import { supabase } from './supabase'
 import { changePassword } from './authApi'
 
 export default function ChangePassword({ onClose }) {
+  useEscape(onClose)
   const [cur, setCur] = useState('')
   const [pw, setPw] = useState('')
   const [pw2, setPw2] = useState('')
@@ -32,7 +35,7 @@ export default function ChangePassword({ onClose }) {
       <form onSubmit={submit} className="sheet w-full max-w-sm rounded-3xl p-5 shadow-2xl" style={{ background: 'var(--surface)' }}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold">Change password</h2>
-          <button type="button" onClick={onClose} className="ghost grid h-8 w-8 place-items-center rounded-full text-xl" style={{ color: 'var(--mute)' }}>×</button>
+          <button type="button" onClick={onClose} className="ghost grid h-8 w-8 place-items-center rounded-full" style={{ color: 'var(--mute)' }} aria-label="Close"><Icon name="x" size={18} /></button>
         </div>
         <input type="password" autoFocus required autoComplete="current-password" placeholder="Current password" value={cur} onChange={e => setCur(e.target.value)} className="input mb-3" />
         <input type="password" required placeholder="New password" value={pw} onChange={e => setPw(e.target.value)} className="input mb-3" />

@@ -54,6 +54,7 @@ export default function Journal({ me, group, groups, username, view, setView, ad
   const [wishlist, setWishlist] = useState(snap?.wishlist || [])
   const [names, setNames] = useState(snap?.names || {})
   const [loading, setLoading] = useState(!snap)
+  const [netErr, setNetErr] = useState('')          // the last refresh failed (offline etc.)
   const [editing, setEditing] = useState(null)     // place being edited
   const [creating, setCreating] = useState(null)   // {} or { prefill, wishId } or { billFile }
   const [sharing, setSharing] = useState(null)     // { place, dish } being added to a group
@@ -93,7 +94,9 @@ export default function Journal({ me, group, groups, username, view, setView, ad
     // cache), show the journal without 🧾 buttons rather than not at all
     if (r1.error && /bill_photos/.test(r1.error.message)) { console.warn(r1.error.message); r1 = await placesQ(false) }
     const fresh = {}
-    if (r1.error) alert(r1.error.message)
+    // no connection / server trouble: keep what's on screen and say so calmly (never "your journal is empty")
+    setNetErr(r1.error ? (/fetch|network|load failed/i.test(r1.error.message) ? 'No connection.' : r1.error.message) : '')
+    if (r1.error) console.error(r1.error)
     else setPlaces(fresh.places = group
       ? r1.data.map(p => ({ ...p, dishes: [...(p.dishes || [])].sort((a, b) => new Date(a.created_at) - new Date(b.created_at)).map(groupDish) }))
       : r1.data)
@@ -287,9 +290,16 @@ export default function Journal({ me, group, groups, username, view, setView, ad
             </p>
           )}
 
+          {netErr && (
+            <div className="fade mb-3 flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm" role="status" style={{ background: 'var(--errbg)', color: 'var(--bad)' }}>
+              <span className="flex-1">{netErr} {places.length ? 'Showing your journal from this device.' : "Couldn't load your journal."}</span>
+              <button className="font-semibold underline" onClick={load}>Try again</button>
+            </div>
+          )}
+
           {loading ? (
             <div className="place-grid">{[0, 1, 2, 3, 4, 5].map(i => <div key={i} className="skel !h-[104px]" />)}</div>
-          ) : places.length === 0 ? (
+          ) : places.length === 0 && netErr ? null : places.length === 0 ? (
             <div className="rise py-16 text-center">
               <span className="qicon mx-auto mb-4 !h-16 !w-16" style={{ background: 'var(--accent-soft)', color: 'var(--accent-ink)' }}><Icon name="receipt" size={30} /></span>
               <p className="m-0 text-lg font-bold">{group ? `${group.name} has no places yet` : 'Your journal is empty'}</p>

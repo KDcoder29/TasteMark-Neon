@@ -41,3 +41,20 @@ export function clearFastStart(s) {
     keys.forEach(k => s.removeItem(k))
   } catch {}
 }
+
+// Who is logged in on this device (id, email and username only, never tokens). When the login server can't be
+// reached at app start, this opens the saved journal instead of the login page. Stored under the
+// snapshot prefix, so Log out (clearFastStart) forgets it too.
+const USER = SNAP + 'user'
+export function rememberUser(s, user, username) {
+  if (!user?.id) return
+  const known = recallUser(s)
+  const name = username ?? (known?.id === user.id ? known.username : '')
+  write(s, USER, JSON.stringify({ id: user.id, email: user.email || '', username: name || '' }))
+}
+export function recallUser(s) {
+  try {
+    const u = JSON.parse(read(s, USER))
+    return u?.id ? { id: u.id, email: u.email || '', username: u.username || '' } : null
+  } catch { return null }
+}

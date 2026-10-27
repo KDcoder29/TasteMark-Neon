@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import Icon from './Icons'
 import { canTakePhoto } from './capture'
 import { speechSupported } from './speech'
+import { useEscape } from './layers'
 
 // What the + button offers: scan a bill (camera on phones), upload a bill photo, say it (voice,
 // where the browser can), or add by hand.
@@ -10,13 +11,12 @@ import { speechSupported } from './speech'
 export default function AddMenu({ onPick, onClose }) {
   const ref = useRef(null)
   const phone = canTakePhoto(window)
+  useEscape(onClose)
 
   useEffect(() => {
-    const key = e => { if (e.key === 'Escape') onClose() }
     const out = e => { if (!ref.current?.contains(e.target) && !e.target.closest?.('[data-addbtn]')) onClose() }
-    document.addEventListener('keydown', key)
     document.addEventListener('mousedown', out)
-    return () => { document.removeEventListener('keydown', key); document.removeEventListener('mousedown', out) }
+    return () => document.removeEventListener('mousedown', out)
   }, [onClose])
 
   const file = e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onPick({ file: f }) }
