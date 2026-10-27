@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import Icon from './Icons'
+import { useEscape } from './layers'
 import { supabase } from './supabase'
-import { CATEGORIES, priceInput, priceProps } from './shared'
+import { CATEGORIES, priceInput, priceProps, StarPicker, OrderAgain, GroupBadge } from './shared'
 import { findGroupPlace, addDishWithRating } from './groupApi'
 import { blankDish, mergeScannedDishes, mergeSpokenDishes, newScannedDishes, placeFormError } from './placeRules'
 import VoiceAdd from './VoiceAdd'
@@ -14,6 +16,7 @@ import { saveBills } from './billApi'
 // initialVoice = opened with "Say it" from the + menu: start listening at once
 // knownPlaces = my personal places (voice: "Sankalp" -> offer to add to that card, no duplicate)
 export default function PlaceForm({ me, place, cities, groups = [], defaultGroupId = '', prefill, wishId, initialBill, initialVoice, knownPlaces = [], onUseExisting, onClose, onSaved }) {
+  useEscape(onClose)
   const editing = !!place
   const editingGroup = editing && !!place.group_id
   const start = place || prefill || {}
@@ -139,16 +142,22 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
       <div className="flex-1 overflow-y-auto px-5 pb-8 pt-2 lg:pt-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="m-0 text-xl font-extrabold">{title}</h2>
-          <button type="button" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-full text-xl ghost transition" style={mute}>×</button>
+          <button type="button" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-full ghost transition" style={mute} aria-label="Close"><Icon name="x" size={18} /></button>
         </div>
 
         {!editing && groups.length > 0 && (
           <div className="mb-3">
             <label className={label} style={mute}>Save to</label>
-            <select value={target} onChange={e => setTarget(e.target.value)} className="input">
-              <option value="">👤 Personal (only me)</option>
-              {groups.map(g => <option key={g.id} value={g.id}>👥 {g.name}</option>)}
-            </select>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Save to">
+              <button type="button" role="radio" aria-checked={!target} className={`chip ${!target ? 'on' : ''}`} onClick={() => setTarget('')}>
+                <Icon name="user" size={15} /> Personal
+              </button>
+              {groups.map(g => (
+                <button key={g.id} type="button" role="radio" aria-checked={target === g.id} className={`chip ${target === g.id ? 'on' : ''}`} onClick={() => setTarget(g.id)}>
+                  <GroupBadge g={g} size={18} /> {g.name}
+                </button>
+              ))}
+            </div>
             {target && <p className="mt-1 text-xs" style={mute}>If this place is already in the group, your dishes and ratings are added to the existing card.</p>}
           </div>
         )}
@@ -198,21 +207,11 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
                   <input required placeholder="Dish name *" value={d.name} onChange={e => setDish(i, 'name', e.target.value)} className="input" />
                   <input required {...priceProps} placeholder="Price ₹ *" value={d.price} onChange={e => setDish(i, 'price', priceInput(e.target.value))} className="input !w-28" />
                 </div>
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <div className="flex">
-                    {[1, 2, 3, 4, 5].map(n => (
-                      <button key={n} type="button" onClick={() => setDish(i, 'rating', d.rating === n ? 0 : n)}
-                        className="px-0.5 text-2xl transition hover:scale-125 active:scale-90"
-                        style={{ color: n <= d.rating ? 'var(--star)' : 'var(--star-off)' }}>★</button>
-                    ))}
-                  </div>
-                  <div className="flex gap-1">
-                    {['yes', 'maybe', 'no'].map(v => (
-                      <button key={v} type="button" onClick={() => setDish(i, 'order_again', d.order_again === v ? '' : v)}
-                        className={`chip !px-3 !py-1 capitalize ${d.order_again === v ? 'on' : ''}`}>{v}</button>
-                    ))}
-                  </div>
+                <div className="mb-1 flex items-center justify-between gap-3">
+                  <span className="text-[13px] font-semibold" style={mute}>Your rating *</span>
+                  <StarPicker value={d.rating} onChange={n => setDish(i, 'rating', n)} />
                 </div>
+                <div className="mb-2.5"><OrderAgain value={d.order_again} onChange={v => setDish(i, 'order_again', v)} /></div>
                 <input required placeholder="Your comment *" aria-label="Your comment" value={d.note} onChange={e => setDish(i, 'note', e.target.value)} className="input" />
                 {dishes.length > 1 && (
                   <button type="button" onClick={() => setDishes(dishes.filter((_, j) => j !== i))}

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import Icon from './Icons'
+import { useEscape } from './layers'
 import { supabase } from './supabase'
 
 const fmt = c => (c ? c.slice(0, 4) + '-' + c.slice(4) : '')
@@ -14,6 +16,7 @@ function Avatar({ text, color, size = 40, round = false }) {
 }
 
 export default function Groups({ me, groups, onClose, onChanged, onOpen }) {
+  useEscape(onClose)
   const [tab, setTab] = useState(groups.length ? 'mine' : 'create')   // 'mine' | 'create'
   const [selectedId, setSelectedId] = useState(null)                   // group opened in the detail view
   const [mode, setMode] = useState('new')                              // inside Create: 'new' | 'join'
@@ -22,6 +25,8 @@ export default function Groups({ me, groups, onClose, onChanged, onOpen }) {
   const [myName, setMyName] = useState('')
   const [editName, setEditName] = useState(false)
   const [members, setMembers] = useState([])
+  const [peopleReady, setPeopleReady] = useState(false)   // until then, no "0 members"
+  const count = n => (peopleReady ? `${n} member${n === 1 ? '' : 's'}` : 'Loading members…')
   const [names, setNames] = useState({})
   const [msg, setMsg] = useState({ type: '', text: '' })
   const [busy, setBusy] = useState('')
@@ -33,6 +38,7 @@ export default function Groups({ me, groups, onClose, onChanged, onOpen }) {
       supabase.from('profiles').select('id, display_name'),
     ])
     setMembers(m.data || [])
+    setPeopleReady(true)
     const map = {}
     ;(p.data || []).forEach(r => { map[r.id] = r.display_name })
     setNames(map)
@@ -139,7 +145,7 @@ export default function Groups({ me, groups, onClose, onChanged, onOpen }) {
       <div className="sheet mx-auto my-6 w-[calc(100%-24px)] max-w-xl rounded-3xl p-5 shadow-2xl" style={{ background: 'var(--surface)' }}>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold">Groups</h2>
-          <button type="button" onClick={onClose} className="ghost grid h-8 w-8 place-items-center rounded-full text-xl" style={mute}>×</button>
+          <button type="button" onClick={onClose} className="ghost grid h-8 w-8 place-items-center rounded-full" style={mute} aria-label="Close"><Icon name="x" size={18} /></button>
         </div>
 
         {/* Tabs */}
@@ -165,7 +171,7 @@ export default function Groups({ me, groups, onClose, onChanged, onOpen }) {
             <div>
               {groups.length === 0 ? (
                 <div className="py-10 text-center">
-                  <div className="mb-2 text-4xl">👥</div>
+                  <span className="qicon mx-auto mb-3 !h-14 !w-14" style={{ background: 'var(--pri-soft)', color: 'var(--pri)' }}><Icon name="users" size={26} /></span>
                   <p className="font-semibold">No groups yet</p>
                   <p className="mb-4 mt-1 text-sm" style={mute}>Create one, or join with a friend's invite code.</p>
                   <button onClick={() => switchTab('create')} className="btn btn-pri">Create or join a group</button>
@@ -201,7 +207,7 @@ export default function Groups({ me, groups, onClose, onChanged, onOpen }) {
                                   style={{ width: 26, height: 26, background: 'var(--head)', color: 'var(--mute)', boxShadow: '0 0 0 2px var(--surface)' }}>+{list.length - 4}</span>
                               )}
                             </div>
-                            <span className="text-xs" style={mute}>{list.length} member{list.length === 1 ? '' : 's'}</span>
+                            <span className="text-xs" style={mute}>{count(list.length)}</span>
                           </div>
 
                           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -247,7 +253,7 @@ export default function Groups({ me, groups, onClose, onChanged, onOpen }) {
                   <Avatar text={g.name} color={color} size={48} />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-lg font-bold leading-snug">{g.name}</div>
-                    <div className="text-xs" style={mute}>{list.length} member{list.length === 1 ? '' : 's'} · you are {owner ? 'the owner' : 'a member'}</div>
+                    <div className="text-xs" style={mute}>{count(list.length)} · you are {owner ? 'the owner' : 'a member'}</div>
                   </div>
                   <button onClick={() => { onOpen(g.id); onClose() }} className="btn btn-pri !py-2 !text-sm shrink-0">Open</button>
                 </div>

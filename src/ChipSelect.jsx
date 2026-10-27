@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Icon from './Icons'
 
 // A chip that opens a styled menu of choices — replaces the browser's own <select> list, which
@@ -7,7 +7,15 @@ export default function ChipSelect({ icon, value, options, onChange, label, acti
   const [open, setOpen] = useState(false)
   const [at, setAt] = useState(0)
   const ref = useRef(null)
+  const menu = useRef(null)
+  const [flip, setFlip] = useState(false)     // open towards the left when the right side has no room
   const current = options.find(([v]) => v === value)
+
+  useLayoutEffect(() => {
+    if (!open) { setFlip(false); return }
+    const r = ref.current?.getBoundingClientRect()
+    if (r) setFlip(r.left + 240 > window.innerWidth - 16)
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -33,7 +41,8 @@ export default function ChipSelect({ icon, value, options, onChange, label, acti
         <Icon name="down" size={14} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
       </button>
       {open && (
-        <ul role="listbox" aria-label={label} className="menu !left-0 !right-auto m-0 !w-60 list-none">
+        <ul ref={menu} role="listbox" aria-label={label} style={{ maxWidth: 'calc(100vw - 32px)' }}
+          className={`menu m-0 !w-60 list-none ${flip ? '!left-auto !right-0' : '!left-0 !right-auto'}`}>
           {options.map(([v, l], i) => (
             <li key={v} role="option" aria-selected={v === value}>
               <button type="button" className="menu-item" onMouseEnter={() => setAt(i)}

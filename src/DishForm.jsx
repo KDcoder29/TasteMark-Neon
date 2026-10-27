@@ -1,11 +1,14 @@
 import { useState } from 'react'
+import Icon from './Icons'
+import { useEscape } from './layers'
 import { supabase } from './supabase'
 import { addDishWithRating } from './groupApi'
-import { norm, priceInput, priceProps } from './shared'
+import { norm, priceInput, priceProps, StarPicker, OrderAgain } from './shared'
 
 // Add a dish (with my rating) to a place that is already in the group.
 // If the dish already exists there, my rating is added to it.
 export default function DishForm({ me, place, onClose, onSaved }) {
+  useEscape(onClose)
   const [f, setF] = useState({ name: '', price: '', rating: 0, order_again: '', note: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -39,7 +42,7 @@ export default function DishForm({ me, place, onClose, onSaved }) {
       <form onSubmit={save} className="sheet w-full max-w-sm rounded-3xl p-5 shadow-2xl" style={{ background: 'var(--surface)' }}>
         <div className="mb-1 flex items-center justify-between">
           <h2 className="text-lg font-bold">Add a dish</h2>
-          <button type="button" onClick={onClose} className="ghost grid h-8 w-8 place-items-center rounded-full text-xl" style={mute}>×</button>
+          <button type="button" onClick={onClose} className="ghost grid h-8 w-8 place-items-center rounded-full" style={mute} aria-label="Close"><Icon name="x" size={18} /></button>
         </div>
         <p className="mb-4 text-sm" style={mute}>at <b style={{ color: 'var(--ink)' }}>{place.name}</b></p>
 
@@ -57,22 +60,11 @@ export default function DishForm({ me, place, onClose, onSaved }) {
           </>
         )}
 
-        <label className={label} style={mute}>Your rating *</label>
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <div className="flex">
-            {[1, 2, 3, 4, 5].map(n => (
-              <button key={n} type="button" onClick={() => set('rating', f.rating === n ? 0 : n)}
-                className="px-0.5 text-2xl transition hover:scale-125 active:scale-90"
-                style={{ color: n <= f.rating ? 'var(--star)' : 'var(--star-off)' }}>★</button>
-            ))}
-          </div>
-          <div className="flex gap-1">
-            {['yes', 'maybe', 'no'].map(v => (
-              <button key={v} type="button" onClick={() => set('order_again', f.order_again === v ? '' : v)}
-                className={`chip !px-2.5 !py-1 capitalize ${f.order_again === v ? 'on' : ''}`}>{v}</button>
-            ))}
-          </div>
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <span className="text-[13px] font-semibold" style={mute}>Your rating *</span>
+          <StarPicker value={f.rating} onChange={n => set('rating', n)} />
         </div>
+        <div className="mb-3"><OrderAgain value={f.order_again} onChange={v => set('order_again', v)} /></div>
 
         <input value={f.note} onChange={e => set('note', e.target.value)} placeholder="Your take (optional)" className="input mb-4" />
 

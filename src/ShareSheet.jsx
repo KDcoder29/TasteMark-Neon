@@ -4,6 +4,7 @@ import Toast from './Toast'
 import { useSheetDrag } from './useGestures'
 import { pickShareDishes, shareCaption, shareFileName } from './shareCard'
 import { drawShareCard } from './shareImage'
+import { useEscape } from './layers'
 
 const pref = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v === '1' } catch { return d } }
 const keep = (k, v) => { try { localStorage.setItem(k, v ? '1' : '0') } catch {} }
@@ -29,11 +30,7 @@ export default function ShareSheet({ place, group, onClose }) {
     return () => { gone = true; if (url) URL.revokeObjectURL(url) }
   }, [prices, notes])
 
-  useEffect(() => {
-    const key = e => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', key)
-    return () => document.removeEventListener('keydown', key)
-  }, [onClose])
+  useEscape(onClose)
 
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 2600); return () => clearTimeout(t) }, [toast])
 

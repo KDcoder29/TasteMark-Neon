@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import Icon from './Icons'
+import { useEscape } from './layers'
+import ChipSelect from './ChipSelect'
 import { CATEGORIES, Stars, priceScale, PriceSlider } from './shared'
 
 // "Where should we eat?": picks a random place from favorites, the wishlist, or everything.
 export default function Picker({ places, wishlist, group, onClose }) {
+  useEscape(onClose)
   const [src, setSrc] = useState('fav')            // 'fav' | 'new' | 'any'
   const [city, setCity] = useState('All')
   const [cat, setCat] = useState('All')
@@ -73,7 +77,7 @@ export default function Picker({ places, wishlist, group, onClose }) {
       <div className="sheet w-full max-w-sm rounded-3xl p-5 shadow-2xl" style={{ background: 'var(--surface)' }}>
         <div className="mb-1 flex items-center justify-between">
           <h2 className="text-lg font-bold">{group ? 'Where should we eat?' : 'Where should I eat?'}</h2>
-          <button onClick={onClose} className="ghost grid h-8 w-8 place-items-center rounded-full text-xl" style={mute}>×</button>
+          <button onClick={onClose} className="ghost grid h-8 w-8 place-items-center rounded-full" style={mute} aria-label="Close"><Icon name="x" size={18} /></button>
         </div>
         <p className="mb-4 text-sm" style={mute}>Can't decide? Set what you're in the mood for and let it choose.</p>
 
@@ -84,19 +88,13 @@ export default function Picker({ places, wishlist, group, onClose }) {
           ))}
         </div>
 
-        <div className="mb-3 grid grid-cols-2 gap-2">
-          <div>
-            <label className={label} style={mute}>City</label>
-            <select className="input !py-2" value={city} onChange={e => reset(setCity)(e.target.value)}>
-              <option value="All">Any city</option>{cities.map(c => <option key={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className={label} style={mute}>Category</label>
-            <select className="input !py-2" value={cat} onChange={e => reset(setCat)(e.target.value)}>
-              <option value="All">Any</option>{CATEGORIES.map(c => <option key={c}>{c}</option>)}
-            </select>
-          </div>
+        <div className="mb-3 flex flex-wrap gap-2">
+          {cities.length > 1 && (
+            <ChipSelect icon="pin" label="City" value={city} onChange={reset(setCity)} active={city !== 'All'}
+              options={[['All', 'Any city'], ...cities.map(c => [c, c])]} />
+          )}
+          <ChipSelect icon="sliders" label="Category" value={cat} onChange={reset(setCat)} active={cat !== 'All'}
+            options={[['All', 'Any category'], ...CATEGORIES.map(c => [c, c])]} />
         </div>
 
         {src !== 'new' && (
@@ -116,8 +114,8 @@ export default function Picker({ places, wishlist, group, onClose }) {
                 <span className={`pill ${shown.kind === 'wish' ? '' : 'pill-ok'}`}>{shown.kind === 'wish' ? 'From your wishlist' : 'A favorite'}</span>
               </div>
               <div className="text-xl font-bold leading-snug">{shown.name}</div>
-              {(shown.area || shown.city) && <div className="text-sm" style={mute}>📍 {[shown.area, shown.city].filter(Boolean).join(', ')}</div>}
-              {shown.directions && <div className="mt-1 text-sm" style={mute}>🧭 {shown.directions}</div>}
+              {(shown.area || shown.city) && <div className="flex items-center gap-1 text-sm" style={mute}><Icon name="pin" size={14} /> {[shown.area, shown.city].filter(Boolean).join(', ')}</div>}
+              {shown.directions && <div className="mt-1 text-sm" style={mute}>{shown.directions}</div>}
               {shown.note && <div className="mt-1 text-sm" style={mute}>{shown.note}</div>}
               {shown.top.length > 0 && (
                 <ul className="mt-2 space-y-1">
@@ -142,7 +140,7 @@ export default function Picker({ places, wishlist, group, onClose }) {
         </div>
 
         <button onClick={pick} disabled={!pool.length || !!spin} className="btn btn-pri w-full">
-          {spin ? 'Choosing…' : shown ? '🎲 Pick again' : '🎲 Pick for ' + (group ? 'us' : 'me')}
+          {!spin && <Icon name="dice" size={18} />} {spin ? 'Choosing…' : shown ? 'Pick again' : 'Pick for ' + (group ? 'us' : 'me')}
         </button>
       </div>
     </div>

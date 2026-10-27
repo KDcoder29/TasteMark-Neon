@@ -90,3 +90,40 @@ export function PriceSlider({ places, scale, maxPrice, onChange }) {
     </div>
   )
 }
+
+// Tap stars to rate (tap the same star again to clear)
+export function StarPicker({ value, onChange }) {
+  return (
+    <div className="flex" role="radiogroup" aria-label="Rating">
+      {[1, 2, 3, 4, 5].map(n => (
+        <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={`${n} star${n > 1 ? 's' : ''}`}
+          onClick={() => onChange(value === n ? 0 : n)}
+          className="px-0.5 text-2xl transition hover:scale-125 active:scale-90"
+          style={{ color: n <= value ? 'var(--star)' : 'var(--star-off)' }}>★</button>
+      ))}
+    </div>
+  )
+}
+
+// "Would you order this again?" Yes / Maybe / No, labelled so it is never a mystery.
+// Tap the chosen one again to clear it.
+export const ORDER_AGAIN = [['yes', 'Yes'], ['maybe', 'Maybe'], ['no', 'No']]
+export function OrderAgain({ value, onChange }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-[13px] font-semibold" style={{ color: 'var(--mute)' }}>Order again?</span>
+      <div className="seg" role="radiogroup" aria-label="Order again?">
+        {ORDER_AGAIN.map(([v, label]) => (
+          <button key={v} type="button" role="radio" aria-checked={value === v} className={`seg-${v} ${value === v ? 'on' : ''}`}
+            onClick={() => onChange(value === v ? '' : v)}>{label}</button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// a group's coloured initial (the same badge as in the sidebar and the Spaces sheet)
+export const GroupBadge = ({ g, size = 22 }) => (
+  <span className="grid shrink-0 place-items-center rounded-md font-bold text-white"
+    style={{ width: size, height: size, fontSize: size * 0.5, background: tint(g.id) }}>{initial(g.name)}</span>
+)

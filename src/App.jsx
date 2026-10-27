@@ -9,9 +9,10 @@ import Logo from './Logo'
 import Icon from './Icons'
 import AddMenu from './AddMenu'
 import { tint } from './shared'
-import { clearFastStart } from './fastStart'
+import { clearFastStart, rememberUser, recallUser } from './fastStart'
 import StoryCard from './StoryCard'
 import { useSheetDrag, buzz } from './useGestures'
+import { useEscape } from './layers'
 
 function useTheme() {
   const [dark, setDark] = useState(() => {
@@ -67,14 +68,16 @@ function AccountPanel({ email, username, dark, setDark, onPassword, onLogout, on
   )
 }
 
+// laptops: the account dropdown above your name (as wide as the sidebar, so it is never cut off)
+function AccountMenu({ onClose, children }) {
+  useEscape(onClose)
+  return <div className="menu !bottom-[calc(100%+8px)] !left-0 !right-0 !top-auto !w-auto">{children}</div>
+}
+
 // a bottom sheet for phones (spaces, account)
 function Sheet({ title, onClose, children }) {
   const drag = useSheetDrag(onClose)
-  useEffect(() => {
-    const key = e => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', key)
-    return () => document.removeEventListener('keydown', key)
-  }, [onClose])
+  useEscape(onClose)
   return (
     <>
       <div className="scrim" onMouseDown={onClose} />
@@ -99,11 +102,13 @@ export default function App() {
   const [groupsOpen, setGroupsOpen] = useState(false)
   const [groups, setGroups] = useState([])
   const [groupsReady, setGroupsReady] = useState(false)
+  const [groupsKnown, setGroupsKnown] = useState(false)   // the list really came from the server
   const [space, setSpace] = useState(() => {
     try { return localStorage.getItem('space') || 'personal' } catch { return 'personal' }
   })
   const uid = session?.user?.id
-  const [username, setUsername] = useState('')
+  // last known username on this device, so "Hi, Kandarp" shows at once (checked against uid below)
+  const [username, setUsername] = useState(() => { try { return recallUser(window.localStorage)?.username || '' } catch { return '' } })
   const [view, setView] = useState('journal')            // journal | wishlist | activity
   const [adding, setAdding] = useState(false)             // + menu open
   const [addIntent, setAddIntent] = useState(null)        // { file? } -> Journal opens the place form
@@ -113,12 +118,42 @@ export default function App() {
   const acctRef = useRef(null)
   const desktop = useDesktop()
 
+  // App start. No connection to the login server (it throws "Failed to fetch") is NOT "logged out":
+  // whoever is logged in on this device gets their saved journal (with a "No connection" banner),
+  // and we check again when the connection is back. Only a real "no session" answer shows Login.
+  const settled = useRef(false)       // the first session check has answered (or failed)
+  const offline = useRef(false)       // running from this device because the server was unreachable
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session))
-    // after an explicit logout, ignore late "signed in" events so the old session cannot come back
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => { if (loggedOut.current && s) return; setSession(s) })
-    return () => sub.subscription.unsubscribe()
+    const store = (() => { try { return window.localStorage } catch { return null } })()
+    let retry = null
+    const check = () => supabase.auth.getSession()
+      .then(({ data }) => {
+        settled.current = true; offline.current = false; clearInterval(retry); retry = null
+        setSession(data.session)
+      })
+      .catch(() => {
+        settled.current = true
+        const u = recallUser(store)
+        if (!u) return setSession(null)
+        offline.current = true
+        setSession(s => s || { user: u, offline: true })
+        if (!retry) retry = setInterval(check, 15000)
+      })
+    check()
+    const online = () => { if (offline.current) check() }
+    window.addEventListener('online', online)
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      if (loggedOut.current && s) return          // after Log out, a late "signed in" can't bring the old session back
+      if (!s && (!settled.current || offline.current)) return   // "no session" only because the server was unreachable
+      setSession(s)
+    })
+    return () => { sub.subscription.unsubscribe(); clearInterval(retry); window.removeEventListener('online', online) }
   }, [])
+
+  // remember who is logged in here (id + email), for the offline start above
+  useEffect(() => {
+    if (session?.user?.id && !session.offline) { try { rememberUser(window.localStorage, session.user) } catch {} }
+  }, [session?.user?.id])
 
   const loadGroups = useCallback(async () => {
     if (!uid) return []
@@ -127,24 +162,34 @@ export default function App() {
       .select('role, groups(id, name, invite_code, owner_id)')
       .eq('user_id', uid)
       .order('joined_at')
-    if (error) { console.error(error); setGroupsReady(true); return [] }
+    // a failed load (no connection) shows the page, but must never be read as "you're in no groups"
+    if (error) { console.error(error); setGroupsReady(true); return null }
     const list = (data || []).filter(r => r.groups).map(r => ({ ...r.groups, role: r.role }))
     setGroups(list)
+    setGroupsKnown(true)
     setGroupsReady(true)
     return list
   }, [uid])
 
-  useEffect(() => { setGroupsReady(false); loadGroups() }, [loadGroups])
+  // (again when the connection comes back after an offline start)
+  useEffect(() => { setGroupsReady(false); loadGroups() }, [loadGroups, session?.offline])
 
   useEffect(() => {
-    if (!uid) { setUsername(''); return }
+    if (!uid) { if (session === null) setUsername(''); return }   // undefined = still checking: keep the remembered name
+    const store = (() => { try { return window.localStorage } catch { return null } })()
+    if (recallUser(store)?.id !== uid) setUsername('')       // someone else's name must not show
     // read my username; only on the very first login is the profile row missing — then create it
     // from the sign-up name and read again (saves a US round trip on every other app start)
     const read = () => supabase.from('profiles').select('username').eq('id', uid).maybeSingle()
+    // (a failed read, e.g. no connection, is not "missing": keep what we have and try when back online)
     read()
-      .then(r => (r.data ? r : supabase.rpc('ensure_profile').then(read)))
-      .then(({ data }) => setUsername(data?.username || ''))
-  }, [uid])
+      .then(r => (r.error || r.data ? r : supabase.rpc('ensure_profile').then(read)))
+      .then(({ data, error }) => {
+        if (error) return
+        setUsername(data?.username || '')
+        rememberUser(store, { id: uid, email: session?.user?.email }, data?.username || '')
+      })
+  }, [uid, session?.offline])
 
   useEffect(() => {
     if (!acctOpen) return
@@ -181,12 +226,13 @@ export default function App() {
 
   // the open space no longer exists in my groups (removed / group deleted) -> go back to Personal
   useEffect(() => {
-    if (groupsReady && space !== 'personal' && !groups.some(g => g.id === space)) chooseSpace('personal')
-  }, [groupsReady, groups, space])
+    if (groupsKnown && space !== 'personal' && !groups.some(g => g.id === space)) chooseSpace('personal')
+  }, [groupsKnown, groups, space])
 
   // after create / join / leave / delete: refresh and jump to the new group if there is one
   async function groupsChanged(newId) {
     const list = await loadGroups()
+    if (!list) return                                  // couldn't load: change nothing
     if (newId && list.some(g => g.id === newId)) chooseSpace(newId)
     else if (!list.some(g => g.id === space)) chooseSpace('personal')
   }
@@ -247,9 +293,9 @@ export default function App() {
 
         <div ref={acctRef} className="relative mt-auto pt-4">
           {acctOpen && (
-            <div className="menu !bottom-[calc(100%+8px)] !left-0 !right-auto !top-auto">
+            <AccountMenu onClose={() => setAcctOpen(false)}>
               <AccountPanel {...account} onDone={() => setAcctOpen(false)} />
-            </div>
+            </AccountMenu>
           )}
           <button className="side-item" onClick={() => setAcctOpen(!acctOpen)} aria-label="Account menu" aria-expanded={acctOpen}>
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-bold" style={{ background: 'var(--pri-soft)', color: 'var(--pri)' }}>

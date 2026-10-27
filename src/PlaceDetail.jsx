@@ -7,6 +7,7 @@ import { placeSummary, placeWhere } from './placeView'
 import { LovedTag, tileColor } from './PlaceCard'
 import { useSheetDrag } from './useGestures'
 import ShareSheet from './ShareSheet'
+import { useEscape } from './layers'
 
 // Everything about one place: bottom sheet on phones, right-side panel on laptops.
 export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onClose, onEdit, onAddDish, onShare, onChanged }) {
@@ -19,12 +20,11 @@ export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onC
   const mute = { color: 'var(--mute)' }
 
   useEffect(() => {
-    const key = e => { if (e.key === 'Escape' && !bills && !sending) onClose() }
-    document.addEventListener('keydown', key)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'                   // the page behind stays put
-    return () => { document.removeEventListener('keydown', key); document.body.style.overflow = prev }
-  }, [onClose, bills, sending])
+    return () => { document.body.style.overflow = prev }
+  }, [])
+  useEscape(onClose)
 
   return (
     <>
@@ -86,7 +86,7 @@ export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onC
                     </div>
                     <div className="flex shrink-0 items-start gap-1">
                       <div className="text-right">
-                        <div className="text-[15px] font-bold">{d.price ? '₹' + d.price : '–'}</div>
+                        <div className="text-[15px] font-bold">{d.price ? '₹' + d.price : ''}</div>
                         <Stars n={d.rating || 0} />
                       </div>
                       <button onClick={() => onShare(d)} title="Add to group" aria-label={`Add ${d.name} to a group`}
