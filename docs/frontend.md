@@ -496,7 +496,9 @@ Asked for: a public sample user with plenty of data so every feature can be trie
 - **Q&A with the user:**
   - "test" / "test" isn't possible: Neon Auth refuses short passwords. The user chose a **"Try the demo" button**, with **test / test1234** typed in opening the same demo.
   - Wanted: a popup saying changes aren't kept after log out.
-- **Account:** username `test`, password `test1234`, email `demo@example.com` (a reserved domain, so mail can't reach a real person). Created through the app's normal sign-up on 2026-10-29 (no email verification needed).
+- **Accounts:** `DEMO_EMAILS` in `src/demoAccount.js` lists both; each has its own copy of the sample journal. Both use example.com, a reserved domain, so mail can't reach a real person. Both were created through the app's normal sign-up (no email verification needed).
+  - **Demo** / `demo1234` (`demo.user@example.com`): what **Try the demo** signs in as (the user asked for it on 2026-10-28).
+  - **test** / `test1234` (`demo@example.com`): the first demo account, still a demo.
 - **`src/demoAccount.js` (tested):** `DEMO`, `isDemoUser` (by email), and "fresh once per visit" kept in sessionStorage (`bm.demo.ready`): `demoNeedsReset` / `markDemoReady` / `forgetDemoReady`.
 - **Login:** an "or" divider and **Try the demo** (signs in with the demo credentials), with the hint "A sample journal with 72 places…".
 - **App, when the demo is logged in:**
