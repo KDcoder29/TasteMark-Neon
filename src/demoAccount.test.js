@@ -1,12 +1,18 @@
 import { describe, expect, test } from 'vitest'
-import { DEMO, isDemoUser, demoNeedsReset, markDemoReady, forgetDemoReady } from './demoAccount'
+import { DEMO, DEMO_EMAILS, isDemoUser, demoNeedsReset, markDemoReady, forgetDemoReady } from './demoAccount'
 
 const store = () => { const m = new Map(); return { getItem: k => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k) } }
 
 describe('the public demo account', () => {
-  test('username test, password test1234', () => {
-    expect(DEMO.username).toBe('test')
-    expect(DEMO.password).toBe('test1234')
+  test('"Try the demo" signs in as Demo / demo1234', () => {
+    expect(DEMO.username).toBe('Demo')
+    expect(DEMO.password).toBe('demo1234')
+  })
+
+  test('both demo logins (Demo, and the older test / test1234) are demo accounts', () => {
+    expect(DEMO_EMAILS).toContain(DEMO.email)
+    expect(DEMO_EMAILS).toContain('demo@example.com')
+    for (const email of DEMO_EMAILS) expect(isDemoUser({ email })).toBe(true)
   })
 
   test('recognised by its email, any case; everyone else is not the demo', () => {

@@ -49,7 +49,7 @@ export default function Login({ onSession }) {
     onSession?.(s)
   }
 
-  // "Try the demo": straight into the shared sample account (same as typing test / test1234)
+  // "Try the demo": straight into the shared sample account (same as typing Demo / demo1234)
   async function tryDemo() {
     setBusy(true); setError(''); setInfo('')
     try {
