@@ -1,4 +1,4 @@
-// The public demo journal (account: test / test1234). Real, well-known places in Vadodara and
+// The public demo journal (accounts: Demo / demo1234 and test / test1234). Real, well-known places in Vadodara and
 // Ahmedabad (from food guides: Culture Trip, MakeMyTrip, Swiggy, EazyDiner, Wanderlog, Outlook
 // Traveller). Dishes are typical of each place; prices are approximate and the ratings, comments and
 // order-again answers are made up so every feature has something to show.
@@ -7,7 +7,29 @@
 // dish: [name, price ₹, stars 1-5, order again (yes | maybe | no), comment]
 // ago:  days since the visit (so "Newest" sorting and dates look natural)
 
-const P = (name, city, area, categories, ago, dishes, directions = null) => ({
+import { readFileSync } from 'node:fs'
+
+// Positions (Near me): db/demo/demo-coords.json, looked up once in OpenStreetMap (Nominatim) by
+// name and area. A place counted as found only when OpenStreetMap had it under the same name in
+// the same area; the rest sit at their area's centre and are marked approx. Approximate ones get a
+// small fixed nudge (80-280 m, from the name) so places in the same area don't hide each other on the map.
+// They are saved as loc_source 'area' (shown with "≈"; Directions goes to Google by name), the name-matched ones as 'pin'.
+const COORDS = JSON.parse(readFileSync(new URL('./demo-coords.json', import.meta.url), 'utf8'))
+function located(p) {
+  const c = COORDS[`${p.city}|${p.name}`]
+  if (!c) throw new Error(`no position for ${p.name}, ${p.city} (add it to demo-coords.json)`)
+  let { lat, lng } = c
+  if (c.approx) {
+    let h = 0
+    for (const ch of p.name) h = (h * 31 + ch.codePointAt(0)) >>> 0
+    const angle = (h % 360) * Math.PI / 180, km = 0.08 + ((h >>> 9) % 200) / 1000
+    lat += (km * Math.cos(angle)) / 111.32
+    lng += (km * Math.sin(angle)) / (111.32 * Math.cos(lat * Math.PI / 180))
+  }
+  return { ...p, lat: +lat.toFixed(6), lng: +lng.toFixed(6), approx: !!c.approx, loc_source: c.approx ? 'area' : 'pin' }
+}
+
+const P = (name, city, area, categories, ago, dishes, directions = null) => located({
   name, city, area, categories, ago, directions,
   dishes: dishes.map(([n, price, rating, again, note]) => ({ name: n, price, rating, again, note })),
 })
@@ -396,7 +418,7 @@ export const SEED = {
     { name: 'Sagar Ratna', city: A, area: 'Ashram Road', categories: ['Food'], note: 'South Indian, ask for the thali' },
     { name: 'The Grand Bhagwati', city: A, area: 'SG Highway', categories: ['Food'], note: 'Gujarati thali for family dinner' },
     { name: 'Laxmi Vilas Palace Café', city: V, area: 'Laxmi Vilas Palace', categories: ['Cafe', 'Dessert'], note: 'Coffee after the palace tour' },
-  ],
+  ].map(located),
   group: {
     name: 'Weekend Foodies',
     places: [
@@ -427,6 +449,6 @@ export const SEED = {
     wishlist: [
       { name: 'Vishalla', city: A, area: 'Vasna', categories: ['Food'], note: 'Group dinner one evening' },
       { name: 'Mahakali Sev Usal', city: V, area: 'Kirti Stambh', categories: ['Food'], note: 'Breakfast run' },
-    ],
+    ].map(located),
   },
 }

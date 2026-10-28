@@ -25,7 +25,8 @@ Everything server-side: Neon Postgres (schema, RLS, RPCs, triggers), Neon Auth, 
 
 ### API routes
 - `GET /api/auth-lookup?username=` converts a username to an email before login. `?available=` checks whether a username is free. Uses `DATABASE_URL`.
-- `GET /api/geocode?area=&city=&q=` returns `{lat,lng}` or nulls. It tries OpenCage first (if `OPENCAGE_API_KEY` is set), then Nominatim. Results are limited to India (`countrycode=in`). It falls back through area+city, then "area city", then city alone. It never fails a save.
+- `GET /api/maps-resolve?url=<maps.app.goo.gl link>` returns `{ url }`, the full Google Maps link a short link leads to. The app reads lat/lng from it. It starts only from Google short links, follows at most 5 redirects, and only to Google hosts (otherwise 400). No key or env. Tests: `api/maps-resolve.test.js`.
+- (Old, only on the unmerged `BiteMark/Maps_feature`: `/api/geocode` with OpenCage/Nominatim. Not used.)
 
 ### Env vars
 - Server only: `DATABASE_URL` and `OPENCAGE_API_KEY`. These must never have a `VITE_` prefix.
@@ -90,3 +91,23 @@ Everything server-side: Neon Postgres (schema, RLS, RPCs, triggers), Neon Auth, 
   - `test` / `test1234` (`demo@example.com`), created 2026-10-29.
   - `Demo` / `demo1234` (`demo.user@example.com`), created 2026-10-28; "Try the demo" uses it.
 - **To change the sample data:** edit `demo-seed.mjs`, run `node db/demo/build-demo-sql.mjs`, and re-run the generated SQL.
+
+### 2026-10-28: Exact locations (branch `BiteMark/Near_Me`)
+- **Migration `db/migrations/2026-10-30-place-location.sql`:**
+  - Adds `lat`, `lng` (double precision) and `loc_source` (gps | link | pin) to `places` and `wishlist`.
+  - Check (after the review): **only rows with a `loc_source`** must have valid lat/lng (`loc_source is null or (source ok and lat/lng set and in range)`). Old rows from the experiment are never checked, so editing them can't fail, and nothing is deleted. (NOT VALID alone wouldn't do this: Postgres re-checks any updated row.)
+  - Ends with `notify pgrst, 'reload schema'`.
+  - **STATUS: applied by the user (confirmed 2026-10-28: `places.loc_source` answers).**
+- **Finding (2026-10-28):** the live database **already had `lat` / `lng`** on places and wishlist (from the old `BiteMark/Maps_feature` experiment, whose backfill may have stored automatic guesses), but no `loc_source`.
+  - Decision: keep that data. The app counts a position as exact only when `loc_source` is set, so old guesses never appear in Near me.
+  - Fix locations offers each old guess as the starting pin for the user to confirm.
+  - Before this migration runs, saves with a location retry without lat/lng/loc_source and say so.
+- **Demo:** `reset_demo()` now inserts lat / lng / `loc_source='pin'` for all 85 demo entries (72 places, 6 wishes, 5 group places, 2 group wishes).
+  - **Run order: location migration first, then `2026-10-29-demo-account.sql`.** That SQL also allows both demo emails; the copy in the database only allowed `test`, which is why "Try the demo" (the Demo account) got "reset_demo is only for the demo accounts".
+  - Positions come from `db/demo/demo-coords.json`, looked up once in OpenStreetMap Nominatim at 1 request per second. 14 are exact name matches in the right area. The other 65 are area centres flagged `approx`; wrong branches and wrong buildings were rejected by hand: both Sankalps, Chatkazz, Gwalia, Honest, Barbeque Nation, Starbucks, Upper Crust, Havmor and Hocco.
+  - Approximate demo pins get a fixed 80-280 m nudge from the name, so places in the same area don't stack.
+- **Free services:** OpenStreetMap tiles (tile usage policy: low traffic, attribution shown), Photon (fair use; only on user action), and Nominatim (used once, offline, for the demo seed). No keys, no billing.
+
+### 2026-10-29: `loc_source = 'area'`
+- `2026-10-30-place-location.sql` now allows `'area'` (automatic, area-level positions from the landmark and city via OpenStreetMap; see frontend.md). **Re-run it** (it only replaces the rule), then re-run `2026-10-29-demo-account.sql` (68 demo entries are now `'area'`).
+- The app updates `places` / `wishlist` lat, lng and loc_source from the browser with the filter `loc_source is null or loc_source = 'area'`, so exact spots are never overwritten. RLS decides who may update (owner, or group owner).

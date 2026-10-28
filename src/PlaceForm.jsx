@@ -6,7 +6,10 @@ import { CATEGORIES, priceInput, priceProps, StarPicker, OrderAgain, GroupBadge 
 import { findGroupPlace, addDishWithRating } from './groupApi'
 import { blankDish, mergeScannedDishes, mergeSpokenDishes, newScannedDishes, placeFormError } from './placeRules'
 import VoiceAdd from './VoiceAdd'
-import MapsLinkField from './MapsLinkField'
+import LocationField from './LocationField'
+import { locationRow, locationOf, saveLocation } from './locationValue'
+import { autoLocate } from './autoLocate'
+import { useLocationReady } from './locationReady'
 import { skipUnknownMaps } from './mapsSave'
 import BillScan from './BillScan'
 import { saveBills } from './billApi'
@@ -33,6 +36,8 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
       ? place.dishes.map(d => ({ name: d.name, price: d.price ?? '', rating: d.rating || 0, order_again: d.order_again || '', note: d.note || '' }))
       : [blankDish()])
   const [cats, setCats] = useState(start.categories || [])
+  const [loc, setLoc] = useState(() => locationOf(start))   // position { lat, lng, loc_source } or null
+  const locReady = useLocationReady({ strict: true })
   const [target, setTarget] = useState(defaultGroupId)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -66,6 +71,8 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
       const clean = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.trim() || null]))
       if (!clean.maps_url && !place?.maps_url) delete clean.maps_url    // nothing to save or clear
       clean.categories = cats
+      const where = saveLocation(loc, place, f)        // a changed landmark drops the old area-level spot
+      Object.assign(clean, where.row)
 
       if (editing) {
         const { error: e1 } = await skipUnknownMaps(row => supabase.from('places').update(row).eq('id', place.id), clean)
@@ -89,6 +96,14 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
           placeId = data.id; created = true
         }
         savedId = placeId
+        // the group already had this card: give it your exact location if it has none yet
+        // (a filter on loc_source, so someone else's pin is never replaced)
+        if (!created && locationOf(loc)) {
+          const { data: moved, error: eL } = await supabase.from('places').update(locationRow(loc, false))
+            .eq('id', placeId).is('loc_source', null).select('id')
+          if (eL || !moved?.length) showAlert({ tone: 'info', title: 'Location not changed',
+            message: `Your dishes are added to the group’s “${existing.name}” card. Its location stays as it is: it already has one, or only the person who added it can change it.` })
+        }
         const known = existing ? [...existing.dishes] : []
         let saved = 0
         try {
@@ -114,6 +129,8 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
       }
 
       if (wishId) await supabase.from('wishlist').update({ went_at: new Date().toISOString() }).eq('id', wishId)
+      // no exact spot chosen: place it by its landmark and city in the background (shown as "≈")
+      if (locReady && savedId && where.lookup) autoLocate([{ table: 'places', id: savedId, name: f.name, area: f.area, city: f.city }], { now: true })
       // the place is saved either way; a failed bill upload must not undo it
       try { await saveBills(savedId, billFiles) }
       catch (err) { console.error(err); showAlert({ title: 'Place saved, bill photo not saved', message: err.message || 'Please add the bill again from Edit.' }) }
@@ -190,7 +207,7 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
             <button key={c} type="button" onClick={() => toggleCat(c)} className={`chip ${cats.includes(c) ? 'on' : ''}`}>{c}</button>
           ))}
         </div>
-        <MapsLinkField value={f.maps_url} onChange={v => setF(x => ({ ...x, maps_url: v }))} place={f} />
+        <LocationField value={loc} onChange={setLoc} place={f} onLink={l => setF(x => ({ ...x, maps_url: l }))} />
         <label className={label} style={mute}>Directions / timing</label>
         <textarea rows={2} placeholder="Optional" value={f.directions} onChange={setField('directions')} className="input mb-5" />
         <datalist id="cities">{cities.map(c => <option key={c} value={c} />)}</datalist>

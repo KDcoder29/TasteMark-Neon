@@ -371,3 +371,76 @@ input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-sea
   background:var(--accent-soft);color:var(--accent-ink);border-bottom:1px solid color-mix(in srgb,var(--accent) 25%,transparent)}
 .demobar button{border:0;background:none;padding:2px 4px;font:inherit;font-weight:700;color:inherit;text-decoration:underline;text-underline-offset:2px}
 .demo-wait{display:grid;min-height:100vh;place-items:center;padding:24px;text-align:center}
+
+/* ---------- maps (Leaflet + OpenStreetMap): forms, Near me, Fix locations ---------- */
+.lmap{position:relative;overflow:hidden;border-radius:16px;background:var(--soft);isolation:isolate}
+.lmap .leaflet-container{font:inherit;background:var(--soft)}
+:root[data-theme="dark"] .lmap .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.82) contrast(.92)}
+.lmap .leaflet-control-attribution{font-size:10.5px;background:color-mix(in srgb,var(--surface) 85%,transparent);color:var(--mute)}
+.lmap .leaflet-control-attribution a{color:var(--pri)}
+.lmap .leaflet-bar a{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.lmap-msg{position:absolute;inset:0;z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  font-size:13px;color:var(--mute);background:var(--soft)}
+/* pins: a teardrop in the place's colour; wishes carry a bookmark; you are the blue dot */
+.mk{display:grid;place-items:center;width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--c);
+  border:2.5px solid #fff;box-shadow:0 3px 8px #0005;transition:transform .15s var(--ease)}
+.mk i{width:9px;height:9px;border-radius:50%;background:#fff}
+.mk svg{transform:rotate(45deg);color:#fff}
+.mk.mk-wish{--c:var(--accent)!important}
+.mk.mk-approx{background:var(--surface);border:3px dashed var(--c)}
+.mk.mk-approx i{background:var(--c)}
+.mk.mk-approx svg{color:var(--c)}
+.mk.on{transform:rotate(-45deg) scale(1.22)}
+.mk-drag{width:36px;height:36px;--c:var(--accent);cursor:grab}
+.mk-drag i{width:11px;height:11px}
+.mk-me{display:block;width:22px;height:22px;border-radius:50%;background:#2f7cf6;border:3px solid #fff;box-shadow:0 0 0 0 #2f7cf680,0 2px 6px #0004;
+  animation:mepulse 2s ease-out infinite}
+@keyframes mepulse{to{box-shadow:0 0 0 16px #2f7cf600,0 2px 6px #0004}}
+@media (prefers-reduced-motion: reduce){.mk-me{animation:none}}
+/* form: saved location preview */
+.locset{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+.locset .locset-map{height:120px;border-radius:0}
+/* full-height map sheet (above the form that opened it) */
+.mapsheet{position:fixed;z-index:51;left:0;right:0;bottom:0;top:5vh;display:flex;flex-direction:column;background:var(--surface);
+  border-radius:24px 24px 0 0;box-shadow:var(--sh-3);animation:up .32s var(--ease) both}
+@media (min-width:1024px){.mapsheet{top:6vh;bottom:6vh;left:50%;right:auto;width:min(760px,92vw);transform:translateX(-50%);border-radius:24px;animation:fade .2s ease both}}
+.pinpick{display:flex;flex-direction:column;gap:10px;min-height:0}
+.pinpick .pinpick-map{flex:1;min-height:240px}
+.pinpick-results{position:absolute;z-index:600;left:0;right:0;top:calc(100% + 6px);margin:0;padding:6px;list-style:none;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh-2)}
+.pinpick-results button{display:flex;width:100%;align-items:flex-start;gap:8px;padding:9px 10px;border:0;border-radius:10px;background:none;
+  font:inherit;font-size:13.5px;color:var(--ink);text-align:left;cursor:pointer}
+.pinpick-results button:hover,.pinpick-results button:focus-visible{background:var(--soft)}
+.pinpick-results svg{flex:none;margin-top:2px;color:var(--mute)}
+/* Near me (its blue matches the map's "you are here" dot) */
+:root{--near-soft:#e8f0fe;--near-ink:#2557b8}
+:root[data-theme="dark"]{--near-soft:#18284a;--near-ink:#9cbcf7}
+.nearseg button{display:inline-flex;align-items:center;gap:5px}
+.nearchips{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+@media (max-width:1023.98px){.nearchips{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:2px 16px 4px;scrollbar-width:none}
+  .nearchips::-webkit-scrollbar{display:none}.nearchips .chip{flex:none}}
+.nearwarn{display:flex;align-items:flex-start;gap:8px;margin:0 0 12px;padding:9px 12px;border-radius:12px;background:var(--soft);font-size:13px;color:var(--mute)}
+.nearwarn svg{flex:none;margin-top:1px}
+.nearsep{flex:none;width:1px;height:22px;background:var(--line)}
+.nearhint{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:18px 0 0;padding:10px 4px 0;border-top:1px solid var(--line);
+  font-size:13px;color:var(--mute)}
+.nearhint .ghost{color:var(--faint)}
+.nearcard{overflow:hidden;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:var(--sh-1)}
+.nearcard.pop{margin-top:10px;animation:popup .22s var(--spring) both}
+.nearcard-main{display:flex;gap:12px;width:100%;padding:13px 14px 10px;border:0;background:none;font:inherit;color:inherit;text-align:left}
+button.nearcard-main{cursor:pointer}
+.neardist{flex:none;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:700;background:var(--near-soft);color:var(--near-ink)}
+.neardist.approx{background:transparent;box-shadow:inset 0 0 0 1px var(--line);color:var(--mute)}
+.nearmap{height:min(62vh,560px)}
+@media (max-width:1023.98px){.nearmap{height:58vh;margin:0 -4px}}
+.nearpulse{animation:listen 1.6s ease-out infinite}
+@media (prefers-reduced-motion: reduce){.nearpulse{animation:none}}
+.fixbar{height:4px;border-radius:99px;background:var(--soft);overflow:hidden}
+.fixbar span{display:block;height:100%;background:var(--pri);transition:width .3s var(--ease)}
+/* Google Maps -> Copy link -> Paste link */
+.glocate-ready{animation:listen 1.4s ease-out 3}
+@media (prefers-reduced-motion: reduce){.glocate-ready{animation:none}}
+.fixplace{margin-bottom:12px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--dish)}
+.fixsteps{margin:0 0 14px;padding:0 0 0 20px;font-size:13.5px;line-height:1.55;color:var(--mute)}
+.fixsteps b{color:var(--ink);font-weight:600}
+.fixmap{height:clamp(220px,46vh,420px)}

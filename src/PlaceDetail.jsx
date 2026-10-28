@@ -9,9 +9,12 @@ import { useSheetDrag } from './useGestures'
 import ShareSheet from './ShareSheet'
 import { useEscape, useScrollLock } from './layers'
 import { MapsButton, MapsWhere } from './MapsLinkField'
+import { isLocated, isExact } from './geo'
+import { useLocationReady } from './locationReady'
 
 // Everything about one place: bottom sheet on phones, right-side panel on laptops.
-export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onClose, onEdit, onAddDish, onShare, onChanged }) {
+export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onClose, onEdit, onAddDish, onShare, onChanged, onLocate }) {
+  const locReady = useLocationReady()
   const [bills, setBills] = useState(false)
   const [sending, setSending] = useState(false)    // "Send to friends" open
   const drag = useSheetDrag(onClose)
@@ -33,6 +36,12 @@ export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onC
           <div className="min-w-0 flex-1">
             <h2 className="m-0 text-[22px] font-extrabold leading-tight">{p.name}</h2>
             {where && <p className="mt-1 text-sm" style={mute}><MapsWhere place={p} where={where} /></p>}
+            {/* a small way to add the exact spot while you're looking at the place (no nagging banner) */}
+            {canEdit && onLocate && locReady && !isExact(p) && (
+              <button className="tbtn mt-1 inline-flex items-center gap-1 text-[13px] font-semibold" style={{ color: 'var(--pri)' }} onClick={onLocate}>
+                <Icon name="locate" size={14} /> {isLocated(p) ? 'Placed by its area · make it exact' : 'Add exact location'}
+              </button>
+            )}
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
               <LovedTag s={s} of />
               {s.price && <span className="font-semibold">{s.price}</span>}

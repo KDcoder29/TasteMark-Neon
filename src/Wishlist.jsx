@@ -6,11 +6,15 @@ import Toast from './Toast'
 import { tileColor } from './PlaceCard'
 import { placeWhere } from './placeView'
 import { createUndo } from './undo'
-import MapsLinkField, { MapsButton, MapsWhere } from './MapsLinkField'
+import { MapsButton, MapsWhere } from './MapsLinkField'
 import { isMapsLink } from './mapsLink'
 import { MAPS_HINT } from './placeRules'
 import { skipUnknownMaps } from './mapsSave'
 import { showAlert } from './dialogs'
+import LocationField from './LocationField'
+import { locationRow, wantsAreaLookup } from './locationValue'
+import { autoLocate } from './autoLocate'
+import { useLocationReady } from './locationReady'
 
 const EMPTY = { name: '', city: '', area: '', note: '', maps_url: '' }
 
@@ -20,6 +24,8 @@ export default function Wishlist({ me, group, items, names, isOwner, onChanged, 
   const [open, setOpen] = useState(false)
   const [f, setF] = useState(EMPTY)
   const [cats, setCats] = useState([])
+  const [loc, setLoc] = useState(null)               // position or null
+  const locReady = useLocationReady({ strict: true })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [leaving, setLeaving] = useState(null)       // id of the card sliding out
@@ -53,10 +59,12 @@ export default function Wishlist({ me, group, items, names, isOwner, onChanged, 
       note: f.note.trim() || null, categories: cats, group_id: group?.id ?? null,
     }
     if (f.maps_url.trim()) row.maps_url = f.maps_url.trim()
-    const { error: err } = await skipUnknownMaps(r => supabase.from('wishlist').insert(r), row)
+    Object.assign(row, locationRow(loc, false))
+    const { data: added, error: err } = await skipUnknownMaps(r => supabase.from('wishlist').insert(r).select('id').single(), row)
     setBusy(false)
     if (err) return setError(err.message)
-    setF(EMPTY); setCats([]); setOpen(false)
+    if (locReady && added?.id && wantsAreaLookup(loc, null, f)) autoLocate([{ table: 'wishlist', id: added.id, name: f.name, area: f.area, city: f.city }], { now: true })
+    setF(EMPTY); setCats([]); setLoc(null); setOpen(false)
     onChanged()
   }
 
@@ -89,7 +97,7 @@ export default function Wishlist({ me, group, items, names, isOwner, onChanged, 
             {CATEGORIES.map(c => <button key={c} type="button" onClick={() => toggleCat(c)} className={`chip ${cats.includes(c) ? 'on' : ''}`}>{c}</button>)}
           </div>
           <input value={f.note} onChange={setField('note')} placeholder="Why? (optional, e.g. Riya recommended it)" className="input mb-3" />
-          <MapsLinkField value={f.maps_url} onChange={v => setF(x => ({ ...x, maps_url: v }))} place={f} />
+          <LocationField value={loc} onChange={setLoc} place={f} onLink={l => setF(x => ({ ...x, maps_url: l }))} />
           {error && <p className="fade mb-3 rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--errbg)', color: 'var(--bad)' }}>{error}</p>}
           <button disabled={busy} className="btn btn-pri w-full">{busy ? 'Adding…' : 'Add to Want to try'}</button>
         </form>

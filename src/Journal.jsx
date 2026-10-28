@@ -23,6 +23,11 @@ import { usePullRefresh } from './useGestures'
 import { showAlert } from './dialogs'
 import { optimistic } from './optimistic'
 import Toast from './Toast'
+import NearMe from './NearMe'
+import FixLocations from './FixLocations'
+import { needsLocation } from './locationValue'
+import { autoLocate } from './autoLocate'
+import { useLocationReady } from './locationReady'
 
 const store = (() => { try { return window.localStorage } catch { return null } })()
 
@@ -65,9 +70,10 @@ export default function Journal({ me, group, groups, username, view, setView, ad
   const [picking, setPicking] = useState(false)
   const [asking, setAsking] = useState(false)
   const [openId, setOpenId] = useState(null)       // place whose details are open
-  const [notice, setNotice] = useState(null)       // { text } a short "Deleted …" message
+  const [notice, setNotice] = useState(null)       // { text, action?, onAction?, ms? } a short message
+  const [fixing, setFixing] = useState(null)       // Add exact locations: the list to walk through
 
-  useEffect(() => { if (!notice) return; const t = setTimeout(() => setNotice(null), 2600); return () => clearTimeout(t) }, [notice])
+  useEffect(() => { if (!notice) return; const t = setTimeout(() => setNotice(null), notice.ms || 2600); return () => clearTimeout(t) }, [notice])
 
   // Delete a place: the form and details close and the card disappears at once; the server delete
   // runs behind. If it fails (no connection…) the place comes back and the reason is shown.
@@ -94,6 +100,7 @@ export default function Journal({ me, group, groups, username, view, setView, ad
 
   const isOwner = group?.role === 'owner'
   const canEditPlace = p => p.user_id === me || isOwner
+  const canEditWish = w => w.user_id === me || isOwner          // same rule as removing one
   const mute = { color: 'var(--mute)' }
 
   async function load() {
@@ -127,6 +134,27 @@ export default function Journal({ me, group, groups, username, view, setView, ad
     if (fresh.places && fresh.wishlist) saveJournal(store, me, spaceKey, { places: fresh.places, wishlist: fresh.wishlist, names: fresh.names || {} })
   }
   useEffect(() => { load() }, [])
+
+  // places without any position get an area-level one (from their landmark and city) in the
+  // background; the journal reloads as they come in. Exact spots are never touched.
+  const locReady = useLocationReady({ strict: true })
+  useEffect(() => {
+    const reload = () => load()
+    // a place you just saved whose landmark OpenStreetMap doesn't know: say so, and offer the exact way
+    const missed = e => {
+      const { table, id, name } = e.detail || {}
+      setNotice({ text: `Couldn’t place “${name || 'it'}” by its landmark`, ms: 7000,
+        ...(table === 'places' ? { action: 'Fix', onAction: () => setOpenId(id) } : {}) })
+      load()
+    }
+    window.addEventListener('bm:located', reload)
+    window.addEventListener('bm:notlocated', missed)
+    return () => { window.removeEventListener('bm:located', reload); window.removeEventListener('bm:notlocated', missed) }
+  }, [])
+  useEffect(() => {
+    if (loading || netErr || !locReady) return
+    autoLocate(needsLocation(places, wishlist, canEditPlace, canEditWish).map(x => ({ table: x.table, id: x.id, area: x.area, city: x.city })))
+  }, [places, wishlist, loading, netErr, locReady])
 
   async function seed() {
     for (const { dishes, ...place } of SAMPLE) {
@@ -192,10 +220,11 @@ export default function Journal({ me, group, groups, username, view, setView, ad
       <div className="flex items-end justify-between gap-4 pb-4 pt-5 lg:pt-8">
         <div className="min-w-0">
           <h1 className="m-0 text-[24px] font-extrabold leading-tight lg:text-[30px]">
-            {view === 'wishlist' ? 'Want to try' : group ? group.name : username ? `Hi, ${username}` : 'Your places'}
+            {view === 'wishlist' ? 'Want to try' : view === 'near' ? 'Near me' : group ? group.name : username ? `Hi, ${username}` : 'Your places'}
           </h1>
           <p className="m-0 mt-1 text-sm" style={mute}>
             {view === 'wishlist' ? (group ? `Places ${group.name} wants to visit` : 'Places you want to visit')
+              : view === 'near' ? (group ? `${group.name}’s places around you` : 'Your places around you')
               : view === 'activity' ? `What's new in ${group?.name}`
               : `${places.length} places · ${dishTotal} dishes · ${group ? `shared with ${group.name}` : 'only you can see this'}`}
           </p>
@@ -204,7 +233,7 @@ export default function Journal({ me, group, groups, username, view, setView, ad
       </div>
 
       {/* phones, inside a group: its places and its activity side by side (laptops: sidebar) */}
-      {group && view !== 'wishlist' && (
+      {group && view !== 'wishlist' && view !== 'near' && (
         <div className="mobile-only mb-4 grid grid-cols-2 gap-1 rounded-xl p-1" role="tablist" aria-label={`${group.name} sections`} style={{ background: 'var(--soft)' }}>
           {[['journal', 'Places', 'home'], ['activity', 'Activity', 'activity']].map(([k, l, ic]) => (
             <button key={k} role="tab" aria-selected={view === k} onClick={() => setView(k)}
@@ -220,10 +249,15 @@ export default function Journal({ me, group, groups, username, view, setView, ad
       <div key={view} className="tabin">
       {view === 'wishlist' && (
         <Wishlist me={me} group={group} items={wishlist} names={names} isOwner={isOwner} onChanged={load}
-          onWent={w => setCreating({ prefill: { name: w.name, city: w.city, area: w.area, categories: w.categories || [], maps_url: w.maps_url || '' }, wishId: w.id })} />
+          onWent={w => setCreating({ prefill: { name: w.name, city: w.city, area: w.area, categories: w.categories || [], maps_url: w.maps_url || '', lat: w.lat, lng: w.lng, loc_source: w.loc_source }, wishId: w.id })} />
       )}
 
       {view === 'activity' && group && <Activity me={me} group={group} names={names} />}
+
+      {view === 'near' && (
+        <NearMe places={places} wishlist={wishlist} toFix={needsLocation(places, wishlist, canEditPlace, canEditWish).length}
+          onOpenPlace={id => setOpenId(id)} onFix={() => setFixing(needsLocation(places, wishlist, canEditPlace, canEditWish))} />
+      )}
 
       {view === 'journal' && (
         <>
@@ -236,6 +270,11 @@ export default function Journal({ me, group, groups, username, view, setView, ad
             <button className="quick" onClick={() => setPicking(true)}>
               <span className="qicon" style={{ background: 'var(--accent-soft)', color: 'var(--accent-ink)' }}><Icon name="dice" /></span>
               <span className="min-w-0 text-[13px] leading-tight"><b className="block text-[14px]">Where to eat?</b><span style={mute}>Pick for me</span></span>
+            </button>
+            <button className="quick col-span-2 !py-2.5" onClick={() => setView('near')}>
+              <span className="qicon !h-9 !w-9" style={{ background: 'var(--near-soft)', color: 'var(--near-ink)' }}><Icon name="locate" /></span>
+              <span className="min-w-0 flex-1 text-[13px] leading-tight"><b className="block text-[14px]">Near me</b><span style={mute}>Your places around you, on a map</span></span>
+              <Icon name="chevron" size={18} style={mute} />
             </button>
           </div>
 
@@ -356,7 +395,8 @@ export default function Journal({ me, group, groups, username, view, setView, ad
           canEdit={canEditPlace(open)} onClose={() => setOpenId(null)} onChanged={load}
           onEdit={() => { setOpenId(null); setEditing({ ...open }) }}
           onAddDish={() => setAddingDish({ id: open.id, name: open.name, dishes: open.dishes })}
-          onShare={d => setSharing({ place: open, dish: d })} />
+          onShare={d => setSharing({ place: open, dish: d })}
+          onLocate={() => setFixing([{ ...open, table: 'places' }])} />
       )}
 
       {sheetTab && (
@@ -379,7 +419,11 @@ export default function Journal({ me, group, groups, username, view, setView, ad
 
       {picking && <Picker places={places} wishlist={wishlist} group={group} onClose={() => setPicking(false)} />}
 
-      {notice && <Toast key={notice.text} text={notice.text} />}
+      {notice && <Toast key={notice.text} text={notice.text} action={notice.action} onAction={() => { setNotice(null); notice.onAction?.() }} />}
+
+      {fixing && (
+        <FixLocations places={fixing} onClose={() => setFixing(null)} onSaved={() => { setFixing(null); load() }} />
+      )}
 
       {asking && <CravingChat places={places} onClose={() => setAsking(false)} onOpenPlace={id => { setAsking(false); setOpenId(id) }} />}
 

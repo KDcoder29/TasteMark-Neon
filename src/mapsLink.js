@@ -1,8 +1,10 @@
 // "Open in Maps" for any place: the exact Google Maps link you pasted (maps_url), or else a Maps
 // search for the name, area and city you typed (free Google "Maps URLs", no API key).
 import { placeWhere } from './placeView'
+import { isExact } from './geo'
 
 const MAX = 500
+const SEARCH = 'https://www.google.com/maps/search/?api=1&query='
 
 // only real Google Maps links are saved or opened
 export function isMapsLink(s) {
@@ -30,8 +32,9 @@ export function findMapsLink(text) {
 export function mapsUrl(p) {
   if (!p) return null
   if (isMapsLink(p.maps_url)) return p.maps_url
+  if (isExact(p)) return SEARCH + encodeURIComponent(`${p.lat},${p.lng}`)
   const name = (p.name || '').trim()
   if (!name) return null
   const q = [name, placeWhere(p)].filter(Boolean).join(', ')
-  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q)
+  return SEARCH + encodeURIComponent(q)
 }

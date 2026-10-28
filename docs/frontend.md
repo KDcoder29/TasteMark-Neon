@@ -27,7 +27,7 @@ BiteMark ("Remember every great bite") is a personal food journal PWA, used main
 | `Wishlist.jsx`, `Activity.jsx`, `Picker.jsx`, `CravingChat.jsx` (+`craving.js`) | The features with the same names. |
 | `useGestures.js` (+`gestures.js`), `Toast.jsx` (+`undo.js`), `StoryCard.jsx` (+`foodStory.js`) | Phone polish: swipe-to-close sheets, pull to refresh, Undo toast, the "food story" in the You sheet. |
 | `search.js` | Fuzzy search with scores: exact match, prefix, synonym groups (including Gujarati/Hindi words), substring, typo tolerance. |
-| `MapView.jsx`, `geocode.js` | Leaflet map with OSM tiles. Pin colour comes from the best rating. "Near me" lists the nearest places. |
+| `NearMe.jsx`, `FixLocations.jsx`, `LocationField.jsx`, `PinPicker.jsx`, `LeafletMap.jsx` (+`geo.js`, `geocode.js`, `locate.js`, `locationValue.js`) | Exact positions and Near me (2026-10-28, branch `BiteMark/Near_Me`). Leaflet + OpenStreetMap, lazy-loaded. See the session log. |
 | `Login.jsx`, `ResetPassword.jsx`, `ChangePassword.jsx`, `authApi.js` | Login with username or email, sign-up, password reset and change. |
 
 ## Decision log
@@ -89,7 +89,7 @@ BiteMark ("Remember every great bite") is a personal food journal PWA, used main
 ## Branches
 - `origin/main` is the main branch. Every task gets a feature branch cut from `origin/main` with `git switch --no-track -c BiteMark/<Name> origin/main`. Claude may create the branch; the user commits and pushes.
   - Without `--no-track`, a plain `git push` goes to main. That is how the bill scan landed: commit b12d64c went directly into `main` on 2026-10-25.
-- `BiteMark/Maps_feature`: the Map tab, Leaflet and geocoding (commit 594a41f). Marked "not accurate, not to be merged with main". `MapView.jsx` and `geocode.js` do not exist on other branches.
+- `BiteMark/Maps_feature`: an old Map tab experiment (commit 594a41f), "not accurate, not to be merged". Superseded by `BiteMark/Near_Me`, built fresh (its `geocode.js` is unrelated to the new one).
 - `BiteMark/Bill_Scan`: bill photo → prefilled dish form (in progress).
 
 ## Session log
@@ -521,3 +521,164 @@ Asked for: a public sample user with plenty of data so every feature can be trie
   - 231 tests pass; the build passes.
   - Playwright in fresh browser sessions: Try the demo → welcome popup (no tour behind) and banner; the You sheet shows no Change password; the banner's Log out → login page; typing test / test1234 → the same demo; a reload → no new reset or popup.
   - **The reset itself isn't verified yet:** it needs the SQL below to be run.
+
+### 2026-10-28: Exact locations + Near me (branch `BiteMark/Near_Me`, cut from origin/main 69c3e38 after PR #13)
+Spec: `docs/superpowers/specs/2026-10-28-near-me-design.md`. Plan: `docs/superpowers/plans/2026-10-28-near-me.md`.
+- **The user's decisions:**
+  - Positions come from **"I'm here" (GPS) + a pin on a map + reading a pasted Google Maps link**.
+  - Near me is a **List / Map toggle**, with List as the default.
+  - Old places are fixed through a **guided Fix locations review**. Nothing guessed is saved unseen.
+  - Near me shows **the current space plus its Want to try list**.
+  - Everything must be **free**.
+- **Free stack:**
+  - Leaflet 1.9.4 (npm) with OpenStreetMap tiles; the "© OpenStreetMap" credit is always visible. Dark mode inverts the tiles with a CSS filter.
+  - Photon (`photon.komoot.io`) for search and guesses: no key, CORS allowed.
+  - The browser Geolocation API for "I'm here" and Near me.
+  - `api/maps-resolve` for short links.
+  - Distances use haversine on the device.
+  - Leaflet loads through a dynamic `import()` only when a map opens. The main bundle is unchanged.
+- **Logic (all tested):**
+  - `geo.js`:
+    - `hasCoords` and `isLocated`. A position counts only with `loc_source` gps / link / pin; lat/lng without it are **old unchecked guesses** (see the backend note).
+    - `distanceKm`, `formatDistance` ("850 m" / "3.2 km" / "13 km").
+    - `coordsFromMapsUrl`, which prefers `!3d!4d` (the place) over `@` (the map centre).
+    - `isShortMapsLink`, `nearby`, `directionsUrl`, `bestRating`, `pinColor`.
+  - `geocode.js`: `searchPlaces`, `fallbackQueries`, `guessSpot`. A result counts as "the place" only when its name matches; Photon answered "Mandap" with a nearby hotel.
+  - `locate.js`: `getPosition`, giving errors denied / unavailable / timeout / unsupported; `GOOD_ACCURACY = 50` m.
+  - `locationValue.js`: `locationRow`, `locationOf`, `locationFromLink`.
+  - `mapsSave.js` now also drops lat / lng / loc_source when the API doesn't know them yet.
+  - `mapsUrl` opens the exact coordinates when a place has them; a saved Maps link still wins.
+- **UI:**
+  - **Place and Want to try forms:** an "Exact location" block with **I'm here** and **Set on map**.
+    - Once set, it shows a still map preview, how it was set (GPS ±N m / from the link / pinned), **Adjust** and **Remove**.
+    - Pasting a Maps link fills it in. If a position already exists, it asks before replacing it.
+    - GPS worse than 50 m opens the pin map at that spot instead of saving.
+  - **Map sheet (`MapSheet` in `LocationField.jsx`):** a portal above the form with search (debounced 400 ms), a draggable pin, tap-to-move and "Use this spot".
+  - **Near me (view `near`):**
+    - Sidebar item on laptops; on phones, a full-width quick tile under Craving? / Where to eat? (the bottom bar is full).
+    - Chips: 1 / 3 / 5 / 10 km (default 5), categories, Order again, Want to try.
+    - Cards show the distance and Directions (`/maps/dir/?api=1&destination=lat,lng`).
+    - Map: a blue "you" dot and pins coloured by best rating; wishes get bookmark pins. Tapping a pin shows a card that scrolls into view on phones.
+    - Error states: permission denied (how to fix it), unavailable or timeout, none located, nothing in range (showing the nearest and a "Show N km" button).
+    - The "N places need an exact location · Fix now" banner counts places you can edit.
+  - **Fix locations:** one place at a time, starting from the old guess if there is one, otherwise `guessSpot`. Actions: Looks right / Use this spot / Skip, then "Located N of M".
+    - It also covers **Want to try entries** (`needsLocation` in `locationValue.js`; each item carries `.table`), because that list has no edit form.
+    - Esc, the scrim and X all reload when something was saved.
+  - **Group save onto an existing card:** your position is applied only if the card has none (`.is('loc_source', null)`). Otherwise an info box says it wasn't changed.
+  - **Final review (fresh reviewer, 2026-10-28):** 3 Important findings and 2 re-graded from Minor were fixed: the migration rule, wishes in Fix, Esc reload, the group card location, and the dark Near me tile (`--near-soft` / `--near-ink`). The deferred minors are listed under Open.
+  - **Feature guide:** "Near me" (Try it → `near`) and "Exact location" were added.
+- **Bugs found while testing and fixed:**
+  - Leaflet `_leaflet_pos` crash when a map unmounted mid-animation. It now calls `stop()`, clears the resize timer, and uses non-animated setView / fitBounds.
+  - Re-framing all pins on every pin tap.
+  - The List/Map toggle stacking icons above the labels.
+- **Verified in Playwright:**
+  - 390 px light and 1280 px dark.
+  - Forms: GPS ±9 m; a full link read; pin search, tap and save, where the POST body carries lat/lng/loc_source.
+  - Near me: sorted 140 m … 4.3 km; the 1 km filter; 5 pins; exact Directions; the denied state.
+  - Fix locations: the PATCH body; Skip; the summary; no page errors with fast navigation.
+- **Status:** the user runs `db/migrations/2026-10-30-place-location.sql`, then the regenerated `2026-10-29-demo-account.sql` (see the backend doc). Not committed.
+- **Open:**
+  - Short-link resolving (`maps.app.goo.gl`) is unit-tested with stubs only. Check it with a real shared link on the deployed site.
+  - Deferred minors from the review:
+    - `@lat,lng`-only links are labelled "From the link" although `@` is only the map centre.
+    - The link-confirm dialog doesn't re-check that the form is still open.
+    - In dev StrictMode the link check fires on edit open.
+    - `guessSpot` with an empty name.
+    - The search spinner can stick after the box is cleared.
+    - A failed Leaflet chunk load stays cached until reload.
+    - Near me "Update" failures are silent when a position already exists.
+    - Map sheets don't move keyboard focus.
+    - Demo area-centre positions are stored as `pin` (shown as exact).
+    - The resolver regex accepts any 2–3 letter `google.*` TLD.
+
+### 2026-10-28 (later): Exact location via Google Maps (same branch `BiteMark/Near_Me`)
+- **User feedback:**
+  - The "44 places to fix" banner nagged.
+  - OpenStreetMap search and guesses didn't find their places, while a Google Maps search for name + area + city opens perfectly.
+  - "Use this spot" showed "needs a one-time update on the server". The migration had run but the Data API cache wasn't refreshed yet; it works now.
+- **Options offered (only free allowed):**
+  - A. Google finds it, you copy its link (**chosen**).
+  - B. Google Geocoding API: about 10k free a month, but needs a billing card.
+  - C. Scraping Google Maps pages: against Google's terms, and fragile.
+  - D. Smarter OpenStreetMap search.
+- **Now:**
+  - **`GoogleLocate.jsx`:** **Find on Google Maps** opens `findOnGoogleUrl(place)` (a search for name, area and city).
+    - On return (visibilitychange or focus), **Paste link** pulses.
+    - `pasteMapsLink(navigator.clipboard)` reads the copied link and reports `empty` / `not-maps` / `blocked`. On `blocked`, a box to paste into by hand appears.
+  - **Forms:** the separate "Google Maps link" box is merged into Exact location as "Paste the link by hand". Before the location migration it's the only thing shown. A pasted link fills `maps_url` and its position, so both are saved.
+    - Secondary options: **I'm here now** and **Place it on a map**. The map now starts on the area or city, never on a guessed shop.
+  - **Add exact locations** (`FixLocations.jsx`, renamed in the UI): per place, steps 1-2-3, then Find / Paste, the spot on a draggable map, and **Save & next** (saves lat/lng/loc_source **and** `maps_url`). Also "I'm there now" and Skip. No OpenStreetMap guesses.
+  - **Near me:** the banner is gone. A quiet line under the results ("N places have no exact location yet… Add them ×") is hidden with × until the number grows (`showFixHint`, localStorage `bm.fixhint`).
+    - When nothing is located yet, the empty state has the **Add exact locations** button.
+  - **Place details:** a small **Add exact location** link for unlocated places you can edit. It opens a single-place version that closes on Save.
+  - **Server not ready:** `useLocationReady()` (`locationReady.js`) checks `places.loc_source` once per app start (`checkLocationSupport`).
+    - When it's missing, location buttons are hidden, the link box still works, and Near me says it isn't switched on. No more "couldn't save" popups.
+  - `guessSpot` with no name no longer claims "found the place" (tested).
+- **Verified (Playwright, 390 px light and dark):**
+  - Find opens the exact Google search URL.
+  - Paste fills the link and position; the save body has `maps_url` + lat/lng + `loc_source:'link'`.
+  - Empty / not-maps / no-spot messages.
+  - Add exact locations: PATCH with `maps_url`, Save & next, Skip, Esc.
+  - The quiet hint and its ×; the details link and single-place sheet.
+- **Note:** the live DB now has `loc_source`, so the location migration has run. The demo places have no positions until `2026-10-29-demo-account.sql` is re-run.
+
+### 2026-10-29: Automatic area-level positions (same branch `BiteMark/Near_Me`)
+- **User ask:** when no link is given, take Google's first search result (name + landmark + city) automatically and save it.
+- **Explained:** an app can't read Google's results for free within Google's terms; it needs the paid API (card) or scraping.
+- **The user chose A:** an automatic **area-level** position from OpenStreetMap; Google stays the way to get the exact spot.
+- **How it works:**
+  - **`areaSpot(p)`** (`geocode.js`, tested) looks up only the **landmark / area + city**, never the shop name.
+    - Tries the whole landmark first, then each comma part from the last ("Express Hotel, Alkapuri" → "Alkapuri").
+    - A result counts only if its name has **every** typed word (stop-words dropped) and it lies **within 25 km of the city centre**. That rejects The Fern for "Express Hotel" and Race Course Circle in Rajkot.
+    - It prefers `osm_key=place` (a real area) over a shop with the same word, and **never** falls back to the bare city centre.
+    - Live check: Navrangpura, Alkapuri, Law Garden, SG Highway, Lal Darwaja and Mandvi found; Race Course Circle, Sayajigunj and Gulbai Tekra gave none, never a wrong one.
+  - Saved as **`loc_source = 'area'`**.
+    - `isLocated` includes it; the new **`isExact`** covers gps / link / pin only.
+    - `distanceLabel` shows "≈ 800 m".
+    - **Directions** for area-level places uses `destination=<name, landmark, city>`, so Google navigates to its own first result. Exact spots use coordinates.
+    - `mapsUrl` uses coordinates only for exact spots.
+  - **`autoLocate.js`:** a background queue, one lookup at a time about 1 s apart. Each update has the filter `or=(loc_source.is.null,loc_source.eq.area)`, so an exact spot is **never** overwritten.
+    - Each place is tried once per app start; just-saved places go first (`{ now: true }`).
+    - It sends `bm:located` (every 5 found, and at the end) and the journal reloads.
+  - **Journal:** once data is loaded and the server is confirmed ready (`useLocationReady({ strict: true })`), it queues every place and Want to try entry with no position that you can edit (old unsourced guesses included, which get replaced).
+  - **Saves:** PlaceForm and Wishlist queue a lookup after saving when `wantsAreaLookup(loc, before, f)` (tested): never over an exact spot, again only if the landmark or city changed. The form closes immediately; no waiting.
+- **UI:**
+  - Area-level places show "≈" on the distance chip and a **hollow, dashed pin** on the map. The map caption explains hollow pins.
+  - Form: "Placed by its area (≈). For the exact spot:" followed by Find on Google Maps / Paste link. When nothing is set: "Optional. Skip it and BiteMark places it by its landmark and city on its own (≈)".
+  - Details: "Placed by its area · make it exact" opens the single-place Google flow.
+  - The Near me quiet hint counts only places with no position at all.
+- **Demo:** the 65 area-centre demo entries are now honestly `loc_source 'area'`; the 14 name matches stay `pin`. The SQL was regenerated.
+- **Verified (Playwright):**
+  - A save of "Unlocked / Navrangpura / Ahmedabad" without a location closes the form at once, then PATCHes `{lat 23.036, lng 72.564, loc_source 'area'}` with the safety filter.
+  - The demo's unlocated places start filling in the background.
+  - Near me shows "420 m" (exact) and "≈ 800 m" (area); one hollow pin; Directions uses coordinates for the exact place and the text search for the area-level one.
+- **The user must re-run `db/migrations/2026-10-30-place-location.sql`** so the database allows `'area'`. Until then, background updates fail quietly (console warning) and nothing breaks.
+
+### 2026-10-29: Near me without a distance limit (same branch)
+- **User ask:** remove the 1/3/5/10 km chips; from Ahmedabad they also want to see all of Vadodara's places on the map.
+- **Now:**
+  - Every located place and wish of the space is shown, nearest first: `sortByDistance(items, me)` (tested). Without a position, places are sorted by name with no distances.
+  - **City chips** ("All cities" plus each city that has located places) appear when there's more than one city.
+  - It starts on **the city you're in**: `homeCity`, the city of your nearest place within 40 km (tested). Otherwise it starts on All cities.
+  - Your blue dot is left off the map when you look at another city, so the map frames that city instead of zooming out over 100 km.
+  - **Location blocked or unavailable** is no longer a dead end. A short note appears ("…so there are no distances") with a **Use my location** chip, and the list and map still work.
+  - Removed: `RADII`, the radius state, "Nothing within N km" and the "Show N km" button. `nearby()` stays in geo.js (tested) but Near me doesn't use it.
+- **Verified (Playwright, 390 px):**
+  - In Ahmedabad: starts on Ahmedabad (Unlocked, then Swati Snacks).
+  - Vadodara chip: Mandap "101 km", Jagdish Farsan "≈ 104 km"; the map shows 2 pins and no "me" dot.
+  - All cities: 4 pins.
+  - Location denied: the note shows and all 4 places are listed by name with no distance chips. No page errors.
+
+### 2026-10-29: Bug: changing the landmark kept the old area position (same branch)
+- **Report:** Coffea's landmark was changed from "13 Canal Rd" to "TP 13 Canal Road"; Near me still showed it at Ankodiya Canal Rd.
+- **Causes:**
+  1. When the new landmark couldn't be found (OpenStreetMap doesn't know "TP 13 Canal Road"), the old area-level position stayed.
+  2. Matching ignored short words and numbers, so "13 Canal Rd" had matched "Ankodiya **Canal** Rd" in the first place.
+  3. Nothing told the user.
+- **Fixes (tested):**
+  - `saveLocation(loc, before, f)` (`locationValue.js`): a changed landmark or city **clears** an area-level position in the same save, then looks it up again. Exact spots are untouched.
+  - `areaSpot` word matching: every word counts, including numbers and 2-letter ones ("tp", "13"). Short words must be whole words of the result's name. The stop-words "road / rd / street / st / of / no / nr…" are ignored.
+  - `autoLocate` sends `bm:notlocated` for a just-saved place it couldn't place. The journal shows "Couldn't place '…' by its landmark" (7 s) with **Fix**, which opens the place, where **Add exact location** is.
+  - Form: an area-level position has a **Remove** link.
+- **Verified (Playwright, real Photon):** edit Coffea to "TP 13 Canal Road" → the PATCH clears lat/lng/loc_source → the toast appears → Fix opens the details with "Add exact location".
+- **Existing record:** places saved before this fix keep their old area spot until their landmark changes, or until it's replaced with Google (Find on Google Maps → Paste link) or removed.

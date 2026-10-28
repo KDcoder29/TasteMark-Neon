@@ -129,7 +129,7 @@ export default function App() {
   const isDemo = isDemoUser(session?.user)
   // last known username on this device, so "Hi, Kandarp" shows at once (checked against uid below)
   const [username, setUsername] = useState(() => { try { return recallUser(window.localStorage)?.username || '' } catch { return '' } })
-  const [view, setView] = useState('journal')            // journal | wishlist | activity
+  const [view, setView] = useState('journal')            // journal | wishlist | activity | near
   const [adding, setAdding] = useState(false)             // + menu open
   const [addIntent, setAddIntent] = useState(null)        // { file? } -> Journal opens the place form
   const [sheet, setSheet] = useState(null)                // phones: 'spaces' | 'you'
@@ -324,6 +324,7 @@ export default function App() {
       case 'craving': setAddIntent({ tool: 'craving' }); break
       case 'picker': setAddIntent({ tool: 'picker' }); break
       case 'wishlist': go('wishlist'); break
+      case 'near': go('near'); break
       case 'groups': setGroupsOpen(true); break
       case 'you': if (desktop) setAcctOpen(true); else setSheet('you'); break
       case 'dark': setDark(!dark); break
@@ -370,6 +371,9 @@ export default function App() {
         </button>
         <button className={`side-item ${view === 'wishlist' ? 'on' : ''}`} onClick={() => go('wishlist')}>
           <Icon name="bookmark" size={18} /> Want to try <span className="count">{stats.wish || ''}</span>
+        </button>
+        <button className={`side-item ${view === 'near' ? 'on' : ''}`} onClick={() => go('near')}>
+          <Icon name="locate" size={18} /> Near me
         </button>
         {activeGroup && (
           <button className={`side-item ${view === 'activity' ? 'on' : ''}`} onClick={() => go('activity')}>
@@ -452,7 +456,7 @@ export default function App() {
 
       {/* ---------- phone bottom bar ---------- */}
       <nav className="bottomnav" aria-label="Main" style={adding ? { zIndex: 42 } : null}>
-        <button className={`navbtn ${!sheet && (view === 'journal' || view === 'activity') ? 'on' : ''}`} onClick={() => go('journal')}><span className="navico"><Icon name="home" size={22} /></span>Home</button>
+        <button className={`navbtn ${!sheet && (view === 'journal' || view === 'activity' || view === 'near') ? 'on' : ''}`} onClick={() => go('journal')}><span className="navico"><Icon name="home" size={22} /></span>Home</button>
         <button className={`navbtn ${!sheet && view === 'wishlist' ? 'on' : ''}`} onClick={() => go('wishlist')}><span className="navico"><Icon name="bookmark" size={22} /></span>Want to try</button>
         <button data-addbtn className={`navplus ${adding ? 'open' : ''}`} onClick={() => { buzz(); setAdding(!adding) }} aria-label="Add" aria-expanded={adding}>
           <Icon name="plus" size={28} stroke={2.6} />
