@@ -1,7 +1,7 @@
 // Everything BiteMark does, in plain words: the Feature guide (FeatureGuide.jsx) shows this list.
 // `action` = what its "Try it" button opens (App.jsx handles each one in ACTIONS).
 
-export const ACTIONS = ['add', 'voice', 'manual', 'search', 'filters', 'craving', 'picker', 'wishlist', 'groups', 'you', 'dark']
+export const ACTIONS = ['add', 'voice', 'manual', 'search', 'filters', 'craving', 'picker', 'wishlist', 'near', 'groups', 'you', 'dark']
 
 export const FEATURES = [
   { title: 'Add what you ate', items: [
@@ -19,6 +19,8 @@ export const FEATURES = [
   { title: 'Plan and share', items: [
     { icon: 'bookmark', title: 'Want to try', action: 'wishlist', text: 'Save places to visit. Tap We went to turn one into a journal entry, or Maps for directions.' },
     { icon: 'users', title: 'Groups', action: 'groups', text: 'Create a group or join with an invite code. Everyone adds places, rates dishes, reacts and comments.' },
+    { icon: 'locate', title: 'Near me', action: 'near', text: 'See your saved places and Want to try list around you, as a list or on a map, with directions.' },
+    { icon: 'pin', title: 'Exact location', text: 'Tap Find on Google Maps, then Share → Copy link there, and Paste link here. Or tap I’m here when you’re at the place.' },
     { icon: 'map', title: 'Directions', text: 'Tap Maps or the address of any place to open Google Maps. Paste the place’s Maps link when adding it for exact directions.' },
     { icon: 'send', title: 'Send to friends', text: 'Open a place and tap Send to share a clean picture of its best dishes on WhatsApp.' },
     { icon: 'receipt', title: 'Bills', text: 'Bill photos you scanned are kept with the place. Open the place and tap Bill to see them.' },

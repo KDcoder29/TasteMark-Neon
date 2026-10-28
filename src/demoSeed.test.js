@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { SEED } from '../db/demo/demo-seed.mjs'
 import { CATEGORIES } from './shared'
+import { hasCoords, distanceKm } from './geo'
 
 const places = SEED.places
 const dishes = places.flatMap(p => p.dishes)
@@ -60,5 +61,25 @@ describe('the public demo journal (sample data)', () => {
     expect(gd.some(d => d.reactions?.length)).toBe(true)
     expect(gd.some(d => d.comments?.length)).toBe(true)
     expect(SEED.group.wishlist.length).toBeGreaterThanOrEqual(1)
+  })
+})
+
+describe('demo positions (so Near me works in the demo)', () => {
+  const CENTRE = { Vadodara: { lat: 22.3072, lng: 73.1812 }, Ahmedabad: { lat: 23.0225, lng: 72.5714 } }
+  const all = [...SEED.places, ...SEED.wishlist, ...SEED.group.places, ...SEED.group.wishlist]
+  test('every place, wish and group place has a position', () => {
+    for (const p of all) expect(hasCoords(p), p.name).toBe(true)
+  })
+  test('each sits in its own city (Vadodara within 25 km, Ahmedabad within 30 km)', () => {
+    for (const p of all) expect(distanceKm(CENTRE[p.city], p), `${p.name}, ${p.city}`).toBeLessThan(p.city === 'Vadodara' ? 25 : 30)
+  })
+  test('name-matched spots are pins; area-centre ones are honest area-level positions', () => {
+    for (const p of all) expect(p.loc_source, p.name).toBe(p.approx ? 'area' : 'pin')
+    expect(all.some(p => p.approx)).toBe(true)
+    expect(all.some(p => !p.approx)).toBe(true)
+  })
+  test('approximate places in the same area do not sit on the exact same spot (the same place twice may)', () => {
+    const byPlace = new Map(all.filter(p => p.approx).map(p => [`${p.city}|${p.name}`, `${p.lat},${p.lng}`]))
+    expect(new Set(byPlace.values()).size).toBe(byPlace.size)
   })
 })

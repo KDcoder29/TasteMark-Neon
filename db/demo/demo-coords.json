@@ -1,0 +1,397 @@
+{
+ "Vadodara|Mandap": {
+  "lat": 22.310173,
+  "lng": 73.175689,
+  "approx": true
+ },
+ "Vadodara|Sasumaa Gujarati Thali": {
+  "lat": 22.309047,
+  "lng": 73.185103,
+  "approx": true
+ },
+ "Vadodara|Kai Asia": {
+  "lat": 22.310173,
+  "lng": 73.175689,
+  "approx": true
+ },
+ "Vadodara|22nd Parallel": {
+  "lat": 22.310173,
+  "lng": 73.175689,
+  "approx": true
+ },
+ "Vadodara|Sankalp": {
+  "lat": 22.31465,
+  "lng": 73.16,
+  "approx": true
+ },
+ "Vadodara|Shree Kamachi Bhavan": {
+  "lat": 22.323947,
+  "lng": 73.188538,
+  "approx": true
+ },
+ "Vadodara|Peshawari": {
+  "lat": 22.310173,
+  "lng": 73.175689,
+  "approx": true
+ },
+ "Vadodara|Mirch Masala": {
+  "lat": 22.310173,
+  "lng": 73.175689,
+  "approx": true
+ },
+ "Vadodara|Jassi De Parathe": {
+  "lat": 22.323947,
+  "lng": 73.188538,
+  "approx": true
+ },
+ "Vadodara|Moti Mahal Delux": {
+  "lat": 22.310173,
+  "lng": 73.175689,
+  "approx": true
+ },
+ "Vadodara|Jay Mahakali Sev Usal": {
+  "lat": 22.295732,
+  "lng": 73.19755,
+  "approx": true
+ },
+ "Vadodara|Raju Omelette": {
+  "lat": 22.318314,
+  "lng": 73.201519,
+  "approx": true
+ },
+ "Vadodara|Jagdish Farsan": {
+  "lat": 22.302589,
+  "lng": 73.204483,
+  "approx": false
+ },
+ "Vadodara|Bhai Bhai Dabeliwala": {
+  "lat": 22.300151,
+  "lng": 73.210659,
+  "approx": true
+ },
+ "Vadodara|Tasty Vadapav": {
+  "lat": 22.323947,
+  "lng": 73.188538,
+  "approx": true
+ },
+ "Vadodara|Chatkazz": {
+  "lat": 22.310173,
+  "lng": 73.175689,
+  "approx": true
+ },
+ "Vadodara|Moneez": {
+  "lat": 22.310173,
+  "lng": 73.175689,
+  "approx": true
+ },
+ "Vadodara|Flavour Restaurant": {
+  "lat": 22.309047,
+  "lng": 73.185103,
+  "approx": true
+ },
+ "Vadodara|Govinda’s Restaurant": {
+  "lat": 22.314249,
+  "lng": 73.138812,
+  "approx": true
+ },
+ "Vadodara|Khaki Dining Hall": {
+  "lat": 22.303814,
+  "lng": 73.200758,
+  "approx": true
+ },
+ "Vadodara|Azure": {
+  "lat": 22.287474,
+  "lng": 73.164723,
+  "approx": true
+ },
+ "Vadodara|Saideep Dabeli Corner": {
+  "lat": 22.275869,
+  "lng": 73.18793,
+  "approx": true
+ },
+ "Vadodara|Canara Coffee House": {
+  "lat": 22.299504,
+  "lng": 73.202468,
+  "approx": false
+ },
+ "Vadodara|Barbeque Nation": {
+  "lat": 22.318623,
+  "lng": 73.170821,
+  "approx": true
+ },
+ "Vadodara|Subway": {
+  "lat": 22.308902,
+  "lng": 73.186645,
+  "approx": false
+ },
+ "Vadodara|Kaffa Coffee Roasters": {
+  "lat": 22.310173,
+  "lng": 73.175689,
+  "approx": true
+ },
+ "Vadodara|Kaphi Pibama": {
+  "lat": 22.310173,
+  "lng": 73.175689,
+  "approx": true
+ },
+ "Vadodara|Cafe Local Patio": {
+  "lat": 22.310173,
+  "lng": 73.175689,
+  "approx": true
+ },
+ "Vadodara|Charmant – The Heritage Cafe": {
+  "lat": 22.310173,
+  "lng": 73.175689,
+  "approx": true
+ },
+ "Vadodara|Caffe De Rio": {
+  "lat": 22.293412,
+  "lng": 73.172046,
+  "approx": true
+ },
+ "Vadodara|Coffee Clan": {
+  "lat": 22.293412,
+  "lng": 73.172046,
+  "approx": true
+ },
+ "Vadodara|Curators Coffee": {
+  "lat": 22.310173,
+  "lng": 73.175689,
+  "approx": true
+ },
+ "Vadodara|Tea Trails": {
+  "lat": 22.310173,
+  "lng": 73.175689,
+  "approx": true
+ },
+ "Vadodara|Havmor Ice Cream": {
+  "lat": 22.310173,
+  "lng": 73.175689,
+  "approx": true
+ },
+ "Vadodara|Duliram Pedawala": {
+  "lat": 22.303814,
+  "lng": 73.200758,
+  "approx": true
+ },
+ "Vadodara|Natural Ice Cream": {
+  "lat": 22.293412,
+  "lng": 73.172046,
+  "approx": true
+ },
+ "Ahmedabad|Agashiye": {
+  "lat": 23.027038,
+  "lng": 72.581617,
+  "approx": false
+ },
+ "Ahmedabad|Vishalla": {
+  "lat": 23.002005,
+  "lng": 72.547241,
+  "approx": true
+ },
+ "Ahmedabad|Gordhan Thal": {
+  "lat": 23.03596,
+  "lng": 72.51112,
+  "approx": false
+ },
+ "Ahmedabad|Iscon Thal": {
+  "lat": 23.028774,
+  "lng": 72.5063,
+  "approx": true
+ },
+ "Ahmedabad|Atithi Dining Hall": {
+  "lat": 23.038107,
+  "lng": 72.513809,
+  "approx": false
+ },
+ "Ahmedabad|Earthen Oven": {
+  "lat": 23.049486,
+  "lng": 72.567262,
+  "approx": true
+ },
+ "Ahmedabad|Bayleaf": {
+  "lat": 23.026444,
+  "lng": 72.512094,
+  "approx": true
+ },
+ "Ahmedabad|Patang": {
+  "lat": 23.02636,
+  "lng": 72.572173,
+  "approx": false
+ },
+ "Ahmedabad|Swati Snacks": {
+  "lat": 23.024447,
+  "lng": 72.558983,
+  "approx": false
+ },
+ "Ahmedabad|Das Khaman": {
+  "lat": 23.036,
+  "lng": 72.564343,
+  "approx": true
+ },
+ "Ahmedabad|Sankalp": {
+  "lat": 23.018264,
+  "lng": 72.568275,
+  "approx": true
+ },
+ "Ahmedabad|Dasprakash": {
+  "lat": 23.018264,
+  "lng": 72.568275,
+  "approx": true
+ },
+ "Ahmedabad|Gwalia Sweets & Fast Food": {
+  "lat": 23.121793,
+  "lng": 72.538541,
+  "approx": true
+ },
+ "Ahmedabad|Manek Chowk": {
+  "lat": 23.02318,
+  "lng": 72.588952,
+  "approx": false
+ },
+ "Ahmedabad|Chandravilas": {
+  "lat": 23.024425,
+  "lng": 72.589368,
+  "approx": false
+ },
+ "Ahmedabad|Honest": {
+  "lat": 23.026011,
+  "lng": 72.556718,
+  "approx": true
+ },
+ "Ahmedabad|Jasuben Pizza": {
+  "lat": 23.020681,
+  "lng": 72.554085,
+  "approx": false
+ },
+ "Ahmedabad|Rajwadu": {
+  "lat": 23.006332,
+  "lng": 72.536517,
+  "approx": true
+ },
+ "Ahmedabad|Lucky Restaurant": {
+  "lat": 23.024576,
+  "lng": 72.578432,
+  "approx": true
+ },
+ "Ahmedabad|Tomato’s": {
+  "lat": 23.026011,
+  "lng": 72.556718,
+  "approx": true
+ },
+ "Ahmedabad|Oshwal’s Fafda Jalebi": {
+  "lat": 23.036,
+  "lng": 72.564343,
+  "approx": true
+ },
+ "Ahmedabad|Gopi Dining Hall": {
+  "lat": 23.023166,
+  "lng": 72.560263,
+  "approx": true
+ },
+ "Ahmedabad|Barbeque Nation": {
+  "lat": 23.023094,
+  "lng": 72.536473,
+  "approx": true
+ },
+ "Ahmedabad|Starbucks": {
+  "lat": 23.036,
+  "lng": 72.564343,
+  "approx": true
+ },
+ "Ahmedabad|All The Perks": {
+  "lat": 23.036,
+  "lng": 72.564343,
+  "approx": true
+ },
+ "Ahmedabad|Mleko": {
+  "lat": 23.036,
+  "lng": 72.564343,
+  "approx": true
+ },
+ "Ahmedabad|Danny’s Coffee Bar": {
+  "lat": 23.036,
+  "lng": 72.564343,
+  "approx": true
+ },
+ "Ahmedabad|Brewgarten": {
+  "lat": 23.036,
+  "lng": 72.564343,
+  "approx": true
+ },
+ "Ahmedabad|Third Wave Coffee": {
+  "lat": 23.011446,
+  "lng": 72.509293,
+  "approx": true
+ },
+ "Ahmedabad|Slay Coffee": {
+  "lat": 23.011446,
+  "lng": 72.509293,
+  "approx": true
+ },
+ "Ahmedabad|Unlocked": {
+  "lat": 23.033026,
+  "lng": 72.557735,
+  "approx": false
+ },
+ "Ahmedabad|Zen Cafe": {
+  "lat": 23.036223,
+  "lng": 72.549426,
+  "approx": false
+ },
+ "Ahmedabad|Upper Crust": {
+  "lat": 23.026011,
+  "lng": 72.556718,
+  "approx": true
+ },
+ "Ahmedabad|Havmor Ice Cream": {
+  "lat": 23.036,
+  "lng": 72.564343,
+  "approx": true
+ },
+ "Ahmedabad|Hocco Eatery": {
+  "lat": 23.048539,
+  "lng": 72.511742,
+  "approx": true
+ },
+ "Ahmedabad|Vadilal Happinezz Cafe": {
+  "lat": 23.027956,
+  "lng": 72.518975,
+  "approx": true
+ },
+ "Vadodara|Cafe Mocha": {
+  "lat": 22.310173,
+  "lng": 73.175689,
+  "approx": true
+ },
+ "Vadodara|Devi’s Coffee Bar": {
+  "lat": 22.310173,
+  "lng": 73.175689,
+  "approx": true
+ },
+ "Ahmedabad|Karma Cafe": {
+  "lat": 23.036,
+  "lng": 72.564343,
+  "approx": true
+ },
+ "Ahmedabad|Sagar Ratna": {
+  "lat": 23.018264,
+  "lng": 72.568275,
+  "approx": true
+ },
+ "Ahmedabad|The Grand Bhagwati": {
+  "lat": 23.042462,
+  "lng": 72.514406,
+  "approx": false
+ },
+ "Vadodara|Laxmi Vilas Palace Café": {
+  "lat": 22.291854,
+  "lng": 73.188333,
+  "approx": true
+ },
+ "Vadodara|Mahakali Sev Usal": {
+  "lat": 22.295732,
+  "lng": 73.19755,
+  "approx": true
+ }
+}

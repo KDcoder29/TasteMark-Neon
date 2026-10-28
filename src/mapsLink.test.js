@@ -56,6 +56,24 @@ describe('mapsUrl (what the Maps button opens)', () => {
     expect(mapsUrl({ name: 'X', maps_url: 'https://evil.com' })).toBe('https://www.google.com/maps/search/?api=1&query=X')
   })
 
+  test('an exact position opens that spot (when no link is saved)', () => {
+    expect(mapsUrl({ name: 'X', area: 'Alkapuri', city: 'Vadodara', lat: 22.31, lng: 73.17, loc_source: 'pin' }))
+      .toBe('https://www.google.com/maps/search/?api=1&query=22.31%2C73.17')
+  })
+
+  test('an area-level position is not exact: search the name, area and city (Google finds the place)', () => {
+    expect(mapsUrl({ name: 'X', area: 'Navrangpura', city: 'Ahmedabad', lat: 23.03, lng: 72.56, loc_source: 'area' }))
+      .toBe('https://www.google.com/maps/search/?api=1&query=X%2C%20Navrangpura%2C%20Ahmedabad')
+  })
+
+  test('an old unchecked guess is ignored: search the name instead', () => {
+    expect(mapsUrl({ name: 'X', lat: 22.31, lng: 73.17 })).toBe('https://www.google.com/maps/search/?api=1&query=X')
+  })
+
+  test('a saved link still wins over the position', () => {
+    expect(mapsUrl({ name: 'X', lat: 22.31, lng: 73.17, maps_url: 'https://maps.app.goo.gl/AbC' })).toBe('https://maps.app.goo.gl/AbC')
+  })
+
   test('nothing to search for: null (no button)', () => {
     expect(mapsUrl({ name: '  ' })).toBe(null)
     expect(mapsUrl(null)).toBe(null)

@@ -38,6 +38,9 @@ const P = {
   refresh:<><path d="M20 12a8 8 0 1 1-2.4-5.7" /><path d="M20 4v4.5h-4.5" /></>,
   trash: <><path d="M4 7h16" /><path d="M6 7l1 13h10l1-13" /><path d="M9 7V4h6v3" /><path d="M10 11v5M14 11v5" /></>,
   map: <><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z" /><path d="M9 4v14M15 6v14" /></>,
+  locate: <><circle cx="12" cy="12" r="6.5" /><circle cx="12" cy="12" r="2" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></>,
+  navigate: <path d="M4 11l16-7-7 16-2-7z" />,
+  list: <path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" />,
   repeat: <><path d="M4 12a7 7 0 0 1 12-5l3 3" /><path d="M19 5v5h-5" /><path d="M20 12a7 7 0 0 1-12 5l-3-3" /><path d="M5 19v-5h5" /></>,
 }
 
