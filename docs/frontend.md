@@ -501,6 +501,8 @@ Asked for: a public sample user with plenty of data so every feature can be trie
   - **test** / `test1234` (`demo@example.com`): the first demo account, still a demo.
 - **`src/demoAccount.js` (tested):** `DEMO`, `isDemoUser` (by email), and "fresh once per visit" kept in sessionStorage (`bm.demo.ready`): `demoNeedsReset` / `markDemoReady` / `forgetDemoReady`.
 - **Login:** an "or" divider and **Try the demo** (signs in with the demo credentials), with the hint "A sample journal with 72 places…".
+  - **Button style (2026-10-28, `.btn-demo`):** the user said the plain outline button didn't look clickable. An orange version stood out too much: the user wants **Log in first, the demo second**. The final style is a plain surface button with a clearly visible border and normal text. The only colour is a small soft-orange circle holding the play icon. There's no glow and no colour fill, in either light or dark.
+  - **Declined (2026-10-28):** sign-up nudges for demo visitors (keep demo entries, taste profile, save demo places, a quest). The user didn't like any of them.
 - **App, when the demo is logged in:**
   - **A new visit** (a new tab, or after log out) shows "Setting up the demo journal…" while the `reset_demo()` RPC restores the sample journal. It then clears local snapshots, switches to Personal, and reloads groups.
   - **The welcome popup** (an app dialog) says it's a shared journal, nothing is kept, and it resets on log out, with **Play the tour** or **Explore on my own**. The automatic first-visit tour is off for the demo, so they never stack.

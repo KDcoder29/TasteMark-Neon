@@ -194,8 +194,8 @@ export default function Login({ onSession }) {
           {!forgot && !isSignup && (
             <div className="demo-try">
               <span className="demo-or"><span>or</span></span>
-              <button type="button" disabled={busy} onClick={tryDemo} className="btn w-full">
-                <Icon name="play" size={16} /> Try the demo
+              <button type="button" disabled={busy} onClick={tryDemo} className="btn btn-demo w-full">
+                <span className="demo-play"><Icon name="play" size={12} /></span> Try the demo
               </button>
               <p className="m-0 mt-1.5 text-center text-xs" style={{ color: 'var(--mute)' }}>
                 A sample journal with 72 places in Vadodara and Ahmedabad. No sign-up needed.
