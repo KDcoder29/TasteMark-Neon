@@ -23,7 +23,9 @@ import { usePullRefresh } from './useGestures'
 import { showAlert } from './dialogs'
 import { optimistic } from './optimistic'
 import Toast from './Toast'
-import NearMe from './NearMe'
+import ChunkBoundary from './ChunkBoundary'
+// the map screen (and Leaflet) loads only when Near me is opened, to keep the main bundle small
+const loadNearMe = () => import('./NearMe')
 import FixLocations from './FixLocations'
 import { needsLocation } from './locationValue'
 import { autoLocate } from './autoLocate'
@@ -64,6 +66,7 @@ export default function Journal({ me, group, groups, username, view, setView, ad
   const [loading, setLoading] = useState(!snap)
   const [netErr, setNetErr] = useState('')          // the last refresh failed (offline etc.)
   const [editing, setEditing] = useState(null)     // place being edited
+  const [wishPrefill, setWishPrefill] = useState(null)   // a shared place to add to Want to try
   const [creating, setCreating] = useState(null)   // {} or { prefill, wishId } or { billFile }
   const [sharing, setSharing] = useState(null)     // { place, dish } being added to a group
   const [addingDish, setAddingDish] = useState(null)
@@ -181,6 +184,8 @@ export default function Journal({ me, group, groups, username, view, setView, ad
     if (addIntent.tool === 'craving') setAsking(true)
     else if (addIntent.tool === 'picker') setPicking(true)
     else if (addIntent.tool === 'filters') { if (window.matchMedia?.('(max-width: 1023.98px)').matches) setSheetTab('cat') }
+    else if (addIntent.prefill) setCreating({ prefill: addIntent.prefill })
+    else if (addIntent.wishPrefill) setWishPrefill(addIntent.wishPrefill)
     else setCreating({ billFile: addIntent.file || null, voice: !!addIntent.voice })
     onIntentDone()
   }, [addIntent])
@@ -248,15 +253,16 @@ export default function Journal({ me, group, groups, username, view, setView, ad
       {/* a soft change when switching tabs */}
       <div key={view} className="tabin">
       {view === 'wishlist' && (
-        <Wishlist me={me} group={group} items={wishlist} names={names} isOwner={isOwner} onChanged={load}
+        <Wishlist prefill={wishPrefill} onPrefillUsed={() => setWishPrefill(null)} me={me} group={group} items={wishlist} names={names} isOwner={isOwner} onChanged={load}
           onWent={w => setCreating({ prefill: { name: w.name, city: w.city, area: w.area, categories: w.categories || [], maps_url: w.maps_url || '', lat: w.lat, lng: w.lng, loc_source: w.loc_source }, wishId: w.id })} />
       )}
 
       {view === 'activity' && group && <Activity me={me} group={group} names={names} />}
 
       {view === 'near' && (
-        <NearMe places={places} wishlist={wishlist} toFix={needsLocation(places, wishlist, canEditPlace, canEditWish).length}
-          onOpenPlace={id => setOpenId(id)} onFix={() => setFixing(needsLocation(places, wishlist, canEditPlace, canEditWish))} />
+        <ChunkBoundary load={loadNearMe} fallback={<p className="text-center text-sm py-16" style={{ color: 'var(--mute)' }}>Loading the map…</p>}
+          places={places} wishlist={wishlist} names={names} uid={me} group={group} toFix={needsLocation(places, wishlist, canEditPlace, canEditWish).length}
+          onOpenPlace={id => setOpenId(id)} canEdit={x => (x.kind === 'place' ? canEditPlace(x) : canEditWish(x))} onSaved={load} onFix={() => setFixing(needsLocation(places, wishlist, canEditPlace, canEditWish))} />
       )}
 
       {view === 'journal' && (

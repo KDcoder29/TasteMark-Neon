@@ -20,7 +20,7 @@ const EMPTY = { name: '', city: '', area: '', note: '', maps_url: '' }
 
 // "Want to try" list. In a group everybody sees it; in Personal only you do.
 // Remove is instant with a 5-second Undo (no "are you sure?" box); the real delete happens after.
-export default function Wishlist({ me, group, items, names, isOwner, onChanged, onWent }) {
+export default function Wishlist({ me, group, items, names, isOwner, onChanged, onWent, prefill, onPrefillUsed }) {
   const [open, setOpen] = useState(false)
   const [f, setF] = useState(EMPTY)
   const [cats, setCats] = useState([])
@@ -46,6 +46,14 @@ export default function Wishlist({ me, group, items, names, isOwner, onChanged, 
   const mute = { color: 'var(--mute)' }
   const label = 'mb-1 block text-xs font-medium'
 
+  // a place shared from Google Maps opens the form filled in
+  useEffect(() => {
+    if (!prefill) return
+    setF({ ...EMPTY, name: prefill.name || '', city: prefill.city || '', area: prefill.area || '', maps_url: prefill.maps_url || '' })
+    setLoc(prefill.loc_source && prefill.lat != null ? { lat: prefill.lat, lng: prefill.lng, loc_source: prefill.loc_source } : null)
+    setCats([]); setOpen(true)
+    onPrefillUsed?.()
+  }, [prefill])
   const setField = k => e => setF({ ...f, [k]: e.target.value })
   const toggleCat = c => setCats(cats.includes(c) ? cats.filter(x => x !== c) : [...cats, c])
 

@@ -12,6 +12,9 @@ import { tint } from './shared'
 import { clearFastStart, rememberUser, recallUser } from './fastStart'
 import { isDemoUser, demoNeedsReset, markDemoReady, forgetDemoReady } from './demoAccount'
 import { askConfirm } from './dialogs'
+import SharedPlaceSheet from './SharedPlaceSheet'
+import Toast from './Toast'
+import { stashShare, takeShare } from './shareTarget'
 
 const sessionStore = (() => { try { return window.sessionStorage } catch { return null } })()
 import StoryCard from './StoryCard'
@@ -110,6 +113,14 @@ function Sheet({ title, onClose, children }) {
       </div>
     </>
   )
+}
+
+// a place shared from Google Maps lands on /share: keep it for after login, then show a clean
+// address. Runs once, when the app file loads (before any render or the post-login take).
+if (typeof window !== 'undefined' && window.location.pathname === '/share') {
+  const q = new URLSearchParams(window.location.search)
+  stashShare(sessionStore, { title: q.get('title') || '', text: q.get('text') || '', url: q.get('url') || '' })
+  window.history.replaceState(null, '', '/')
 }
 
 export default function App() {
@@ -225,6 +236,25 @@ export default function App() {
       }).then(tour => { if (tour) setHelp('tour') })
     })
   }, [demoWaiting, demoBusy])
+
+  // a shared place waiting for us: once signed in (and the demo is ready), load what it could match
+  const [share, setShare] = useState(null)               // { shared, candidates } -> ShareSheet
+  const [shareToast, setShareToast] = useState('')
+  const [shareRev, setShareRev] = useState(0)             // bumps to reload the journal after a saved spot
+  useEffect(() => {
+    if (!uid || demoWaiting) return
+    const data = takeShare(sessionStore)
+    if (!data) return
+    const cols = 'id, name, city, area, loc_source, group_id'
+    Promise.all([
+      supabase.from('places').select(cols),
+      supabase.from('wishlist').select(cols).is('went_at', null),
+    ]).then(([p, w]) => setShare({
+      data, loadError: !!(p.error || w.error),
+      candidates: [...(p.data || []).map(x => ({ ...x, table: 'places' })), ...(w.data || []).map(x => ({ ...x, table: 'wishlist' }))],
+    })).catch(() => setShare({ data, candidates: [], loadError: true }))
+  }, [uid, demoWaiting])
+  useEffect(() => { if (!shareToast) return; const t = setTimeout(() => setShareToast(''), 2600); return () => clearTimeout(t) }, [shareToast])
 
   useEffect(() => {
     if (!uid) { if (session === null) setUsername(''); return }   // undefined = still checking: keep the remembered name
@@ -439,7 +469,7 @@ export default function App() {
           <div className="wrap">
             {/* Personal doesn't need the groups list first: start loading it right away */}
             {groupsReady || space === 'personal'
-              ? <Journal key={activeGroup?.id || 'personal'} me={uid} group={activeGroup} groups={groups} username={username}
+              ? <Journal key={(activeGroup?.id || 'personal') + shareRev} me={uid} group={activeGroup} groups={groups} username={username}
                   view={view} setView={go} addIntent={addIntent} onIntentDone={() => setAddIntent(null)} onStats={setStats} onHelp={setHelp}
                   addButton={(
                     <div className="relative desktop-only">
@@ -484,6 +514,10 @@ export default function App() {
         <AccountPanel {...account} onDone={() => setSheet(null)} story={<StoryCard story={stats.story} space={activeGroup ? activeGroup.name : 'Personal'} />} />
       </Sheet>}
 
+      {share && <SharedPlaceSheet data={share.data} candidates={share.candidates} loadError={share.loadError} onClose={() => setShare(null)}
+        onSaved={name => { setShare(null); setShareRev(n => n + 1); setShareToast(`Exact spot saved for ${name}`) }}
+        onAdd={(kind, prefill) => { setShare(null); go(kind === 'wish' ? 'wishlist' : 'journal'); setAddIntent(kind === 'wish' ? { wishPrefill: prefill } : { prefill }) }} />}
+      {shareToast && <Toast key={shareToast} text={shareToast} />}
       {pwOpen && <ChangePassword onClose={() => setPwOpen(false)} />}
       {help === 'guide' && <FeatureGuide onClose={() => setHelp(null)} onTour={() => setHelp('tour')} onVideo={() => setHelp('video')} onTry={tryIt} />}
       {help === 'tour' && <Tour onDone={tourDone} />}

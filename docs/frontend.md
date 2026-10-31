@@ -70,7 +70,7 @@ BiteMark ("Remember every great bite") is a personal food journal PWA, used main
   - **File naming on Windows.** The parser is `billParse.js`, not `billScan.js`. Windows treats file names case-insensitively, so `./BillScan` resolved to `billScan.js` instead of `BillScan.jsx` and broke the build.
   - **Not in scope for v1:** the group "Add a dish" window, filling place name or city from the bill, and storing the photo.
 - **(existing, Maps branch, uncommitted)** The map shows the list that Journal has *already filtered*, so the map and the list always match.
-  - Tiles are plain OSM, because CARTO now needs an API key. The map therefore stays light even in dark mode.
+  - Tiles are plain OSM, because CARTO now needs an API key. In dark mode the OSM tiles are inverted by CSS (`.lmap.osm-dark`).
   - The place form re-geocodes only when area or city changes.
 
 ## Open items / known issues (noticed during onboarding, not yet fixed)
@@ -682,3 +682,157 @@ Spec: `docs/superpowers/specs/2026-10-28-near-me-design.md`. Plan: `docs/superpo
   - Form: an area-level position has a **Remove** link.
 - **Verified (Playwright, real Photon):** edit Coffea to "TP 13 Canal Road" → the PATCH clears lat/lng/loc_source → the toast appears → Fix opens the details with "Add exact location".
 - **Existing record:** places saved before this fix keep their old area spot until their landmark changes, or until it's replaced with Google (Find on Google Maps → Paste link) or removed.
+
+### 2026-10-31: Bug sweep (login busy state, area placement, map zoom, tour)
+- **Login: Try the demo made Log in say "Please wait…" too.**
+  - `busy` is now which button is working (`'form' | 'demo' | null`).
+  - **`loginLabels(busy, { forgot, isSignup })`** (`demoAccount.js`, tested): both buttons are disabled, but only the pressed one shows progress ("Opening the demo…").
+- **Raj Rajeshwari (Fatehganj) never got a position.** OpenStreetMap has no area called "Fatehganj"; it spells it "Fatehgunj", and only inside a shop's address. `areaSpot` (tested) now:
+  - splits on "/" as well as ",", e.g. "Alkapuri/Ellora Park";
+  - tries the last word alone when the whole landmark is unknown, but only as an OSM `place` with exactly that name (e.g. "Kalasagar Mall **Ghatlodiya**");
+  - falls back to **Nominatim**, the second free OSM search with CORS and no key:
+    - the hit's name or address fields must contain the area's words;
+    - spelling is compared loosely: no doubled letters, no h, u = a, w = v (Chhani ≈ Chani);
+    - ganj/gunj variants are queried;
+    - a hit must be within 25 km of the city;
+    - at most 3 requests per place, 1.1 s apart.
+  - **Live result on Kandarp's journal:** 5 more places placed, including Raj Rajeshwari (about 450 m from Google's pin, so "≈"), Chhani, Ghatlodiya and Ellora Park. 39 landmarks are genuinely not in OSM ("Neptune Trion", "Dev Deep Complex", "TP 13"…); they need Find on Google Maps → Paste link.
+- **Silent: every app start re-asked OSM for every unplaced place** (about 45 lookups, forever).
+  - **`lookupMemory.js`** (tested) remembers a miss in localStorage (`bm.areamiss`) per table:id plus landmark|city.
+  - A miss is not retried for 14 days, or until the landmark or city changes.
+  - A just-saved place (`now`) always tries. Offline (`navigator.onLine === false`) is not recorded as a miss.
+- **Silent: tapping a pin on Near me re-framed the whole map** (lost your zoom).
+  - LeafletMap's fit effect depended on the `markers` array identity, and NearMe builds a new one each render.
+  - It now depends on **`boundsKey(markers)`** (`geo.js`, tested): ids and positions, order-free.
+  - Verified with a fitBounds counter: 4 taps → 0 re-frames; changing city → 1.
+- **Toast** text wraps to 2 lines instead of truncating. "Couldn't place '…' by its l…" was unreadable on phones.
+- **Tour and Feature guide:**
+  - New tour scene **`near`** ("Places near you, on a map") after Want to try.
+    - It's a drawn street map (no tiles): your blue dot, pins drop in (one hollow ≈), a tap, then the Near me card with 850 m and Directions.
+    - CSS `.ts-map*`, `.ts-pin`; pins use the `translate` property so the pop animation's `transform` doesn't cancel it.
+    - `hasScene(k)` is exported from TourScenes, and a test checks that every tour step has a picture.
+  - Guide texts updated: Near me mentions city chips; Exact location mentions automatic placement by landmark (≈); Directions no longer says to paste a link while adding.
+- Checked, not a bug: the two "Raj Rajeshwari" rows are one personal and one group copy. The group copy gets placed when that group is opened (the queue runs per open space).
+
+### 2026-10-31: Near me distance filter (1 / 3 / 5 / 10 km), List and Map
+- **User ask:** add 1, 3, 5 and 10 km back, in both views, without hurting the phone or desktop layout.
+- **Design (my calls):**
+  - **One "Any distance ▾" picker** in the top row, next to List/Map, so the chip row doesn't grow. It uses the app's own **`ChipSelect`** (themed menu, keyboard ↑ ↓ Enter Esc), which now takes `disabled` and `title`.
+    - The first try was a native `<select>` dressed as a chip. **Rejected by the user:** its open list is the browser's own and doesn't follow the theme. **Rule: every dropdown uses ChipSelect / the `.menu` look, never a native select.**
+    - The menu opens above the map, because `.lmap` has `isolation: isolate`, which keeps Leaflet's z-indexes inside it.
+    - No leading icon on this chip: with one, "Within 10 km" pushed the location button to a second row at 390 px.
+    - New generic `.chip:disabled` style (dimmed, not-allowed cursor).
+  - On phones "Update" becomes an icon (`max-sm:hidden` label; aria-label stays), so the whole row fits at 390 px.
+  - **City and distance are exclusive:** a distance shows everything around you across cities (city → All cities); picking a city clears the distance. Combining them gave empty results, e.g. 3 km around you while viewing Vadodara from Ahmedabad. A saved distance also stops the start-up "your city" default.
+  - **Map:** a dashed brand-colour **ring** of that radius around you (`LeafletMap` `circle` prop, `.lmap-ring`; on the overlay pane, so dark mode's tile invert doesn't touch it). `fit` frames the ring, and `boundsKey(markers, circle)` re-frames only when the distance or pins change.
+  - **Nothing in range:** "Nothing within 1 km" plus a button for the next distance that finds something ("Show within 3 km"), or "Show any distance".
+  - **Without your location** the picker is disabled (with a tooltip) and a saved distance is ignored until your position is known.
+  - The distance is remembered in localStorage `near.radius`.
+- **Pure logic** (`geo.js`, tested): `RADII`, `withinKm(items, km)` (inclusive; items with no distance are out), `widerRadius(items, km)`, `radiusLabel(km)`.
+- **Verified (Playwright, Kandarp's journal, location mocked in Alkapuri):**
+  - 1 km gives "Nothing within 1 km", and "Show within 3 km" shows 3 places.
+  - On the map, 3 km and 10 km rings frame correctly; picking Vadodara clears the distance and removes the ring.
+  - The desktop dark layout fits.
+  - With location blocked, the picker is disabled and all cities are shown.
+
+### 2026-10-31: Share from Google Maps (Task 1, map features)
+- **What:** on an installed Android PWA, Share on a Google Maps place offers BiteMark. A sheet then lets you save the exact spot onto a matching place / Want to try entry, or start a new place or Want to try entry from it.
+- **How:**
+  - `public/manifest.webmanifest` has a GET `share_target` to `/share` (title, text, url); Vercel already rewrites it to the app.
+  - `App.jsx` stashes the params in sessionStorage (`bm.share`) once at load and cleans the address to `/`. After login (and demo ready) it takes the stash, loads `places` and open `wishlist` (id, name, city, area, loc_source, group_id) and shows `SharedPlaceSheet.jsx`.
+  - `shareTarget.js` (tested): `parseSharedPlace` (name / address / area / city / link; known cities = the user's cities plus Vadodara and Ahmedabad), `rankMatches` (folded-word similarity of at least 0.6, at most 3, same city first), `stashShare` / `takeShare`.
+  - The link resolves with `locationFromLink`. Save writes `{ lat, lng, loc_source: 'link', maps_url }` by id with `.select('id')`; an empty result is an error ("you can't edit this place"). Add buttons open the PlaceForm (`addIntent.prefill`) or the Want to try form (`addIntent.wishPrefill` -> `Wishlist prefill`).
+- **Decisions:**
+  - Saving is an explicit tap, so it may replace an existing exact spot; a candidate that already has one shows "Replaces its current exact spot".
+  - "Centre" and "Center" count as the same word (`geocode.js` `fold` is now exported; `shareTarget` also folds final -re to -er).
+  - The old `ShareSheet.jsx` is the "Send to friends" picture sheet; the new one is `SharedPlaceSheet.jsx`.
+  - Failures never leave a silent empty list: places that fail to load show a note and the Add options; an unreadable link says so.
+- **Verified (Playwright, demo):** logged-out and logged-in flows, save, both Add buttons, no-link case, dark mode, phone and 1280px.
+- **Not tested:** the real Android share from Google Maps (needs the installed app; reinstall may be needed to pick up the new manifest).
+
+### 2026-10-31: "Are you at …?" (Task 2, map features)
+- **What:** in Near me, when you're within 400 m of a place or Want to try entry that only has an area-level (≈) position, and your GPS accuracy is 50 m or better, a quiet card above the results (List and Map) says "You're near {name}. Save where you are as its exact spot?" with **Save exact spot** / **Not now**.
+- **How:**
+  - `hereNudge.js` (tested): `nearbyGuess(items, me, dismissed)` returns the nearest `loc_source 'area'` item within `NUDGE_REACH_M` (400), only when `me.acc <= NUDGE_ACC_M` (50). `nudgeDismissed` / `dismissNudge` keep `places:<id>` / `wishlist:<id>` keys in localStorage `bm.nudge.no` (blocked storage gives an empty set).
+  - `NearMe` now keeps `acc` in `me` (markers, sorting and the ring use lat/lng only). Only items the user can edit are offered (`canEdit` from Journal). Save writes `{ lat, lng, loc_source: 'gps' }` by id with `.select('id')`; an error or empty result shows "Couldn't save the spot" inline. On success `onSaved` (Journal `load`) refreshes, and the card goes because the place is no longer area-level.
+- **Decisions:** it is an explicit tap, so no exact spot is ever overwritten silently (exact places are never offered). One card at a time; after Not now, the next nearest candidate may appear.
+- **Verified (Playwright, demo, location mocked 200 m from a ≈ place, accuracy 20):** card shows on the map view at 390 px and 1280 px, light and dark; Save sets `loc_source 'gps'` and the card disappears; Not now stores the key.
+
+### 2026-10-31: Halo on ≈ pins (Task 3, map features)
+- **What:** area-level (≈) hollow pins get a faint dashed 300 m circle while the map is zoomed in to 14 or more, so it is honest that the position is approximate. Hidden when zoomed out (it would swamp the map).
+- **How:** `geo.js` exports `APPROX_HALO_M = 300` and `showHalo(zoom)` (zoom >= 14), both tested. `LeafletMap` draws one non-interactive `L.circle` (class `lmap-halo`) per `approx` marker into its own layer group (`halos`), refilled by the marker effect; a `zoomend` handler adds or removes the group, and it is applied once after the map is created. Fitting is untouched. `.lmap-halo` in `index.css` is fainter than `.lmap-ring` (dashed 3 5, fill .04), in `--pri`, so it reads in both themes (overlays are not inverted in dark).
+- **Verified (Playwright, demo):** 35 halos at zoom 15+, 0 at the fitted zoom and after zooming back out; halos are `interactive: false` so they do not catch taps (tap not re-tested in the browser); 390 px and 1280 px, light and dark.
+- **Phase 1 (accuracy) is done:** Share from Google Maps (Task 1), "Are you at …?" (Task 2), halo on ≈ pins (Task 3).
+
+### 2026-10-31: Cluster bubbles + area summary (Task 4, map features)
+- **What:** in Near me's Map view, crowded pins merge into count bubbles (`.mk-cluster`, BiteMark green) that split as you zoom. Tapping a bubble shows an **area card** under the map: "Alkapuri · 9 places · 4.3★ average · best: Masala dosa at Sankalp" (unknown parts left out) with **Zoom in** and **Show these**. **Show these** narrows the list and map to those pins, with a removable "× Alkapuri" chip above the results; the chip also clears on a city or distance change.
+- **How:**
+  - `leaflet.markercluster@1.5.3` loads inside `loadLeaflet()` (sets `window.L`, then imports the plugin and its CSS), so it is its own lazy chunk, not in the main bundle. Default.css is not used.
+  - `LeafletMap` has `cluster` and `onCluster(ids, zoomIn)`. The group uses `zoomToBoundsOnClick: false` and handles `clusterclick` itself. Your blue dot and the selected pin go in the plain layer, outside the group. Without `cluster` (forms, Fix locations) nothing changes.
+  - `mapInsights.js` (tested): `areaKey`, `areaSummary` (name = commonest area name, avg = mean of each place's best dish rating, best = top dish, ties most recent). Wishes count but have no rating. `AreaCard.jsx` is the card.
+- **Decisions:** the area card and the pin's NearCard never show together; tapping a pin closes the area card. The area name is the commonest area among the bubble's places, so a mixed bubble is named after its biggest part.
+- **Verified (Playwright, demo, 72 places):** bubble at the fitted zoom, tap shows the card, Zoom in splits it, Show these narrows to 38 places with the chip, the chip clears it; 390 px and 1280 px, light and dark.
+
+### 2026-10-31: Readable pins (Task 5, map features)
+- **What:** in Near me's Map view, pins show their place name from zoom 15 and the must-try dish under it from zoom 16. Wishes get a name only. The selected pin shows no label (its card says the same thing).
+- **How:** `labelLevel(zoom)` (0 / 1 / 2) and `escapeHtml` in `geo.js` (tested). `LeafletMap` toggles `lbl-1` / `lbl-2` on the map container in the same `zoomend` sync as the halos. `icon()` wraps the pin in `.mkw` and adds `<b class="mk-name">` / `<small class="mk-sub">` beside the rotated `.mk`, so labels read upright. Label text is user text, so it is escaped before going into the divIcon HTML. `NearMe` markers carry `label` (name) and `sub` (`placeSummary(x).mustTry`). The icon size/anchor are unchanged (tip still on the spot); labels are `pointer-events:none`, so taps still hit the pin.
+- **Look:** surface background, 1px line border, ellipsis at 140 px, works in dark via tokens.
+- **Verified (Playwright, demo):** names at 15, dishes at 16, light + dark, 1280 and 390 px; pin tap opens its card and hides its label; bubbles still show at lower zoom.
+
+### 2026-10-31: Real travel time and route line (Task 6, map features)
+- **What:** in Near me's Map view, tapping a pin asks OSRM for the driving route from you. The card gets a line like "14 min drive · 3.8 km by road · 48 min walk" (with "≈" for area-level places) and the route is drawn on the map. Without your location, or if OSRM fails (offline, non-Ok, error), nothing extra shows and the straight-line chip stays.
+- **Service:** the free OSRM demo server `router.project-osrm.org` (no key). Fair use: only after a tap, one request per tap, never prefetched, cached 10 minutes.
+- **How:** `route.js` (tested): `routeUrl`, `parseRoute`, `walkMinutes` (4.8 km/h from road distance), `tripLabel`, `getRoute` (module cache keyed by your position rounded to 3 decimals plus the place, injectable `fetchFn` / `now`; failures are not cached) and `clearRouteCache()` for tests. `NearMe` runs the request in an effect on `sel`; a response is ignored if `sel` changed meanwhile. `LeafletMap` has a `route` prop (`[lat,lng][]`) drawn as a non-interactive `L.polyline` (`.lmap-route`, brand colour, 5 px, round caps, 78% opacity) in its own ref; it is not part of `boundsKey`/fit.
+- **Decisions:** Map view's picked card only. List cards still open Details on tap, so they show no trip line.
+- **Verified (Playwright, demo, mocked Vadodara location):** pin tap draws the route and shows "min drive", exactly one OSRM request; with OSRM aborted, the next tap shows the card with no error and no route; 390 px and 1280 px, light and dark.
+
+### 2026-10-31: Map and list in step (Task 7, map features)
+- **What:** in Near me's Map view, what the map shows drives the cards. Phones (< 1024 px): a swipeable `.nearrail` under the map (scroll-snap, ~85% wide cards, nearest first). Desktop: `.nearsplit` grid, map 3fr and list 2fr, the list scrolls and is as tall as the map. The caption reads "{n} places in this area" once the view holds fewer than all shown pins, else the old text.
+- **How:** `inBounds(items, b)` in `geo.js` (tested: inside, edge, outside, no coordinates; no view yet keeps all). `LeafletMap` has `onView({south,west,north,east})`, fired on `moveend` and once after the first fit; it only reports, never fits, so panning does not re-frame. One DOM for both layouts (CSS media queries); the picked card is the full `NearCard` with its trip line.
+- **Rail to pin:** an IntersectionObserver (root = rail, threshold 0.6) sets `sel` to the centred card after a 400 ms pause (fast swipes = one OSRM request). It acts only after a real touch/wheel/key on the rail (so the first paint selects nothing), and a ref flag stops the selection it made from scrolling the rail again. Phones only (`matchMedia`).
+- **Pin to card:** a pin tap scrolls its card into view (`inline: center`, smooth unless reduced motion), on both layouts.
+- **Desktop hover:** a separate `hover` key (not `sel`) is passed to the map as `selected`, so hovering lights the pin without an OSRM request.
+- **Verified (Playwright, demo, mocked Vadodara):** 390 px swipe selects the pin and shows the trip, pin tap scrolls the rail, pan updates the caption without re-framing; 1280 px list in step, hover lights the pin; light and dark.
+- **Phase 2 complete:** a smarter map (area bubbles, pin labels, travel time and route, map and list in step) is done.
+
+### 2026-10-31: Food crawl planner (Task 8, map features)
+- **`src/crawl.js`** (pure, tested): `crawlStops` (located only, max 8), `tripServiceUrl` (OSRM trip, `source=first`; your position leads only when known, otherwise the first stop is the source), `parseTrip` (orders stops by `waypoint_index`, drops your start), `googleDirectionsUrl` (coordinates for exact stops, "name, area, city" text for ≈ ones, last stop = destination, `%7C` between waypoints), `getTrip` (10-minute cache like `getRoute`; failures are not cached; errors give null).
+- **Pick mode:** a "Plan a route" chip (Map view) toggles it. Pin and card taps toggle a pick (max 8, then a short note); `sel` is cleared and the Task 6 single-route fetch is skipped, and the rail's swipe-select is off. Cluster taps still work. Picked pins carry `num` (numbered pin, kept out of bubbles); cards read "Add to route" / "Added · n".
+- **`CrawlBar`** (sticky above the rail/list): "n stops", Plan (disabled under 2, title "Pick at least 2 places"), Clear. After Plan: "Best order · 42 min · 11.3 km" (with ≈ if any stop is area-level), the line is drawn and the map frames it (`frameRoute`), pins renumber, and **Open in Google Maps** appears. If OSRM fails: "Couldn't plan the route right now", picks stay, Open in Google Maps still opens them in picked order. Leaving pick mode, Clear, or switching to List clears the crawl. Changing a pick drops the plan.
+- **Verified (Playwright, demo, mocked Vadodara):** no OSRM request on entering pick mode or picking (0), one on Plan; blocked OSRM shows the error and the Google link; 9th pick refused; 390 and 1280, light and dark.
+
+### 2026-10-31: Food heatmap + food home (Task 9, map features)
+- `mapInsights.js`: `heatPoints(places)` gives `[lat, lng, w]` (`w = min(1, dishes/6)`, at least 0.2, located only); `foodHome(places)` gives `{ name, count }` for the commonest `areaKey` (first spelling seen, ties keep the first, null under 2 places; wishes aren't counted).
+- `LeafletMap` `heat` prop (array or null): one `L.heatLayer` (leaflet.heat 0.2.0, loaded inside `loadLeaflet()`, so it is in its own lazy chunk), rebuilt when the points change, removed when null. It sits in the overlay pane (under the pins) and has `pointer-events:none`. `minOpacity` is .25 on light and .4 on dark tiles (read when the layer is built), since the glow looked muddy on dark.
+- NearMe Map view: a **Heatmap** chip (`aria-pressed`). On: heat from journal places shown (no wishes), pins fade to 35 % (`.nearmap.heat-on .leaflet-marker-icon`, still tappable), and a line "Your food home: Alkapuri (16 places)" above the count caption. No network request. It can stay on in pick mode.
+- Open: toggling the theme while the heatmap is on keeps the old `minOpacity` until the layer rebuilds.
+
+### 2026-10-31: Replay your food year (Task 10, map features)
+- `replayPlan.js`: `replayFrames(places)` gives one frame per local month, `{ key: '2026-03', label: 'Mar 2026', ids (cumulative place ids as strings), added }`, for located places with a valid `created_at` (others skipped). `replaySummary(places)` gives `{ places, dishes, areas (distinct areaKey), home (foodHome) }`.
+- `FoodReplay.jsx` draws the overlay (month label, "+added" pill, place counter, Pause/Resume, Skip, X) and the end card (places, dishes, areas, food home, Close). Esc closes. `LeafletMap` got `children` (drawn over the map) and `frameOn` (markers to frame instead of `markers`).
+- NearMe: a **Replay** chip in Map view (only with 2+ frames). Starting clears the selection, area card, crawl, pick mode and heatmap, hides the rail and list, and disables Plan a route and Heatmap while it runs. One frame per 900 ms; the map shows only that frame's journal pins (no wishes, no "you" dot, no distance ring). `frameOn` is the full set of pins, so the map frames once and never zooms per frame; panning never re-frames. No network requests. Leaving Map view or Close returns to the normal map. `prefers-reduced-motion`: straight to the end card with all pins. Starting scrolls the map into view (phones).
+- Verified (Playwright, demo): months step with zoom and pan constant and 0 network requests; Pause holds the month, Resume continues, Skip and Esc and Close behave; reduced motion lands on the end card (72 places, 220 dishes, 32 areas, food home Alkapuri); 390 and 1280, light and dark.
+- Open: a replay ignores the city, category and distance filters (it is your whole journal). A cluster bubble tap during replay just zooms in.
+
+### 2026-10-31: Group map, who added it (Task 11, map features)
+- In a group space each pin carries a small letter badge (`.mk-who`, top-right of the pin): the adder's first initial, "?" when the name is unknown. Hidden in Personal, and hidden on numbered crawl pins (the number wins). Halos, labels and the heat fade are untouched.
+- "Added by" `ChipSelect` sits in the Near me control row, only in a group with 2+ distinct adders (you first as "You", unknown ids as "Someone"). It filters list and map (places and wishes by `user_id`) and, like the category chips, clears the area card and "Show these"; a planned crawl drops through the existing stale-plan check.
+- Pure helpers `addedByOptions` / `adderInitial` in `src/mapInsights.js`. Journal passes `names`, `uid` (your id) and `group` to NearMe (`me` there is your position).
+- Verified (Playwright, demo "Weekend Foodies"): the demo group has only one adder, so a second adder was simulated by rewriting the places response client-side (no DB writes): chip lists Everyone / You / Someone, Someone narrows list 7 to 2 and the map to 2 "?" pins; crawl pins show numbers without badges; Personal has no chip or badges; 390 and 1280, light and dark.
+- If the selected adder disappears after a reload, an effect resets the filter to Everyone (it can't get stuck with its chip hidden).
+
+### 2026-10-31: Map tiles and full screen (Task 12, map features) - Phase 3 complete
+- `src/tiles.js`: `tileSource(dark)` gives CARTO Voyager (light) / Dark Matter (dark) with a linked OpenStreetMap + CARTO credit; `OSM_FALLBACK` is plain OSM. Voyager over the spec's Positron (roads and areas read better for finding food).
+- `LeafletMap` picks the tiles from `document.documentElement.dataset.theme` (the app's own source, set in App.jsx) and swaps the layer live with a MutationObserver on `data-theme` (disconnected on unmount). After 4 `tileerror`s a module-level flag moves every map to OSM for the session. On OSM in dark mode the `.lmap.osm-dark` class brings back the old invert filter; the global dark filter is gone. All maps use this (still previews, PinPicker, Fix locations, MapSheet).
+- **CARTO needs a key now (found 2026-10-31).** Every CARTO tile (Voyager, Dark Matter, light_all) is a 200 response carrying an "API KEY REQUIRED" watermark, so `tileerror` never fires and the fallback can't help. `CARTO_FREE = false` in `tiles.js` keeps the app on OSM (+ the dark invert) as before. Flip it to `true` if CARTO is keyless again; nothing else changes. Decision for the owner: stay on OSM, or find another keyless basemap.
+- Full screen (Near me map only): a round `.nearfull` button top right (clear of the zoom control), aria-label "Full screen" / "Exit full screen", toggles `.nearmap-full` (fixed, inset 0, z-index 60, no radius, safe-area insets). It becomes the close button. `FullLayer` uses `useEscape` + `useScrollLock` from `layers.js`, so Esc closes only when it is the top layer and the page doesn't scroll behind. `LeafletMap` re-measures with a ResizeObserver on its container (robust for any size change, not only this one).
+- Tapping a pin in full screen shows a floating `NearCard` (`pop`, with route line and time) inside the map (`.nearfloat`); the rail and area card are hidden behind the map, the replay overlay and crawl route still draw. The crawl bar sits in the hidden side column, so plan a route from the normal view.
+- `.tabin` animation fill-mode changed from `both` to `backwards`: a held `transform` made it a containing block and trapped the fixed full-screen map inside the page.
+- Verified (Playwright, demo): tiles swap live on theme toggle (no filter on CARTO); blocking `*.basemaps.cartocdn.com` falls back to OSM after the errors and dark mode gets the invert; full screen fills 390x844 and 1280x800, Esc and the X both close it, body scroll lock releases; PinPicker and the still preview show tiles. The CARTO tiles themselves only look native if CARTO is free (see above); the halo/ring/route/heat were not retuned because Dark Matter never rendered usable tiles.
+
+### 2026-10-31: Guide, tour text, final check (Task 13, map features) - map features complete
+- **Map features, in short:** share from Google Maps (Android installed app; iPhone and desktop still use Paste link), "Are you at ...?" one-tap exact spot, cluster bubbles with area summaries, pin labels when zoomed in, drive/walk time and route line, plan a food route (2 to 8 places, shortest order, opens Google Maps), heatmap and food home, replay your food year, Added by filter and initials in groups, full-screen map, swipeable card row (phone) or side list (desktop). Details sit in the Task 1 to 12 entries above.
+- Feature guide (`features.js`): new items Share from Google Maps, Are you at ...?, Plan a food route, Food heatmap, Replay your food year (all with the `near` action); Groups text mentions Added by. `features.test.js` checks the guide mentions share, route, heatmap, replay and "are you at", and that every icon exists in `Icons.jsx`. Tour `near` scene now mentions travel time and planning a route.
+- Bundle: main chunk was 879.55 kB (limit 853.7 kB), so per Ruling P4 `NearMe` is now `React.lazy` in `Journal.jsx` inside `Suspense` ("Loading the map..." in `--mute`). Main chunk is now 849.99 kB; NearMe is its own 29.16 kB chunk.
+- **Known open items:** the real Android share-target flow is untested on a device (only simulated). CARTO tiles need an API key (see Task 12), so no new map style was added and the map look is unchanged. Replay ignores filters; theme toggle while the heatmap is on keeps old `minOpacity` until rebuilt.
+- Final review fixes: in full screen a bubble tap zooms (no hidden area card); the category, Order again and Want to try chips clear the selection; replay text says "added"; tile notes now say OSM (dark = CSS invert).

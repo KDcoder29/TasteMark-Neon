@@ -156,6 +156,41 @@ const SCENES = {
     </div>
   ),
 
+  near: () => (
+    <div className="grid gap-2.5 text-left">
+      <div className="seg nearseg ts-in mx-auto">
+        <span className="!px-3"><Icon name="list" size={15} /> List</span>
+        <span className="ts-on !px-3" style={d(500)}><Icon name="map" size={15} /> Map</span>
+      </div>
+      <div className="ts-map ts-in relative overflow-hidden rounded-2xl" style={d(700)} aria-hidden="true">
+        <svg viewBox="0 0 300 150" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+          <path d="M-10 112 C70 96 120 128 310 84" className="ts-map-water" />
+          <path d="M-10 46 L310 62 M64 -10 L92 160 M188 -10 L172 160 M-10 136 L310 128" className="ts-map-road" />
+          <path d="M120 -10 C132 50 230 70 240 160" className="ts-map-road thin" />
+        </svg>
+        <span className="mk-me ts-pop absolute" style={{ left: '44%', top: '52%', ...d(1000) }} />
+        {[['20%', '26%', '#2f7d5b', 1300], ['60%', '20%', '#b8541a', 1450], ['74%', '58%', '#2f7d5b', 1600]].map(([x, y, c, ms]) => (
+          <span key={x} className="ts-pin ts-pop absolute" style={{ left: x, top: y, ...d(ms) }}><span className="mk" style={{ '--c': c }}><i /></span></span>
+        ))}
+        <span className="ts-pin ts-pop absolute" style={{ left: '28%', top: '62%', ...d(1750) }}><span className="mk mk-approx" style={{ '--c': '#7a5236' }}><i /></span></span>
+        <Tap x="62%" y="26%" delay={2300} />
+      </div>
+      <div className="nearcard ts-pop" style={d(2700)}>
+        <div className="nearcard-main !pb-2">
+          <span className="mono h-11 w-11 text-lg" style={{ background: '#b8541a' }}>S</span>
+          <span className="min-w-0 flex-1">
+            <span className="flex items-start justify-between gap-2"><b className="truncate text-[15px]">Sankalp</b><span className="neardist">850 m</span></span>
+            <span className="block text-xs" style={mute}>Alkapuri, Vadodara · Food</span>
+          </span>
+        </div>
+        <div className="flex gap-2 px-3.5 pb-3">
+          <span className="btn btn-pri !px-3 !py-1.5 !text-sm"><Icon name="navigate" size={15} /> Directions</span>
+          <span className="btn !px-3 !py-1.5 !text-sm">Details</span>
+        </div>
+      </div>
+    </div>
+  ),
+
   groups: () => (
     <div className="grid gap-3 text-left">
       <div className="flex items-center justify-center gap-[-6px]">
@@ -207,6 +242,8 @@ const SCENES = {
     </div>
   ),
 }
+
+export const hasScene = k => k in SCENES
 
 export default function TourScene({ k }) {
   const S = SCENES[k]

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { hasCoords, distanceKm, formatDistance, coordsFromMapsUrl, isShortMapsLink, nearby, directionsUrl, bestRating, pinColor, isLocated, isExact, distanceLabel, sortByDistance, homeCity } from './geo'
+import { hasCoords, distanceKm, formatDistance, coordsFromMapsUrl, isShortMapsLink, nearby, directionsUrl, bestRating, pinColor, isLocated, isExact, distanceLabel, sortByDistance, homeCity, boundsKey, RADII, withinKm, widerRadius, radiusLabel, APPROX_HALO_M, showHalo, labelLevel, escapeHtml, inBounds } from './geo'
 
 const VADODARA = { lat: 22.3072, lng: 73.1812 }
 const AHMEDABAD = { lat: 23.0225, lng: 72.5714 }
@@ -159,5 +159,97 @@ describe('Near me without a distance limit', () => {
     expect(homeCity(items, ME)).toBe('Ahmedabad')
     expect(homeCity(items, { lat: 19.07, lng: 72.88 })).toBe(null)       // Mumbai: none of these is near
     expect(homeCity(items, null)).toBe(null)
+  })
+})
+
+describe('boundsKey (the map re-frames only when the pins really change)', () => {
+  const a = [{ id: 'p1', lat: 22.3, lng: 73.1 }, { id: 'p2', lat: 22.4, lng: 73.2 }]
+  test('the same pins in a new list (a re-render, a tapped pin) give the same key', () => {
+    expect(boundsKey(a.map(m => ({ ...m, color: 'red' })))).toBe(boundsKey(a))
+    expect(boundsKey([...a].reverse())).toBe(boundsKey(a))
+  })
+  test('a pin added, removed or moved gives a new key', () => {
+    expect(boundsKey([...a, { id: 'p3', lat: 23, lng: 72.5 }])).not.toBe(boundsKey(a))
+    expect(boundsKey(a.slice(1))).not.toBe(boundsKey(a))
+    expect(boundsKey([a[0], { ...a[1], lat: 22.41 }])).not.toBe(boundsKey(a))
+  })
+})
+
+describe('distance filter (Near me: 1 / 3 / 5 / 10 km)', () => {
+  const items = [{ id: 'a', km: 0.4 }, { id: 'b', km: 1 }, { id: 'c', km: 2.9 }, { id: 'd', km: 7.5 }, { id: 'e' }]
+  test('the choices', () => {
+    expect(RADII).toEqual([1, 3, 5, 10])
+  })
+  test('no distance chosen: everything', () => {
+    expect(withinKm(items, null)).toEqual(items)
+  })
+  test('a distance keeps what is within it (the edge counts); no distance known means out', () => {
+    expect(withinKm(items, 1).map(x => x.id)).toEqual(['a', 'b'])
+    expect(withinKm(items, 3).map(x => x.id)).toEqual(['a', 'b', 'c'])
+    expect(withinKm(items, 10).map(x => x.id)).toEqual(['a', 'b', 'c', 'd'])
+  })
+  test('nothing in range: the next distance that finds something, or none', () => {
+    expect(widerRadius(items, 1)).toBe(3)                      // 3 km adds c
+    expect(widerRadius([{ km: 7.5 }], 1)).toBe(10)             // skips 3 and 5, they'd be empty too
+    expect(widerRadius([{ km: 40 }], 1)).toBe(null)
+    expect(widerRadius(items, 10)).toBe(null)
+  })
+  test('labels', () => {
+    expect(radiusLabel(null)).toBe('Any distance')
+    expect(radiusLabel(3)).toBe('Within 3 km')
+  })
+  test('the map frames a new circle when the distance changes', () => {
+    const m = [{ id: 'p', lat: 1, lng: 2 }]
+    expect(boundsKey(m, { lat: 1, lng: 2, km: 1 })).not.toBe(boundsKey(m, { lat: 1, lng: 2, km: 3 }))
+    expect(boundsKey(m, { lat: 1, lng: 2, km: 3 })).toBe(boundsKey([...m], { lat: 1, lng: 2, km: 3 }))
+  })
+})
+
+describe('halo on ≈ pins (shows how approximate the position is)', () => {
+  test('the halo is 300 m', () => expect(APPROX_HALO_M).toBe(300))
+  test('shown when zoomed in (14+), hidden when zoomed out', () => {
+    expect(showHalo(14)).toBe(true)
+    expect(showHalo(16)).toBe(true)
+    expect(showHalo(13)).toBe(false)
+    expect(showHalo(12)).toBe(false)
+  })
+})
+
+describe('labelLevel', () => {
+  test('0 below 15, names at 15, names + dish from 16', () => {
+    expect(labelLevel(14)).toBe(0)
+    expect(labelLevel(15)).toBe(1)
+    expect(labelLevel(16)).toBe(2)
+    expect(labelLevel(18)).toBe(2)
+  })
+})
+
+describe('escapeHtml', () => {
+  test('user text stays literal text', () => {
+    expect(escapeHtml('<b>x</b>')).toBe('&lt;b&gt;x&lt;/b&gt;')
+    expect(escapeHtml(`Tom & "Jerry's"`)).toBe('Tom &amp; &quot;Jerry&#39;s&quot;')
+    expect(escapeHtml(null)).toBe('')
+    expect(escapeHtml(5)).toBe('5')
+  })
+})
+
+describe('inBounds (the places the map is showing)', () => {
+  const b = { south: 22.2, west: 73.1, north: 22.4, east: 73.3 }
+  const at = (id, lat, lng) => ({ id, lat, lng })
+  test('keeps places inside the view', () => {
+    expect(inBounds([at('a', 22.3, 73.2)], b).map(x => x.id)).toEqual(['a'])
+  })
+  test('edges count as inside', () => {
+    expect(inBounds([at('a', 22.2, 73.1), at('b', 22.4, 73.3)], b)).toHaveLength(2)
+  })
+  test('drops places outside, in any direction', () => {
+    expect(inBounds([at('a', 22.1, 73.2), at('b', 22.5, 73.2), at('c', 22.3, 73.0), at('d', 22.3, 73.4)], b)).toEqual([])
+  })
+  test('drops places with no position, and keeps the order', () => {
+    const r = inBounds([at('a', 22.3, 73.2), { id: 'x' }, at('b', null, null), at('c', 22.25, 73.15)], b)
+    expect(r.map(x => x.id)).toEqual(['a', 'c'])
+  })
+  test('no view yet keeps everything', () => {
+    expect(inBounds([at('a', 1, 1)], null)).toHaveLength(1)
   })
 })

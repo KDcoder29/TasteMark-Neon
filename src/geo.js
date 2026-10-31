@@ -106,3 +106,25 @@ export function directionsUrl(p) {
 }
 
 export const distanceLabel = p => (isExact(p) ? '' : '≈ ') + formatDistance(p.km)
+
+// What the map frames: the pins' ids and positions, in any order. A new list with the same pins
+// (every re-render, a tapped pin) gives the same key, so the map keeps your zoom.
+// (a distance circle counts too: choosing 3 km instead of 1 km frames the bigger circle)
+// the items inside the map's current view { south, west, north, east } (edges count); no view yet keeps all
+export const inBounds = (items, b) => (b ? items.filter(x => hasCoords(x) && x.lat >= b.south && x.lat <= b.north && x.lng >= b.west && x.lng <= b.east) : items)
+export const boundsKey = (markers, circle) => markers.map(m => `${m.id}@${m.lat},${m.lng}`).sort().join('|') + (circle ? `|o${circle.lat},${circle.lng},${circle.km}` : '')
+
+// Near me's distance filter. km is set on items by sortByDistance (only when your position is known).
+export const RADII = [1, 3, 5, 10]
+export const withinKm = (items, km) => (km ? items.filter(x => x.km != null && x.km <= km) : items)
+// when nothing is within km: the next distance that does find something (null if none would)
+export const widerRadius = (items, km) => RADII.find(r => r > km && withinKm(items, r).length) ?? null
+export const radiusLabel = km => (km ? `Within ${km} km` : 'Any distance')
+// ≈ pins get a faint circle this big (metres), only while zoomed in far enough for it to read
+export const APPROX_HALO_M = 300
+export const showHalo = zoom => zoom >= 14
+// pin labels: none when zoomed out, the name at 15, name + must-try dish from 16
+export const labelLevel = zoom => (zoom >= 16 ? 2 : zoom >= 15 ? 1 : 0)
+// user text going into marker HTML must stay text
+const ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }
+export const escapeHtml = s => String(s ?? "").replace(/[&<>"']/g, c => ESC[c])

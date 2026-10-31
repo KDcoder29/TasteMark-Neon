@@ -106,8 +106,18 @@ Everything server-side: Neon Postgres (schema, RLS, RPCs, triggers), Neon Auth, 
   - **Run order: location migration first, then `2026-10-29-demo-account.sql`.** That SQL also allows both demo emails; the copy in the database only allowed `test`, which is why "Try the demo" (the Demo account) got "reset_demo is only for the demo accounts".
   - Positions come from `db/demo/demo-coords.json`, looked up once in OpenStreetMap Nominatim at 1 request per second. 14 are exact name matches in the right area. The other 65 are area centres flagged `approx`; wrong branches and wrong buildings were rejected by hand: both Sankalps, Chatkazz, Gwalia, Honest, Barbeque Nation, Starbucks, Upper Crust, Havmor and Hocco.
   - Approximate demo pins get a fixed 80-280 m nudge from the name, so places in the same area don't stack.
-- **Free services:** OpenStreetMap tiles (tile usage policy: low traffic, attribution shown), Photon (fair use; only on user action), and Nominatim (used once, offline, for the demo seed). No keys, no billing.
+- **Free services:** OpenStreetMap tiles (tile usage policy: low traffic, attribution shown), Photon (fair use; only on user action), and Nominatim (used once, offline, for the demo seed), plus the OSRM demo server router.project-osrm.org (browser only, on a pin tap, cached 10 minutes). No keys, no billing.
 
 ### 2026-10-29: `loc_source = 'area'`
 - `2026-10-30-place-location.sql` now allows `'area'` (automatic, area-level positions from the landmark and city via OpenStreetMap; see frontend.md). **Re-run it** (it only replaces the rule), then re-run `2026-10-29-demo-account.sql` (68 demo entries are now `'area'`).
 - The app updates `places` / `wishlist` lat, lng and loc_source from the browser with the filter `loc_source is null or loc_source = 'area'`, so exact spots are never overwritten. RLS decides who may update (owner, or group owner).
+
+### 2026-10-31: Nominatim as a second free geocoder (client side)
+- No schema change. `areaSpot` (browser) may call `nominatim.openstreetmap.org/search` (CORS, no key) when Photon finds nothing.
+  - Usage policy: at most 1 request/s. We do at most 3 per place, 1.1 s apart, and the queue runs one place at a time.
+  - Misses are remembered per device for 14 days (`bm.areamiss`), so the same unknown landmark isn't re-asked on every start.
+
+### 2026-10-31: External services (Phase 3, map features)
+- Map tiles: OpenStreetMap (`tile.openstreetmap.org`, free, credit shown). CARTO basemaps (Voyager / Dark Matter, `*.basemaps.cartocdn.com`) were meant to be free with attribution but answer with an "API KEY REQUIRED" watermark as of 2026-10-31, so they are switched off (`CARTO_FREE` in `src/tiles.js`).
+- Other free services: OSRM (routes, after a user action, 10-minute cache), Nominatim and Photon (geocoding). No API keys anywhere; nothing is prefetched in bulk.
+- Phase 3 complete (Tasks 10-12): replay, group map, tiles and full screen. No schema, RLS or API changes.

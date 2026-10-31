@@ -116,4 +116,48 @@ describe('areaSpot (automatic, area-level position from the landmark and city)',
   test('offline: null, never an error', async () => {
     expect(await areaSpot({ name: 'X', area: 'Alkapuri', city: 'Vadodara' }, async () => { throw new Error('offline') })).toBe(null)
   })
+
+  // a fake that answers Photon and Nominatim (the second free OpenStreetMap search) by query text
+  const both = (ph, nom = {}) => async url => {
+    const q = decodeURIComponent(url.match(/q=([^&]*)/)[1]).replace(/\+/g, ' ')
+    if (url.includes('nominatim')) return { ok: true, json: async () => nom[q] || [] }
+    return { ok: true, json: async () => ({ features: ph[q] || [] }) }
+  }
+  const nomHit = (name, lat, lon, address = {}, category = 'amenity') => ({ name, lat: String(lat), lon: String(lon), category, address })
+  const NOW = { gap: 0 }
+
+  test('"Alkapuri/Ellora Park": a slash separates places like a comma', async () => {
+    const f = both({ ...VADODARA, 'Ellora Park, Vadodara': [feat('Ellora Park', 22.3188, 73.1574)] })
+    expect(await areaSpot({ name: 'Kwality', area: 'Alkapuri/Ellora Park', city: 'Vadodara' }, f, NOW)).toEqual({ lat: 22.3188, lng: 73.1574, loc_source: 'area' })
+  })
+  test('"Kalasagar Mall Ghatlodiya": the area word at the end is used when the whole is unknown', async () => {
+    const f = both({ ...AHMEDABAD, 'Ghatlodiya, Ahmedabad': [feat('Ghatlodiya Lake', 23.07, 72.54, 'water'), feat('Ghatlodiya', 23.0657, 72.5383)] })
+    expect(await areaSpot({ name: 'Honest', area: 'Kalasagar Mall Ghatlodiya', city: 'Ahmedabad' }, f, NOW)).toEqual({ lat: 23.0657, lng: 72.5383, loc_source: 'area' })
+  })
+  test('the end word alone must be a real area with exactly that name (no shop, no lake)', async () => {
+    const f = both({ ...AHMEDABAD, 'Ghatlodiya, Ahmedabad': [feat('Ghatlodiya Lake', 23.07, 72.54, 'water')] })
+    expect(await areaSpot({ name: 'Honest', area: 'Kalasagar Mall Ghatlodiya', city: 'Ahmedabad' }, f, NOW)).toBe(null)
+  })
+  test('Nominatim is asked when Photon has nothing; its address must name the area', async () => {
+    const f = both(VADODARA, { 'Chhani, Vadodara': [nomHit('Indian Oil', 22.3626, 73.1713, { house_number: 'Dhumal, Chhani' })] })
+    expect(await areaSpot({ name: 'Ganesh', area: 'Chhani', city: 'Vadodara' }, f, NOW)).toEqual({ lat: 22.3626, lng: 73.1713, loc_source: 'area' })
+  })
+  test('a Nominatim answer that does not name the area, or is far from the city, is refused', async () => {
+    const f = both(VADODARA, {
+      'Chhani, Vadodara': [nomHit('Vadodara', 22.2973, 73.1943, {}, 'place')],
+      'Mandvi, Vadodara': [nomHit('Mandvi', 22.83, 69.35, { suburb: 'Mandvi' }, 'place')],   // Mandvi in Kutch
+    })
+    expect(await areaSpot({ name: 'X', area: 'Chhani', city: 'Vadodara' }, f, NOW)).toBe(null)
+    expect(await areaSpot({ name: 'X', area: 'Mandvi', city: 'Vadodara' }, f, NOW)).toBe(null)
+  })
+  test('"Fatehganj" is also looked up as OpenStreetMap spells it ("Fatehgunj")', async () => {
+    const f = both(VADODARA, { 'Fatehgunj, Vadodara': [nomHit('Indian Oil', 22.3239, 73.1885, { house_number: 'Fatehgunj', suburb: 'Alkapuri' })] })
+    expect(await areaSpot({ name: 'Raj Rajeshwari Juice Centre', area: 'Fatehganj', city: 'Vadodara' }, f, NOW)).toEqual({ lat: 22.3239, lng: 73.1885, loc_source: 'area' })
+  })
+  test('Nominatim is asked at most 3 times for one place (fair use)', async () => {
+    let asked = 0
+    const f = async url => { if (url.includes('nominatim')) asked++; return both(VADODARA)(url) }
+    await areaSpot({ name: 'X', area: 'Neptune Trion, Sarabhai Campus, Fatehganj Main Road', city: 'Vadodara' }, f, NOW)
+    expect(asked).toBeLessThanOrEqual(3)
+  })
 })

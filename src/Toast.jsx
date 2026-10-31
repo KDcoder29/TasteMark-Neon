@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom'
 export default function Toast({ text, action, onAction }) {
   return createPortal(
     <div className="toast" role="status" aria-live="polite">
-      <span className="min-w-0 truncate">{text}</span>
+      <span className="min-w-0 line-clamp-2 leading-snug">{text}</span>
       {action && <button onClick={onAction} className="toast-act">{action}</button>}
     </div>,
     document.body,
