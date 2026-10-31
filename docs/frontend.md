@@ -8,7 +8,7 @@ Everything in the browser: React components, styling, client-side logic (search,
 BiteMark ("Remember every great bite") is a personal food journal PWA, used mainly in Gujarat (Vadodara, Ahmedabad). You log a **place**, then its **dishes**. Each dish has a price in ₹, a 1–5★ rating, an order-again flag (yes/maybe/no) and a note. Notes are often in Gujarati or Hindi slang ("ekdum mast", "tikhu"). Places can be personal or shared into **groups**. In a group, ratings are averaged across members, and there are reactions, comments and an activity feed. Other features: a wishlist of places you want to try, a random "Where to eat?" picker, a "Craving something?" chat, and a Map tab (in progress).
 
 ## Stack & conventions
-- React 19, Vite 8, Tailwind 4 (`@tailwindcss/vite`). Plain JSX, no TypeScript, no router.
+- React 19, Next.js 16.4.3 in single-page mode (since 2026-10-31; was Vite 8), Tailwind 4 (`@tailwindcss/postcss`). Plain JSX, no TypeScript, no router (the app routes itself from the URL).
   - The `/reset-password` path is checked by hand in `App.jsx`.
 - Theme tokens are CSS variables in `src/index.css`. Light values are on `:root`, dark values on `:root[data-theme="dark"]`. Use the tokens: `--bg`, `--surface`, `--ink`, `--mute`, `--line`, `--pri`, `--ok`, `--bad`, `--star`, and so on.
 - Utility classes: `.input`, `.chip`/`.chip.on`, `.pill`, `.fab`, `.menu`, `.menu-item`, `.switch`, `.skel`. Animations: `.rise`, `.fade`, `.sheet`.
@@ -836,3 +836,23 @@ Spec: `docs/superpowers/specs/2026-10-28-near-me-design.md`. Plan: `docs/superpo
 - Bundle: main chunk was 879.55 kB (limit 853.7 kB), so per Ruling P4 `NearMe` is now `React.lazy` in `Journal.jsx` inside `Suspense` ("Loading the map..." in `--mute`). Main chunk is now 849.99 kB; NearMe is its own 29.16 kB chunk.
 - **Known open items:** the real Android share-target flow is untested on a device (only simulated). CARTO tiles need an API key (see Task 12), so no new map style was added and the map look is unchanged. Replay ignores filters; theme toggle while the heatmap is on keeps old `minOpacity` until rebuilt.
 - Final review fixes: in full screen a bubble tap zooms (no hidden area card); the category, Order again and Want to try chips clear the selection; replay text says "added"; tile notes now say OSM (dark = CSS invert).
+
+### 2026-10-31: Moved from Vite to Next.js (single-page mode), branch `BiteMark/NextJS`
+- **Kandarp asked for:** the whole project on Next.js, on the same Vercel project, with every feature working and the UI unchanged. Option A was chosen (single-page mode first). Option B, a real Next.js route per screen, comes later and is better for adding many screens.
+- **Structure:**
+  - `app/layout.jsx`: the old `index.html` head (metadata, viewport with `viewport-fit=cover`, theme colour, icons, manifest, preconnects, Figtree, iOS metas). It imports `src/index.css`.
+  - `app/page.jsx` renders `app/ClientApp.jsx`. That imports `app/AppShell.jsx` (`ErrorBoundary` + `App` + `DialogHost`, i.e. what `main.jsx` mounted) normally, so its code downloads in parallel with Next's, but renders it only after mount (browser-only), and registers `/sw.js` after page load as before.
+    - At first `next/dynamic` with `ssr: false` was used. The final review found it skips preload hints: app and Neon code (~190 kB gzip) downloaded only after Next's runtime. The fix gave cold +0.6 s and warm -0.1 s vs Vite.
+    - Static import means `src/` modules are evaluated in Node at build time. `src/shareImage.js`'s `Path2D` is now made on first use.
+    - `/share`: the share is stashed when `App.jsx` loads. The address is cleaned to `/` in App's first effect, after Next.js writes its own first history entry, keeping its history state.
+  - `next.config.mjs` rewrites every path without a dot that isn't `/api/` or `/_next/` (`/:path((?!api/|_next/)[^.]+)`) to `/`, as the old `vercel.json` did. Unknown files and API paths still get a 404. so `/share` and `/reset-password` keep working with the URL intact. `/` stays a static page served from the CDN (a catch-all `[[...path]]` route rendered on every request).
+  - `src/` is unchanged apart from `src/env.js`: `AUTH_URL` and `DATA_API_URL` from `NEXT_PUBLIC_NEON_AUTH_URL` and `NEXT_PUBLIC_NEON_DATA_API_URL`, with a fallback in `next.config.mjs` to the old `VITE_` names.
+  - Gone: `index.html`, `src/main.jsx`, `vite.config.js`, `vercel.json`, `api/`, `dist/`. Tests use `vitest.config.js` (Vite stays only as Vitest's engine).
+  - `agentRules: false`: no generated AGENTS.md (CLAUDE.md is the agent guide).
+- **Commands:** `npm run dev` (port 5175), `npm run build` (writes `.next/`, gitignored), `npm start`, `npm test`.
+- **Verified:**
+  - Every screen: 72 screenshots before (Vite) and after (Next production build) of 18 states, at 390 and 1280 px, light and dark. 39 pairs are pixel-identical. The rest differ only in data or timing: same-timestamp card order, the demo group badge colour (the group's id changed after a demo reset), and a mid-animation card or share picture.
+  - Features: Craving smart matching (transformers.js), bill scan (tesseract.js), voice, Near me (clusters, heatmap, route and time, crawl plan, replay, full screen, 3 km ring), `/share`, `/reset-password`, service worker and manifest, login labels, username login. 0 console errors.
+- **Cost of Next.js** (measured; inherent to the framework):
+  - First-visit JS is about 318 kB gzip, against 228 kB on Vite, because of Next's App Router runtime.
+  - On slow 4G with 4x CPU, after the review fix: cold (no cache) 4.78 s vs 4.18 s (+0.6 s); warm (cached) 1.12 s vs 1.21 s (slightly faster).

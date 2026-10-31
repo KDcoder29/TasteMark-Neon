@@ -1,4 +1,4 @@
-// Vercel serverless function: opens a short Google Maps link (maps.app.goo.gl/…) and returns the
+// GET /api/maps-resolve (served by app/api/maps-resolve/route.js): opens a short Google Maps link (maps.app.goo.gl/…) and returns the
 // full link it leads to, which has the place's latitude/longitude in it. Browsers can't do this
 // themselves (the redirect isn't readable across sites). Free: no API key, no Google API.
 // Only Google short links are accepted and only Google pages are followed, so this can't be used
