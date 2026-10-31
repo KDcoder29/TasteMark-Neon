@@ -4,6 +4,7 @@ import Logo from './Logo'
 import { recallEmail, rememberLogin } from './fastStart'
 import { DEMO, loginLabels } from './demoAccount'
 import Icon from './Icons'
+import { AUTH_URL } from './env'
 
 const store = (() => { try { return window.localStorage } catch { return null } })()
 
@@ -12,7 +13,7 @@ export default function Login({ onSession }) {
   // so pressing "Log in" doesn't pay ~2.5 s of wake-up + ~1 s of connection setup.
   useEffect(() => {
     fetch('/api/auth-lookup?ping=1').catch(() => {})
-    const auth = (import.meta.env.VITE_NEON_AUTH_URL || '').replace(/\/$/, '')
+    const auth = (AUTH_URL || '').replace(/\/$/, '')
     if (auth) fetch(`${auth}/get-session`, { credentials: 'include' }).catch(() => {})
   }, [])
 

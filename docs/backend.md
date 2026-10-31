@@ -10,8 +10,8 @@ Everything server-side: Neon Postgres (schema, RLS, RPCs, triggers), Neon Auth, 
 |---|---|---|
 | Database | Neon Postgres. Every table has row-level security (RLS) enabled. | `db/neon-schema.sql` (idempotent, so you can re-run it) |
 | Auth | Neon Auth (Better Auth). Users are in `neon_auth."user"` and `auth.uid()` returns the caller. | Neon Console |
-| Data API | PostgREST-style API. The browser calls it through `@neondatabase/neon-js`. | `VITE_NEON_DATA_API_URL` |
-| Serverless | Vercel functions. In dev, `vite.config.js` (`apiDev` plugin) runs them. | `api/*.js` |
+| Data API | PostgREST-style API. The browser calls it through `@neondatabase/neon-js`. | `NEXT_PUBLIC_NEON_DATA_API_URL` (falls back to `VITE_NEON_DATA_API_URL`) |
+| Serverless | Next.js route handlers (`app/api/*/route.js`). The logic lives in `server/*.js`, run through `server/nodeAdapter.js`. | `app/api/*`, `server/*` |
 | Scripts | One-off Node jobs. They connect directly with `pg`. | `scripts/*.mjs` |
 
 ### Tables
@@ -25,11 +25,12 @@ Everything server-side: Neon Postgres (schema, RLS, RPCs, triggers), Neon Auth, 
 
 ### API routes
 - `GET /api/auth-lookup?username=` converts a username to an email before login. `?available=` checks whether a username is free. Uses `DATABASE_URL`.
-- `GET /api/maps-resolve?url=<maps.app.goo.gl link>` returns `{ url }`, the full Google Maps link a short link leads to. The app reads lat/lng from it. It starts only from Google short links, follows at most 5 redirects, and only to Google hosts (otherwise 400). No key or env. Tests: `api/maps-resolve.test.js`.
+- `GET /api/maps-resolve?url=<maps.app.goo.gl link>` returns `{ url }`, the full Google Maps link a short link leads to. The app reads lat/lng from it. It starts only from Google short links, follows at most 5 redirects, and only to Google hosts (otherwise 400). No key or env. Tests: `server/mapsResolve.test.js`.
 - (Old, only on the unmerged `BiteMark/Maps_feature`: `/api/geocode` with OpenCage/Nominatim. Not used.)
 
 ### Env vars
-- Server only: `DATABASE_URL` and `OPENCAGE_API_KEY`. These must never have a `VITE_` prefix.
+- Browser (inlined into the app at build time, so never secrets): `NEXT_PUBLIC_NEON_AUTH_URL`, `NEXT_PUBLIC_NEON_DATA_API_URL`. `next.config.mjs` falls back to the old `VITE_NEON_AUTH_URL` / `VITE_NEON_DATA_API_URL`.
+- Server only: `DATABASE_URL` and `OPENCAGE_API_KEY`. These must never have a `NEXT_PUBLIC_` (or old `VITE_`) prefix, which would put them in the browser code.
 - Scripts: `NEON_DB_URL` and `SUPABASE_DB_URL` (migration only).
 
 ## Decision log
@@ -121,3 +122,15 @@ Everything server-side: Neon Postgres (schema, RLS, RPCs, triggers), Neon Auth, 
 - Map tiles: OpenStreetMap (`tile.openstreetmap.org`, free, credit shown). CARTO basemaps (Voyager / Dark Matter, `*.basemaps.cartocdn.com`) were meant to be free with attribution but answer with an "API KEY REQUIRED" watermark as of 2026-10-31, so they are switched off (`CARTO_FREE` in `src/tiles.js`).
 - Other free services: OSRM (routes, after a user action, 10-minute cache), Nominatim and Photon (geocoding). No API keys anywhere; nothing is prefetched in bulk.
 - Phase 3 complete (Tasks 10-12): replay, group map, tiles and full screen. No schema, RLS or API changes.
+
+### 2026-10-31: Next.js migration (branch `BiteMark/NextJS`)
+- **API routes:**
+  - `GET /api/auth-lookup` and `GET /api/maps-resolve` are now `app/api/auth-lookup/route.js` and `app/api/maps-resolve/route.js`.
+  - Each wraps the unchanged logic (`server/authLookup.js`, `server/mapsResolve.js`) with `toRouteHandler` (`server/nodeAdapter.js`, tested), so queries, JSON bodies, status codes and `Cache-Control: no-store` are identical. Checked live.
+  - `api/` and `vercel.json` were removed.
+- **Vercel (Kandarp):**
+  1. The branch has `vercel.json` with `{ "framework": "nextjs" }`, so its Preview builds as Next.js while `main` (still Vite) is unaffected. Don't change the project's Framework Preset before the merge. Project Node.js version: 20.9 or later (Next 16 requirement).
+  2. Add `NEXT_PUBLIC_NEON_AUTH_URL` and `NEXT_PUBLIC_NEON_DATA_API_URL` with the same values as the `VITE_` ones. The build also falls back to the `VITE_` ones, so nothing breaks if this is forgotten.
+  3. Keep `DATABASE_URL`.
+  4. Test the branch's Preview deployment before merging. Add the preview domain to Neon Auth's trusted domains if login fails there.
+  5. After the merge, the `VITE_` variables can be deleted.

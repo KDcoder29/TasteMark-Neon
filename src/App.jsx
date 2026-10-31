@@ -115,16 +115,18 @@ function Sheet({ title, onClose, children }) {
   )
 }
 
-// a place shared from Google Maps lands on /share: keep it for after login, then show a clean
-// address. Runs once, when the app file loads (before any render or the post-login take).
-if (typeof window !== 'undefined' && window.location.pathname === '/share') {
+// a place shared from Google Maps lands on /share: keep it for after login (once, when the app file
+// loads, before any render or the post-login take); the address is cleaned once the app is on screen.
+const FROM_SHARE = typeof window !== 'undefined' && window.location.pathname === '/share'
+if (FROM_SHARE) {
   const q = new URLSearchParams(window.location.search)
   stashShare(sessionStore, { title: q.get('title') || '', text: q.get('text') || '', url: q.get('url') || '' })
-  window.history.replaceState(null, '', '/')
 }
 
 export default function App() {
   if (window.location.pathname.startsWith('/reset-password')) return <ResetPassword />
+  // after Next.js has written its own first address (keeping its history state), show a clean '/'
+  useEffect(() => { if (FROM_SHARE) window.history.replaceState(window.history.state, '', '/') }, [])
   const [session, setSession] = useState(undefined)
   const [dark, setDark] = useTheme()
   const loggedOut = useRef(false)

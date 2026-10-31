@@ -1,6 +1,8 @@
 // Direct calls to the Neon Auth (Better Auth) endpoints for things the Supabase-style adapter
 // does not cover: choosing a new password from a reset link, and changing your password.
-const BASE = (import.meta.env.VITE_NEON_AUTH_URL || '').replace(/\/$/, '')
+import { AUTH_URL } from './env'
+
+const BASE = (AUTH_URL || '').replace(/\/$/, '')
 
 async function post(path, body, token) {
   let r

@@ -8,7 +8,8 @@ import { tileColor } from './PlaceCard'
 const C = { green: '#1d6b4f', greenSoft: '#e7f2ec', ink: '#17201c', mute: '#5f6b66', faint: '#8a948f', line: '#e6e9e7', star: '#e8a33d', starOff: '#dde2df', saffron: '#f26b1d', white: '#ffffff', bandText: '#cfe6db' }
 const W = 1080, PAD = 72
 const font = (w, px) => `${w} ${px}px Figtree, "Segoe UI", Roboto, system-ui, sans-serif`
-const PIN = new Path2D('M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z')
+let pin   // made on first use: Path2D only exists in the browser
+const PIN = () => (pin ||= new Path2D('M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z'))
 
 function star(ctx, cx, cy, r) {
   ctx.beginPath()
@@ -69,7 +70,7 @@ export async function drawShareCard({ place, shown, more, prices, notes, group }
   if (where) {
     y += 62
     ctx.save(); ctx.translate(PAD - 2, y - 33); ctx.scale(1.7, 1.7)
-    ctx.lineWidth = 2; ctx.strokeStyle = C.bandText; ctx.stroke(PIN); ctx.restore()
+    ctx.lineWidth = 2; ctx.strokeStyle = C.bandText; ctx.stroke(PIN()); ctx.restore()
     ctx.fillStyle = C.bandText; ctx.font = font(500, 36)
     ctx.fillText(wrapLines(measure(font(500, 36)), where, W - PAD * 2 - 52, 1)[0], PAD + 50, y)
   }

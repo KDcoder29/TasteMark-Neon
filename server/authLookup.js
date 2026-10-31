@@ -1,4 +1,4 @@
-// Vercel serverless function: lets the login screen turn a username into an email,
+// GET /api/auth-lookup (served by app/api/auth-lookup/route.js): lets the login screen turn a username into an email,
 // and check whether a username is free, BEFORE the person is signed in.
 // Needs the server-only env var DATABASE_URL (Neon connection string).
 import { neon } from '@neondatabase/serverless'
