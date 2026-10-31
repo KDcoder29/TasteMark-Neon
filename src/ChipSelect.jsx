@@ -3,7 +3,8 @@ import Icon from './Icons'
 
 // A chip that opens a styled menu of choices — replaces the browser's own <select> list, which
 // can't be styled and looked out of place. Keyboard: ↑ ↓ to move, Enter to pick, Esc to close.
-export default function ChipSelect({ icon, value, options, onChange, label, active }) {
+// disabled: greyed out and can't open; title says why
+export default function ChipSelect({ icon, value, options, onChange, label, active, disabled = false, title }) {
   const [open, setOpen] = useState(false)
   const [at, setAt] = useState(0)
   const ref = useRef(null)
@@ -26,7 +27,7 @@ export default function ChipSelect({ icon, value, options, onChange, label, acti
   }, [open])
 
   function key(e) {
-    if (!open) { if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true) } return }
+    if (!open) { if (e.key === 'ArrowDown' && !disabled) { e.preventDefault(); setOpen(true) } return }
     if (e.key === 'Escape') { e.preventDefault(); setOpen(false) }
     else if (e.key === 'ArrowDown') { e.preventDefault(); setAt((at + 1) % options.length) }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setAt((at - 1 + options.length) % options.length) }
@@ -36,7 +37,7 @@ export default function ChipSelect({ icon, value, options, onChange, label, acti
   return (
     <div ref={ref} className="relative" onKeyDown={key}>
       <button type="button" className={`chip ${active ? 'on' : ''}`} aria-haspopup="listbox" aria-expanded={open}
-        aria-label={`${label}: ${current?.[1]}`} onClick={() => setOpen(!open)}>
+        aria-label={`${label}: ${current?.[1]}`} onClick={() => setOpen(!open)} disabled={disabled} title={title}>
         {icon && <Icon name={icon} size={15} />}{current?.[1]}
         <Icon name="down" size={14} style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
       </button>

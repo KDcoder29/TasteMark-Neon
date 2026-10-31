@@ -1,13 +1,16 @@
 import { supabase } from './supabase'
 import { areaSpot } from './geocode'
+import { shouldLookup, rememberMiss } from './lookupMemory'
 
 // Automatic, area-level positions (from the landmark and city) for places saved without an exact
 // spot. Runs in the background, one lookup at a time about a second apart (fair use of the free
 // OpenStreetMap search), and only writes where there's no position or just an area-level one, so an
-// exact spot (GPS, Google Maps link, pin) is never overwritten. Each place is tried once per app start.
+// exact spot (GPS, Google Maps link, pin) is never overwritten. Each place is tried once per app start,
+// and one that found nothing waits 14 days (or for a new landmark / city) before it's asked again.
 // When some got a position, 'bm:located' is sent so the journal reloads. Something you just saved
 // that couldn't be placed sends 'bm:notlocated' ({ table, id, name }) so you can be told.
 const GAP = 1000
+const store = (() => { try { return window.localStorage } catch { return null } })()
 const queue = []
 const tried = new Set()
 let running = false
@@ -17,7 +20,7 @@ let running = false
 export function autoLocate(items, { now = false } = {}) {
   for (const it of items) {
     const key = `${it.table}:${it.id}`
-    if (!it.id || (tried.has(key) && !now)) continue
+    if (!it.id || (!now && (tried.has(key) || !shouldLookup(store, it)))) continue
     tried.add(key)
     if (now) queue.unshift({ ...it, now }); else queue.push(it)
   }
@@ -31,6 +34,7 @@ async function run() {
   while (queue.length) {
     const it = queue.shift()
     const spot = await areaSpot(it)
+    if (!spot && navigator.onLine !== false) rememberMiss(store, it)     // offline is not "not found"
     if (!spot && it.now) window.dispatchEvent(new CustomEvent('bm:notlocated', { detail: { table: it.table, id: it.id, name: it.name } }))
     if (spot) {
       const { error } = await supabase.from(it.table).update(spot).eq('id', it.id).or('loc_source.is.null,loc_source.eq.area')

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { TOUR, tourStart, tourStep, shouldAutoTour, tourSeen, markTourSeen } from './tourPlan'
+import { hasScene } from './TourScenes'
 
 const store = () => { const m = new Map(); return { getItem: k => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k) } }
 const len = TOUR.length
@@ -14,6 +15,17 @@ describe('the tour scenes', () => {
 
   test('scene keys are unique', () => {
     expect(new Set(TOUR.map(s => s.key)).size).toBe(len)
+  })
+
+  test('Near me and maps have a scene (after Want to try): nearest first, on a map, exact spot from Google Maps', () => {
+    const i = TOUR.findIndex(s => s.key === 'near')
+    expect(i).toBe(TOUR.findIndex(s => s.key === 'wish') + 1)
+    const t = (TOUR[i].title + ' ' + TOUR[i].text).toLowerCase()
+    for (const w of ['near', 'map', 'google maps']) expect(t).toContain(w)
+  })
+
+  test('every scene has a picture', () => {
+    for (const s of TOUR) expect(hasScene(s.key), s.key).toBe(true)
   })
 })
 

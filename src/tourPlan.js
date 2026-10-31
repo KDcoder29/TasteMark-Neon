@@ -12,6 +12,7 @@ export const TOUR = [
   { key: 'craving', ms: 5500, title: 'Craving something?', text: 'Ask in your own words, like “south indian under ₹150”, and get your best matches.' },
   { key: 'pick', ms: 5500, title: 'Can’t decide where to eat?', text: 'Set your budget and mood, and BiteMark picks a place for you.' },
   { key: 'wish', ms: 5500, title: 'Keep a Want to try list', text: 'Save places friends recommend. When you go, tap We went and it joins your journal.' },
+  { key: 'near', ms: 5500, title: 'Places near you, on a map', text: 'Your places nearest first, as a list or on a map, with travel time, and pick a few to plan a route in Google Maps.' },
   { key: 'groups', ms: 5500, title: 'Eat together in groups', text: 'Share places with friends or family and see everyone’s ratings in one card.' },
   { key: 'send', ms: 5500, title: 'Send a place to friends', text: 'Turn any place’s best dishes into a clean picture for WhatsApp.' },
   { key: 'story', ms: 5500, title: 'Your food story', text: 'Your favourite dish, your go-to food and more, in the You tab. Ready to start?' },

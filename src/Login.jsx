@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import Logo from './Logo'
 import { recallEmail, rememberLogin } from './fastStart'
-import { DEMO } from './demoAccount'
+import { DEMO, loginLabels } from './demoAccount'
 import Icon from './Icons'
 
 const store = (() => { try { return window.localStorage } catch { return null } })()
@@ -24,7 +24,7 @@ export default function Login({ onSession }) {
   const [isSignup, setIsSignup] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState(null)          // which button is working: 'form' | 'demo'
   const [forgot, setForgot] = useState(false)
 
   const lookup = async (param, value) => {
@@ -51,7 +51,7 @@ export default function Login({ onSession }) {
 
   // "Try the demo": straight into the shared sample account (same as typing Demo / demo1234)
   async function tryDemo() {
-    setBusy(true); setError(''); setInfo('')
+    setBusy('demo'); setError(''); setInfo('')
     try {
       const { data, error: e1 } = await supabase.auth.signInWithPassword({ email: DEMO.email, password: DEMO.password })
       if (e1) throw new Error('The demo isn’t available right now. Please try again in a moment.')
@@ -59,12 +59,12 @@ export default function Login({ onSession }) {
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.')
     }
-    setBusy(false)
+    setBusy(null)
   }
 
   async function submit(e) {
     e.preventDefault()
-    setBusy(true); setError(''); setInfo('')
+    setBusy('form'); setError(''); setInfo('')
     try {
       if (forgot) {
         let mail = identity.trim()
@@ -118,9 +118,10 @@ export default function Login({ onSession }) {
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.')
     }
-    setBusy(false)
+    setBusy(null)
   }
 
+  const label = loginLabels(busy, { forgot, isSignup })
   return (
     <div className="fixed inset-0 overflow-y-auto overflow-x-hidden" style={{ background: 'var(--bg)' }}>
       <div className="flex min-h-full items-center justify-center px-4 py-4">
@@ -179,8 +180,7 @@ export default function Login({ onSession }) {
             </div>}
             {error && <p className="fade rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--errbg)', color: 'var(--bad)' }}>{error}</p>}
             {info && <p className="fade rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--okbg)', color: 'var(--ok)' }}>{info}</p>}
-            <button disabled={busy} className="btn btn-pri w-full !mt-4">
-              {busy ? 'Please wait…' : forgot ? 'Send reset link' : isSignup ? 'Create account' : 'Log in'}</button>
+            <button disabled={!!busy} className="btn btn-pri w-full !mt-4">{label.main}</button>
           </form>
           {forgot ? (
             <p className="mt-4 text-center text-sm">
@@ -194,8 +194,8 @@ export default function Login({ onSession }) {
           {!forgot && !isSignup && (
             <div className="demo-try">
               <span className="demo-or"><span>or</span></span>
-              <button type="button" disabled={busy} onClick={tryDemo} className="btn w-full">
-                <Icon name="play" size={16} /> Try the demo
+              <button type="button" disabled={!!busy} onClick={tryDemo} className="btn w-full">
+                <Icon name="play" size={16} /> {label.demo}
               </button>
               <p className="m-0 mt-1.5 text-center text-xs" style={{ color: 'var(--mute)' }}>
                 A sample journal with 72 places in Vadodara and Ahmedabad. No sign-up needed.

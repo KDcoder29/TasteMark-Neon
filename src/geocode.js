@@ -87,21 +87,67 @@ async function cityCentre(city, fetchFn) {
   return known.get(norm(city))
 }
 
-export async function areaSpot(p, fetchFn = fetch) {
+// Nominatim (the other free OpenStreetMap search) knows some areas only from shops' addresses
+// ("Indian Oil, Dhumal, Chhani"), so its answers count when their name or address names the area.
+// Its rule is at most one request a second, and at most 3 per place here.
+const NOMINATIM = 'https://nominatim.openstreetmap.org/search'
+const NOM_MAX = 3
+const SKIP = new Set(['country', 'country_code', 'state', 'state_district', 'postcode', 'city', 'county', 'ISO3166-2-lvl4'])
+// spellings differ (Fatehganj / Fatehgunj, Chhani / Chani): compare without doubled letters, h, u/a
+export const fold = s => norm(s).split(' ').map(w => w.replace(/(.)\1+/g, '$1').replace(/h/g, '').replace(/u/g, 'a').replace(/w/g, 'v')).join(' ')
+const spellings = part => [...new Set([part, part.replace(/ganj/gi, 'gunj'), part.replace(/gunj/gi, 'ganj')])]
+const wait = ms => new Promise(r => setTimeout(r, ms))
+
+async function nominatim(q, fetchFn) {
+  try {
+    const r = await fetchFn(`${NOMINATIM}?format=jsonv2&addressdetails=1&limit=8&countrycodes=in&q=${encodeURIComponent(q)}`)
+    const j = r.ok ? await r.json() : []
+    return Array.isArray(j) ? j : []
+  } catch { return [] }
+}
+
+export async function areaSpot(p, fetchFn = fetch, { gap = 1100 } = {}) {
   const city = String(p.city || '').trim(), area = String(p.area || '').trim()
   if (!city || !words(area).length) return null
   const centre = await cityCentre(city, fetchFn)
-  // the whole landmark first, then each part from the last ("Express Hotel, Alkapuri" -> "Alkapuri")
-  const parts = area.split(',').map(s => s.trim()).filter(s => words(s).length)
-  for (const part of [...new Set([area, ...parts.reverse()])]) {
+  const near = ll => (centre ? distanceKm(centre, ll) <= CITY_KM : true)
+  const spot = ll => ({ lat: +ll.lat, lng: +ll.lng, loc_source: 'area' })
+  // the whole landmark first, then each part from the last ("Express Hotel, Alkapuri" -> "Alkapuri";
+  // a slash separates places too: "Alkapuri/Ellora Park")
+  const parts = area.split(/[,/]/).map(s => s.trim()).filter(s => words(s).length)
+  const tries = [...new Set([area, ...parts.reverse()])]
+  for (const part of tries) {
     const want = words(part)
     const ok = (await features(`${part}, ${city}`, fetchFn)).filter(f => {
       const name = norm(f.properties?.name)
       if (!name || !want.every(w => hasWord(name, w))) return false
-      return centre ? distanceKm(centre, at(f)) <= CITY_KM : norm(f.properties?.city).includes(norm(city))
+      return centre ? near(at(f)) : norm(f.properties?.city).includes(norm(city))
     })
     const best = ok.find(f => f.properties.osm_key === 'place') || ok[0]   // a real area beats a shop with the same word
-    if (best) return { ...at(best), loc_source: 'area' }
+    if (best) return spot(at(best))
+  }
+  // "Kalasagar Mall Ghatlodiya": the last word alone, but only as a real area with exactly that name
+  for (const part of tries) {
+    const want = words(part), last = want[want.length - 1]
+    if (want.length < 2 || last.length < 5 || /\d/.test(last)) continue
+    const typed = part.split(/\s+/).reverse().find(t => norm(t) === last) || last
+    const hit = (await features(`${typed}, ${city}`, fetchFn)).find(f => f.properties?.osm_key === 'place' && norm(f.properties?.name) === last && near(at(f)))
+    if (hit) return spot(at(hit))
+  }
+  // Nominatim, also with OpenStreetMap's spellings, at most NOM_MAX requests, a second apart
+  let asked = 0
+  for (const part of tries) {
+    const want = words(part).map(fold)
+    for (const q of spellings(part)) {
+      if (asked >= NOM_MAX) return null
+      if (asked++ && gap) await wait(gap)
+      const ok = (await nominatim(`${q}, ${city}`, fetchFn)).filter(h => {
+        const text = fold([h.name, ...Object.entries(h.address || {}).filter(([k]) => !SKIP.has(k)).map(([, v]) => v)].join(' '))
+        return want.every(w => hasWord(text, w)) && near({ lat: +h.lat, lng: +h.lon })
+      })
+      const best = ok.find(h => h.category === 'place') || ok[0]
+      if (best) return spot({ lat: best.lat, lng: best.lon })
+    }
   }
   return null
 }

@@ -14,3 +14,12 @@ const KEY = 'bm.demo.ready'
 export function demoNeedsReset(s, uid) { try { return s?.getItem(KEY) !== uid } catch { return true } }
 export function markDemoReady(s, uid) { try { s?.setItem(KEY, uid) } catch {} }
 export function forgetDemoReady(s) { try { s?.removeItem(KEY) } catch {} }
+
+// Login page labels. busy is which button is working ('form' | 'demo' | null): both are disabled
+// meanwhile, but only the one you pressed says so (Try the demo must not make Log in look busy).
+export function loginLabels(busy, { forgot = false, isSignup = false } = {}) {
+  return {
+    main: busy === 'form' ? 'Please wait…' : forgot ? 'Send reset link' : isSignup ? 'Create account' : 'Log in',
+    demo: busy === 'demo' ? 'Opening the demo…' : 'Try the demo',
+  }
+}

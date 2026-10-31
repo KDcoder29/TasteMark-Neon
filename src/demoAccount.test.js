@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { DEMO, DEMO_EMAILS, isDemoUser, demoNeedsReset, markDemoReady, forgetDemoReady } from './demoAccount'
+import { DEMO, DEMO_EMAILS, isDemoUser, demoNeedsReset, markDemoReady, forgetDemoReady, loginLabels } from './demoAccount'
 
 const store = () => { const m = new Map(); return { getItem: k => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: k => m.delete(k) } }
 
@@ -35,5 +35,24 @@ describe('the public demo account', () => {
     const bad = { getItem: () => { throw new Error('x') }, setItem: () => { throw new Error('x') }, removeItem: () => { throw new Error('x') } }
     expect(demoNeedsReset(bad, 'u1')).toBe(true)
     expect(() => { markDemoReady(bad, 'u1'); forgetDemoReady(bad) }).not.toThrow()
+  })
+})
+
+describe('login page buttons while one is working', () => {
+  test('Try the demo: only the demo button shows progress; Log in keeps its label', () => {
+    const l = loginLabels('demo', {})
+    expect(l.main).toBe('Log in')
+    expect(l.demo).toBe('Opening the demo…')
+  })
+  test('Log in: only Log in shows progress; the demo button keeps its label', () => {
+    const l = loginLabels('form', {})
+    expect(l.main).toBe('Please wait…')
+    expect(l.demo).toBe('Try the demo')
+  })
+  test('idle labels follow the form mode', () => {
+    expect(loginLabels(null, {}).main).toBe('Log in')
+    expect(loginLabels(null, { isSignup: true }).main).toBe('Create account')
+    expect(loginLabels(null, { forgot: true }).main).toBe('Send reset link')
+    expect(loginLabels(null, {}).demo).toBe('Try the demo')
   })
 })
