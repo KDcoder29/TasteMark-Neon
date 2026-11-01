@@ -53,6 +53,54 @@ Outside these: `app/` (Next.js routes and API routes), `server/` (API logic + te
 | `Login.jsx`, `ResetPassword.jsx`, `ChangePassword.jsx`, `authApi.js` | Login with username or email, sign-up, password reset and change. |
 
 ## Decision log
+- **2026-11-01 - "Save your changes?" everywhere you edit** (branch `BiteMark/Groups_Speed`, Kandarp: "dirty check on whole product").
+  - **The dialog:** BiteMark's own three-choice dialog (`askChoice` in `lib/dialogs.js`, drawn by DialogHost).
+    - "Save your changes?", "You’ve changed <what> and haven’t saved it."
+    - Buttons stacked full width, in the theme's colours, light and dark:
+      - **Save:** `btn-pri`, focused. It runs the form's own save; a failure (a missing name) keeps the form open with its usual error.
+      - **Continue without saving:** `btn-danger-soft`, the theme's error tint, not the solid red used for deletes.
+      - **Keep editing:** plain `btn`.
+    - Escape or a tap outside = Keep editing.
+    - Kandarp first chose two buttons ("Keep editing" / "Discard"), then asked for this wording and a Save button.
+  - **When it asks:** only when something really changed (`isChanged` in `lib/unsaved.js`).
+    - Blanks are equal ('' / null / [] / undefined), and 120 equals '120'.
+    - Opening and closing untouched, or typing and putting the text back, never asks.
+  - **How:** `lib/unsaved.js` (`createUnsaved`, `savePrompt`, tested) and `hooks/unsaved.js`.
+    - Forms report changes with `useUnsaved({ scope, changed, what, save, close })`. `save` resolves true when saved.
+    - Each form's submit now works without an event and returns true on success.
+    - Closes go through `guardClose(scope, onClose)`, which asks only about that scope.
+  - **Back button:** while anything is unsaved there is one extra history step (`__bmUnsaved` in history.state).
+    - Back lands on it and the dialog asks; Keep editing (or a failed Save) puts the step back.
+    - Save or Continue without saving closes the form. With no `close` of its own, such as a comment in the place sheet, Back carries on.
+    - Saving or discarding takes the step away, but only while it's still the current entry.
+  - **Refresh or closing the tab:** the browser's own "Leave site?" (`beforeunload`), which can't be restyled.
+  - **Swipe-down** (`useSheetDrag`): after Keep editing or a failed Save the sheet slides back up; `guardClose` resolves `false`.
+  - **Covered** (scope names):
+
+    | Scope | Screen | What counts as unsaved |
+    |---|---|---|
+    | `placeForm` | Add / Edit place | fields, dishes, tags, pin, Save-to; a scanned bill or spoken dishes count too |
+    | `dishForm` | Add dish | any field |
+    | `wishForm` | Want to try add form | any field; Continue without saving also empties it |
+    | `groups` | Groups sheet | new group name, invite code, your name in groups; Save creates, joins or renames (its Open buttons ask too) |
+    | `place` | place sheet | a group dish's unsaved rating / note, a comment being typed, a name / price edit; Save saves each in turn |
+    | `fixLocations` | Fix locations | a pin found but not saved |
+    | `password` | Change password | half-filled fields |
+
+  - **Not covered:** search, filters, Craving, login. Switching tabs while the inline Want to try form has text also isn't asked; the tab links aren't guarded.
+- **2026-11-01 - Opening a group or a place no longer waits on the US server** (branch `BiteMark/Groups_Speed`). Kandarp reported that after login, tapping a group didn't even show its name for 6–7 s.
+  - **Cause** (measured on bitemark-chi.vercel.app):
+    - every `/g/<id>/…` and `/places/<id>` address was rendered by a server function in iad1 (US);
+    - in-app navigations (RSC fetches) were never cached: 0.4–1.8 s per tap, plus the preloads of every view of every group;
+    - prebuilt pages such as `/near` come from the Mumbai edge in about 0.1 s.
+  - **Fix:**
+    - `next.config.mjs` rewrites every group and place address to one prebuilt page each (`/g/_/…`, `/places/_`, through `generateStaticParams`);
+    - the app reads the real ids from the address (`currentGroup` in `lib/routes.js`; `GroupSpace` takes `groupId` from `useApp()`);
+    - places and the Groups / You sheets open with `window.history.pushState` (Next's shallow routing), so no request at all, and Back still closes them;
+    - the `@modal` intercept markers stay, but in-app taps no longer go through them.
+  - **Group list memory:** `saveGroups` / `savedGroups` in `lib/fastStart.js`, kept per account under `bm.snap.`, so Log out forgets it. The names show at once on app start and refresh in the background. `groupsKnown` still waits for the server before a group is treated as gone.
+  - **Local production build:** a group opens in 0.1 s on desktop and about 0.6 s on a phone (including two taps), with no server request. Group names show about 0.3 s after login lands, and in 0.55 s on reopen.
+- **After deploying, check:** `curl -I https://bitemark-chi.vercel.app/g/<any-id>` should show `X-Vercel-Cache: HIT` or `PRERENDER`, with no `iad1` in `X-Vercel-Id`.
 - **2026-11-01 - Phase B final review fixes** (branch `BiteMark/NextRoutes`).
   - **Early hop to `/login` (`lib/earlyStart.js`).** An inline script in the `<head>` of `app/layout.jsx` runs before any app code:
     - it applies the saved theme, so `/login` no longer flashes light for a dark-mode user;
@@ -213,7 +261,11 @@ Outside these: `app/` (Next.js routes and API routes), `server/` (API logic + te
 ## Branches
 - **Since 2026-11-01: `main` ← `dev` ← feature branches.**
   - `dev` was cut from `main` at 4fbcac8.
-  - Every task gets a feature branch cut from `dev` with `git switch --no-track -c BiteMark/<Name> origin/dev`.
+  - Every task gets a feature branch cut from the latest `dev`:
+    1. `git switch dev`
+    2. `git pull --ff-only origin dev`
+    3. `git switch --no-track -c BiteMark/<Name> dev`
+  - If there are uncommitted changes, don't switch: run `git fetch origin` and cut from `origin/dev`.
   - Feature branches merge into `dev`, and `dev` is later merged into `main` (the release).
   - Claude may create the branch; the user commits, pushes and merges.
   - `BiteMark/NextRoutes` (phase B) was cut from `main` before `dev` existed and goes into `dev`.

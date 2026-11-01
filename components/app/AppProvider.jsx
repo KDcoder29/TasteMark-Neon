@@ -2,13 +2,13 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter, useSelectedLayoutSegments } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { clearFastStart, rememberUser, recallUser } from '@/lib/fastStart'
+import { clearFastStart, rememberUser, recallUser, saveGroups, savedGroups } from '@/lib/fastStart'
 import { markLoggedIn } from '@/lib/earlyStart'
 import { isDemoUser, demoNeedsReset, markDemoReady, forgetDemoReady } from '@/lib/demoAccount'
 import { askConfirm } from '@/lib/dialogs'
 import { takeShare } from '@/lib/shareTarget'
 import { shouldAutoTour, tourSeen, markTourSeen } from '@/lib/tourPlan'
-import { parsePath, spaceBase, spaceFromSegments, viewHref, groupsChangeTarget } from '@/lib/routes'
+import { parsePath, spaceBase, spaceFromSegments, viewHref, groupsChangeTarget, currentGroup } from '@/lib/routes'
 
 // App-wide state (was App.jsx): session, profile, groups, theme, the help overlays, the + menu and its
 // intent, the app sheets, the demo flow and the share-target take. The shell (app/(app)/layout.jsx)
@@ -52,9 +52,13 @@ export default function AppProvider({ children }) {
   const router = useRouter()
   const pathname = usePathname()
   const route = parsePath(pathname)                        // the address: placeId and sheet (Task 3)
-  // The open space (null = Personal) and view (journal | wishlist | activity | near) come from the page in
-  // the children slot, not the address: under an intercepted overlay (/places/[id]) they stay put.
-  const { groupId, view } = spaceFromSegments(useSelectedLayoutSegments())
+  // The view (journal | wishlist | activity | near) comes from the page in the children slot: under the
+  // place sheet and the Groups / You sheets (pushed with the browser's history) it stays put. The open
+  // group (null = Personal) comes from the address: every group shares one prebuilt page (/g/_).
+  const { view } = spaceFromSegments(useSelectedLayoutSegments())
+  const lastGroup = useRef(null)
+  const groupId = currentGroup(pathname, lastGroup.current)
+  lastGroup.current = groupId
   const pathRef = useRef(pathname)
   pathRef.current = pathname
   const groupRef = useRef(groupId)
@@ -159,12 +163,18 @@ export default function AppProvider({ children }) {
     // a failed load (no connection) shows the page, but must never be read as "you're in no groups"
     if (error) { console.error(error); setGroupsReady(true); return null }
     const list = (data || []).filter(r => r.groups).map(r => ({ ...r.groups, role: r.role }))
+    saveGroups(localStore(), uid, list)
     setGroups(list)
     setGroupsKnown(true)
     setGroupsReady(true)
     return list
   }, [uid])
 
+  // the group names at once, from this device (refreshed by loadGroups right below)
+  useEffect(() => {
+    const saved = uid && savedGroups(localStore(), uid)
+    if (saved) setGroups(g => (g.length ? g : saved))
+  }, [uid])
   // (again when the connection comes back after an offline start)
   useEffect(() => { setGroupsReady(false); loadGroups() }, [loadGroups, session?.offline])
 
@@ -303,7 +313,7 @@ export default function AppProvider({ children }) {
   const openSheet = name => {
     if (pathRef.current === '/' + name) return
     sheetInApp.current = true; sheetClosing.current = false
-    router.push('/' + name, { scroll: false })
+    window.history.pushState(null, '', '/' + name)   // no server trip: the sheet is drawn from the address
   }
   const openGroups = () => openSheet('groups')
   const openYou = () => openSheet('you')

@@ -10,6 +10,7 @@ import { locationFromLink } from '@/lib/locationValue'
 import { findMapsLink } from '@/lib/mapsLink'
 import { GPS_HELP, NO_SPOT } from '@/components/add/LocationField'
 import { supabase } from '@/lib/supabase'
+import { useUnsaved, guardClose } from '@/hooks/unsaved'
 
 // "Add exact locations": one place at a time. Google Maps finds it from its name, area and city;
 // you copy its Share link and paste it here; the pin shows where that is; Save & next.
@@ -19,7 +20,8 @@ import { supabase } from '@/lib/supabase'
 export default function FixLocations({ places, onClose, onSaved }) {
   const done$ = useRef(0)
   const finish = () => (done$.current ? onSaved() : onClose())
-  useEscape(finish)
+  const leave = guardClose('fixLocations', finish)   // a pin found but not saved yet asks first
+  useEscape(leave)
   useScrollLock()
   const [queue] = useState(places)
   const [i, setI] = useState(0)
@@ -29,6 +31,7 @@ export default function FixLocations({ places, onClose, onSaved }) {
   const [byHand, setByHand] = useState(false)     // the browser blocked Paste: a box to paste into
   const p = queue[i]
   const single = queue.length === 1
+  useUnsaved({ scope: 'fixLocations', changed: !!pos, what: p ? `the spot for “${p.name}”` : 'this spot', save: () => save(), close: finish })
 
   useEffect(() => { setPos(null); setMsg(''); setBusy('') }, [i])
   const typed = text => { const l = findMapsLink(text); if (l) fromLink(l) }
@@ -58,8 +61,9 @@ export default function FixLocations({ places, onClose, onSaved }) {
     setBusy('')
     if (error) return setMsg(error.message)
     done$.current += 1
-    if (single) return onSaved()                       // one place (from its details): no summary screen
+    if (single) { onSaved(); return true }             // one place (from its details): no summary screen
     setI(n => n + 1)
+    return true
   }
 
   const mute = { color: 'var(--mute)' }
@@ -67,11 +71,11 @@ export default function FixLocations({ places, onClose, onSaved }) {
 
   return createPortal(
     <>
-      <div className="scrim !z-[50]" onMouseDown={finish} />
+      <div className="scrim !z-[50]" onMouseDown={leave} />
       <div className="mapsheet" role="dialog" aria-modal="true" aria-label={title}>
         <div className="flex items-center justify-between gap-3 px-4 pb-1 pt-3">
           <h2 className="m-0 text-lg font-bold">{title} {p && !single && <span className="text-sm font-semibold" style={mute}>· {i + 1} of {queue.length}</span>}</h2>
-          <button type="button" onClick={finish} aria-label="Close" className="ghost grid h-9 w-9 place-items-center rounded-full" style={mute}><Icon name="x" size={18} /></button>
+          <button type="button" onClick={leave} aria-label="Close" className="ghost grid h-9 w-9 place-items-center rounded-full" style={mute}><Icon name="x" size={18} /></button>
         </div>
         {p ? (
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-4">

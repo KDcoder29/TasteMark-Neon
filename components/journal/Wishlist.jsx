@@ -15,6 +15,8 @@ import LocationField from '@/components/add/LocationField'
 import { locationRow, wantsAreaLookup } from '@/lib/locationValue'
 import { autoLocate } from '@/lib/autoLocate'
 import { useLocationReady } from '@/hooks/locationReady'
+import { isChanged } from '@/lib/unsaved'
+import { useUnsaved, guardClose } from '@/hooks/unsaved'
 
 const EMPTY = { name: '', city: '', area: '', note: '', maps_url: '' }
 
@@ -28,6 +30,11 @@ export default function Wishlist({ me, group, items, names, isOwner, onChanged, 
   const locReady = useLocationReady({ strict: true })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // the add form: ✕ (and the phone's Back) ask first when something was typed; Discard empties it
+  const shut = () => { setOpen(false); setError(''); setF(EMPTY); setCats([]); setLoc(null) }
+  const closeForm = guardClose('wishForm', shut)
+  useUnsaved({ scope: 'wishForm', changed: open && isChanged({ f: EMPTY, cats: [], loc: null }, { f, cats, loc }),
+    what: f.name.trim() ? `“${f.name.trim()}”` : 'this place to try', save: () => add(), close: shut })
   const [leaving, setLeaving] = useState(null)       // id of the card sliding out
   const [gone, setGone] = useState(null)             // removed, waiting for Undo
   const changed = useRef(onChanged)
@@ -58,7 +65,7 @@ export default function Wishlist({ me, group, items, names, isOwner, onChanged, 
   const toggleCat = c => setCats(cats.includes(c) ? cats.filter(x => x !== c) : [...cats, c])
 
   async function add(e) {
-    e.preventDefault()
+    e?.preventDefault()
     if (!f.name.trim()) return setError('Enter the place name.')
     if (f.maps_url.trim() && !isMapsLink(f.maps_url.trim())) return setError(MAPS_HINT)
     setBusy(true); setError('')
@@ -74,6 +81,7 @@ export default function Wishlist({ me, group, items, names, isOwner, onChanged, 
     if (locReady && added?.id && wantsAreaLookup(loc, null, f)) autoLocate([{ table: 'wishlist', id: added.id, name: f.name, area: f.area, city: f.city }], { now: true })
     setF(EMPTY); setCats([]); setLoc(null); setOpen(false)
     onChanged()
+    return true
   }
 
   function remove(item) {
@@ -93,7 +101,7 @@ export default function Wishlist({ me, group, items, names, isOwner, onChanged, 
         <form onSubmit={add} className="sheet card mb-4">
           <div className="mb-2 flex items-center justify-between">
             <h3 className="m-0 font-bold">Place to try</h3>
-            <button type="button" onClick={() => { setOpen(false); setError('') }} aria-label="Close" className="ghost grid h-8 w-8 place-items-center rounded-full" style={mute}><Icon name="x" size={17} /></button>
+            <button type="button" onClick={closeForm} aria-label="Close" className="ghost grid h-8 w-8 place-items-center rounded-full" style={mute}><Icon name="x" size={17} /></button>
           </div>
           <label className={label} style={mute}>Place name *</label>
           <input autoFocus value={f.name} onChange={setField('name')} placeholder="e.g. Brew on the Rocks" className="input mb-2" />

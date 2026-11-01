@@ -89,9 +89,10 @@ export default function SpaceProvider({ group, children }) {
   const [notice, setNotice] = useState(null)       // { text, action?, onAction?, ms? } a short message
   const [fixing, setFixing] = useState(null)       // Add exact locations: the list to walk through
 
-  // the place sheet lives in the address: /places/[id] (or /g/<gid>/places/[id]). A tap pushes it (soft
-  // navigation, intercepted by @modal, so the view underneath stays mounted); closing goes Back when it was
-  // opened in this session, else (direct link / refresh) replaces it with the space's Places view.
+  // the place sheet lives in the address: /places/[id] (or /g/<gid>/places/[id]). A tap pushes it with the
+  // browser's own history (Next's shallow routing: no server trip, the view underneath stays mounted);
+  // closing goes Back when it was opened in this session, else (direct link / refresh) replaces it with
+  // the space's Places view.
   const router = useRouter()
   const urlPlaceId = route.placeId
   const openedInApp = useRef(false)
@@ -99,7 +100,7 @@ export default function SpaceProvider({ group, children }) {
   useEffect(() => { closing.current = false }, [urlPlaceId])
   const openPlace = id => {
     openedInApp.current = true; closing.current = false
-    router.push(placeHref(id, group?.id), { scroll: false })
+    window.history.pushState(null, '', placeHref(id, group?.id))
   }
   const closePlace = () => {
     if (!urlPlaceId || closing.current) return       // no sheet open

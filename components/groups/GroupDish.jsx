@@ -3,6 +3,8 @@ import { supabase } from '@/lib/supabase'
 import { Stars, Avatar, tint, timeAgo, priceInput, priceProps, StarPicker, OrderAgain, ORDER_AGAIN } from '@/components/ui/shared'
 import { askConfirm, showAlert } from '@/lib/dialogs'
 import { optimistic } from '@/lib/optimistic'
+import { isChanged } from '@/lib/unsaved'
+import { useUnsaved } from '@/hooks/unsaved'
 
 const EMOJIS = ['👍', '😋', '🔥', '😐', '👎']
 const ok = r => { if (r.error) throw r.error; return r }
@@ -21,6 +23,15 @@ export default function GroupDish({ d, me, names, isOwner, onChanged }) {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [gone, setGone] = useState(false)          // deleted (the server may still be catching up)
+  // unsaved: a rating / note not saved yet, a comment being typed, a name or price being edited.
+  // Closing the place sheet asks first (scope 'place', see PlaceDetail); Back then carries on.
+  const ratingEdited = isChanged({ rate: mine?.rating || 0, again: mine?.order_again || '', note: mine?.note || '' }, { rate, again, note })
+  const dishEdited = editing && isChanged({ en: d.name, ep: d.price ?? '' }, { en, ep })
+  // Save in the dialog saves each unsaved part in turn and stops at the first that fails
+  const saveAll = async () =>
+    (!ratingEdited || await saveRating()) && (!text.trim() || await postComment()) && (!dishEdited || await saveDish())
+  useUnsaved({ scope: 'place', changed: !gone && (ratingEdited || !!text.trim() || dishEdited), save: saveAll,
+    what: text.trim() ? 'your comment' : dishEdited ? `“${d.name}”` : 'your rating' })
 
   const who = uid => (uid === me ? 'You' : names[uid] || 'A member')
   const ratings = d.dish_ratings || []
@@ -29,10 +40,13 @@ export default function GroupDish({ d, me, names, isOwner, onChanged }) {
   const canAdmin = d.user_id === me || isOwner
   const mute = { color: 'var(--mute)' }
 
+  // true when it worked; an error shows under the dish
   async function run(fn) {
     setBusy(true); setErr('')
-    try { await fn(); await onChanged() } catch (e) { setErr(e.message || 'Something went wrong. Please try again.') }
+    let ok = true
+    try { await fn(); await onChanged() } catch (e) { ok = false; setErr(e.message || 'Something went wrong. Please try again.') }
     setBusy(false)
+    return ok
   }
 
   const saveRating = () => {
@@ -55,7 +69,7 @@ export default function GroupDish({ d, me, names, isOwner, onChanged }) {
   })
 
   const postComment = e => {
-    e.preventDefault()
+    e?.preventDefault()
     if (!text.trim()) return
     return run(async () => { ok(await supabase.from('dish_comments').insert({ dish_id: d.id, user_id: me, body: text.trim() })); setText('') })
   }
@@ -63,7 +77,7 @@ export default function GroupDish({ d, me, names, isOwner, onChanged }) {
   const deleteComment = id => run(async () => ok(await supabase.from('dish_comments').delete().eq('id', id)))
 
   const saveDish = e => {
-    e.preventDefault()
+    e?.preventDefault()
     if (!en.trim()) return setErr('Dish name is required.')
     return run(async () => {
       ok(await supabase.from('dishes').update({ name: en.trim(), price: ep === '' ? null : +ep }).eq('id', d.id))
