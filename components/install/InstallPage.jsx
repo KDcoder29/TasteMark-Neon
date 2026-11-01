@@ -81,8 +81,8 @@ export default function InstallPage() {
       title: 'Install BiteMark on this computer',
       text: 'It opens in its own window, like an app.',
       steps: [
-        <>Click the install icon at the right end of the address bar, or <Key><DotsGlyph /></Key> the browser menu.</>,
-        <>Choose <b>Install BiteMark</b>.</>,
+        <>Click the install icon at the right end of the address bar, or open the browser menu <Key><DotsGlyph /></Key>.</>,
+        <>Choose <b>Install BiteMark</b>, then <b>Install</b>.</>,
       ],
     },
     unsupported: {

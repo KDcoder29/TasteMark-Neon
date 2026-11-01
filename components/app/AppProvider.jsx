@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSelectedLayoutSegments } from 'next/navigati
 import { supabase } from '@/lib/supabase'
 import { clearFastStart, rememberUser, recallUser, saveGroups, savedGroups } from '@/lib/fastStart'
 import { markLoggedIn } from '@/lib/earlyStart'
-import { isDemoUser, demoNeedsReset, markDemoReady, forgetDemoReady } from '@/lib/demoAccount'
+import { isDemoUser, demoNeedsReset, markDemoReady, forgetDemoReady, resetDemo } from '@/lib/demoAccount'
 import { askConfirm } from '@/lib/dialogs'
 import { takeShare } from '@/lib/shareTarget'
 import { shouldAutoTour, tourSeen, markTourSeen } from '@/lib/tourPlan'
@@ -185,7 +185,8 @@ export default function AppProvider({ children }) {
   useEffect(() => {
     if (!demoWaiting || demoBusy) return
     setDemoBusy(true)
-    supabase.rpc('reset_demo').then(({ error }) => {
+    // (retried while the fresh login's token isn't attached yet: lib/demoAccount resetDemo)
+    resetDemo(() => supabase.rpc('reset_demo')).then(({ error }) => {
       if (error) console.error('Demo reset failed (is db/migrations/2026-10-29-demo-account.sql applied?)', error)
       markDemoReady(sessionStore, uid)
       try { clearFastStart(window.localStorage) } catch {}      // no snapshot of the last visitor's journal
