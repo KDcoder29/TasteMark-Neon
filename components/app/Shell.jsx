@@ -16,7 +16,8 @@ import DemoVideo from '@/components/tour/DemoVideo'
 import { useSheetDrag, buzz } from '@/hooks/useGestures'
 import { useEscape, useScrollLock } from '@/hooks/layers'
 import { useInstall } from '@/hooks/install'
-import { showInstall } from '@/lib/install'
+import { showInstall, inviteFriend } from '@/lib/install'
+import { showAlert } from '@/lib/dialogs'
 import InstallButton from '@/components/install/InstallButton'
 import { useApp } from '@/components/app/AppProvider'
 import { viewHref, spaceBase } from '@/lib/routes'
@@ -32,8 +33,10 @@ function InstallItems({ onDone }) {
   const [copied, setCopied] = useState(false)
   const invite = async () => {
     const url = window.location.origin + '/install'
-    if (navigator.share) { try { await navigator.share({ title: 'BiteMark', text: 'My food journal app. Install it here:', url }); return } catch (e) { if (e?.name === 'AbortError') return } }
-    try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1800) } catch {}
+    const done = await inviteFriend({ url, share: navigator.share ? d => navigator.share(d) : null,
+      copy: navigator.clipboard?.writeText ? t => navigator.clipboard.writeText(t) : null })
+    if (done === 'copied') { setCopied(true); setTimeout(() => setCopied(false), 1800) }
+    if (done === 'show') showAlert({ tone: 'info', title: 'Invite a friend', message: `Send them this link to install BiteMark: ${url}` })
   }
   return (
     <>
