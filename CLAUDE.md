@@ -1,6 +1,6 @@
 # BiteMark (tastemark-neon)
 
-Personal food-journal PWA. Next.js 16 (single-page mode: the whole app is client-side) + React 19 + Tailwind 4; Neon Postgres/Auth/Data API backend; API routes in `app/api/*` (logic in `server/`).
+Personal food-journal PWA. Next.js 16 App Router (real routes: `/`, `/near`, `/g/[id]/...`, `/places/[id]`, `/login`; all screens are client components) + React 19 + Tailwind 4; Neon Postgres/Auth/Data API backend; API routes in `app/api/*` (logic in `server/`). Folders: `app/` (routes), `components/<area>/` (JSX), `lib/` (pure JS + tests), `hooks/`, `styles/globals.css`; imports use `@/` (folder map and address map in `docs/frontend.md`).
 
 **Read first, update after every decision/task:**
 - `docs/frontend.md`: UI, components, client logic, decisions, open issues

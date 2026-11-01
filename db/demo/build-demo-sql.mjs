@@ -5,7 +5,7 @@
 import { writeFileSync } from 'node:fs'
 import { SEED } from './demo-seed.mjs'
 
-const EMAILS = ['demo.user@example.com', 'demo@example.com']   // keep in sync with DEMO_EMAILS in src/demoAccount.js
+const EMAILS = ['demo.user@example.com', 'demo@example.com']   // keep in sync with DEMO_EMAILS in lib/demoAccount.js
 const json = JSON.stringify(SEED)
 if (json.includes('$seed$')) throw new Error('seed text contains the SQL quote marker')
 

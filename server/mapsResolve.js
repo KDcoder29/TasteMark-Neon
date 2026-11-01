@@ -4,7 +4,7 @@
 // Only Google short links are accepted and only Google pages are followed, so this can't be used
 // to fetch anything else.
 //   GET /api/maps-resolve?url=https://maps.app.goo.gl/abc  ->  { url: "https://www.google.com/maps/place/…" }
-import { coordsFromMapsUrl, isShortMapsLink } from '../src/geo.js'
+import { coordsFromMapsUrl, isShortMapsLink } from '@/lib/geo.js'
 
 const HOPS = 5
 const GOOGLE = /^(?:[a-z0-9-]+\.)*google\.[a-z]{2,3}(?:\.[a-z]{2})?$/
