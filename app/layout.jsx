@@ -1,6 +1,7 @@
 import '@/styles/globals.css'
 import ServiceWorker from '@/components/app/ServiceWorker'
 import { EARLY_START_SCRIPT } from '@/lib/earlyStart'
+import { INSTALL_CAPTURE_SCRIPT } from '@/lib/install'
 
 // The page head that index.html used to have. The screens are client-side: app/(app)/layout.jsx
 // (the signed-in app), app/(auth)/…, app/share.
@@ -26,6 +27,8 @@ export default function RootLayout({ children }) {
       <head>
         {/* first thing: the saved theme, and the hop to /login for a logged-out visitor (lib/earlyStart) */}
         <script dangerouslySetInnerHTML={{ __html: EARLY_START_SCRIPT }} />
+        {/* keeps the browser's install offer for the Install buttons (/install, the You menu) */}
+        <script dangerouslySetInnerHTML={{ __html: INSTALL_CAPTURE_SCRIPT }} />
         <link rel="icon" type="image/svg+xml" href="/icon.svg" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.webmanifest" />

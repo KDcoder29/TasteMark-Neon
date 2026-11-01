@@ -529,3 +529,27 @@ button.nearcard-main{cursor:pointer}
 .nearmap-full .replay{bottom:calc(26px + env(safe-area-inset-bottom,0px))}
 .nearfloat{position:absolute;left:10px;right:10px;bottom:calc(26px + env(safe-area-inset-bottom,0px));z-index:500;max-width:400px}
 .nearfloat .nearcard{margin-top:0}
+
+/* /install: BiteMark on a little home screen, between faint app tiles */
+.inst-home{display:flex;align-items:flex-start;justify-content:center;gap:14px;margin:0 0 18px}
+.inst-tile{width:52px;height:52px;margin-top:6px;border-radius:14px;background:var(--line);opacity:.7}
+.inst-app{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--ink)}
+.inst-app svg{border-radius:16px;box-shadow:0 6px 18px #1d3b2f33}
+.inst-steps{margin:14px 0 0;padding:0 0 0 22px;list-style:decimal;display:grid;gap:10px;font-size:14.5px;line-height:1.5;color:var(--ink)}
+.inst-steps li::marker{color:var(--pri);font-weight:700}
+.inst-key{display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:8px;background:var(--soft);color:var(--ink);font-weight:600;vertical-align:-3px}
+/* the Install button in the phone top bar */
+.inst-pill{display:inline-flex;align-items:center;gap:5px;height:34px;padding:0 12px;margin-right:2px;border-radius:999px;background:var(--pri-soft);color:var(--pri);font-size:13.5px;font-weight:700;white-space:nowrap;transition:filter .15s}
+.inst-pill:hover{filter:brightness(.97)}
+/* login screen: a tighter layout on short screens (phones like 360x640 and 375x667, laptops up to
+   1280x800) so it never scrolls */
+@media (max-height:800px){
+  .login-head{margin-bottom:10px}
+  .login-head svg{width:40px;height:40px}
+  .login-head h1{margin-top:6px}
+  .login-tagline,.demo-note{display:none}
+}
+/* login screen: the Install button beside Try the demo, clearly green but quieter than Log in */
+.inst-btn-a{background:color-mix(in srgb,var(--pri) 22%,var(--surface));border-color:color-mix(in srgb,var(--pri) 55%,transparent);color:var(--pri-d);font-weight:700}
+.inst-btn-a:hover:not(:disabled){background:color-mix(in srgb,var(--pri) 30%,var(--surface));border-color:var(--pri)}
+:root[data-theme="dark"] .inst-btn-a{color:var(--pri)}
