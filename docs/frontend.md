@@ -8,19 +8,41 @@ Everything in the browser: React components, styling, client-side logic (search,
 BiteMark ("Remember every great bite") is a personal food journal PWA, used mainly in Gujarat (Vadodara, Ahmedabad). You log a **place**, then its **dishes**. Each dish has a price in ₹, a 1–5★ rating, an order-again flag (yes/maybe/no) and a note. Notes are often in Gujarati or Hindi slang ("ekdum mast", "tikhu"). Places can be personal or shared into **groups**. In a group, ratings are averaged across members, and there are reactions, comments and an activity feed. Other features: a wishlist of places you want to try, a random "Where to eat?" picker, a "Craving something?" chat, and a Map tab (in progress).
 
 ## Stack & conventions
-- React 19, Next.js 16.4.3 in single-page mode (since 2026-10-31; was Vite 8), Tailwind 4 (`@tailwindcss/postcss`). Plain JSX, no TypeScript, no router (the app routes itself from the URL).
-  - The `/reset-password` path is checked by hand in `App.jsx`.
-- Theme tokens are CSS variables in `src/index.css`. Light values are on `:root`, dark values on `:root[data-theme="dark"]`. Use the tokens: `--bg`, `--surface`, `--ink`, `--mute`, `--line`, `--pri`, `--ok`, `--bad`, `--star`, and so on.
+- React 19, Next.js 16.4.3 (App Router; since 2026-10-31, was Vite 8), Tailwind 4 (`@tailwindcss/postcss`). Plain JSX, no TypeScript. Real Next.js routes since phase B (see the 2026-10-31 "Real routes" entry and `lib/routes.js`).
+  - `/reset-password` and `/share` are their own pages (`app/(auth)/reset-password`, `app/share`).
+- Theme tokens are CSS variables in `styles/globals.css`. Light values are on `:root`, dark values on `:root[data-theme="dark"]`. Use the tokens: `--bg`, `--surface`, `--ink`, `--mute`, `--line`, `--pri`, `--ok`, `--bad`, `--star`, and so on.
 - Utility classes: `.input`, `.chip`/`.chip.on`, `.pill`, `.fab`, `.menu`, `.menu-item`, `.switch`, `.skel`. Animations: `.rise`, `.fade`, `.sheet`.
 - Code style: short comments that explain *why*, compact one-line handlers, inline `style={{ color: 'var(--mute)' }}` for colours.
 - `localStorage` holds UI preferences only: `theme`, `space`, `sort`. Every access is wrapped in try/catch.
 - `public/sw.js` is a minimal service worker. It exists only so the app can be installed. There is no offline cache.
 
+## Folder map (since 2026-10-31)
+Imports use the `@/` alias (`jsconfig.json`, and `resolve.alias` in `vitest.config.js`): `@/components/<area>/X`, `@/lib/x`, `@/hooks/x`, `@/styles/globals.css`. `src/` no longer exists. A pure `foo.js` and a `Foo.jsx` never share a folder (Windows case clash), so they live in `lib/` and `components/`. Older entries below still say `src/X`: find the file with this table.
+
+| Folder | What | Files |
+|---|---|---|
+| `components/app/` | App state and shell, error/dialog/toast hosts | `AppProvider.jsx`, `Shell.jsx`, `ClientOnly.jsx`, `ServiceWorker.jsx`, `ChunkBoundary.jsx`, `DialogHost.jsx`, `ErrorBoundary.jsx`, `Toast.jsx` |
+| `components/add/` | Add a place: form, bill scan, voice, location fields | `AddMenu.jsx`, `BillScan.jsx`, `GoogleLocate.jsx`, `LocationField.jsx`, `MapsLinkField.jsx`, `PlaceForm.jsx`, `VoiceAdd.jsx` |
+| `components/ask/` | Craving chat, Where-to-eat picker | `CravingChat.jsx`, `Picker.jsx` |
+| `components/auth/` | Login, reset and change password | `ChangePassword.jsx`, `Login.jsx`, `ResetPassword.jsx` |
+| `components/groups/` | Groups and shared dishes | `GroupDish.jsx`, `Groups.jsx`, `ShareDish.jsx`, `SharedPlaceSheet.jsx` |
+| `components/journal/` | Space data + views, dish form, wishlist, activity, filters, story card | `SpaceProvider.jsx`, `PlacesView.jsx`, `WishlistView.jsx`, `ActivityView.jsx`, `Activity.jsx`, `DishForm.jsx`, `FilterSheet.jsx`, `FixLocations.jsx`, `StoryCard.jsx`, `Wishlist.jsx` |
+| `components/map/` | Leaflet map, pin picker | `LeafletMap.jsx`, `PinPicker.jsx` |
+| `components/near/` | Near me, area cards, crawl bar, replay | `NearView.jsx`, `AreaCard.jsx`, `CrawlBar.jsx`, `FoodReplay.jsx`, `NearMe.jsx` |
+| `components/place/` | Place card/detail, bills, share sheet | `BillViewer.jsx`, `PlaceBills.jsx`, `PlaceCard.jsx`, `PlaceDetail.jsx`, `ShareSheet.jsx` |
+| `components/tour/` | Tour, demo video, feature guide | `DemoVideo.jsx`, `FeatureGuide.jsx`, `Tour.jsx`, `TourScenes.jsx` |
+| `components/ui/` | Shared bits: icons, chip select, logo, shared helpers | `ChipSelect.jsx`, `Icons.jsx`, `Logo.jsx`, `shared.jsx` |
+| `lib/` | Pure logic and its tests (*.test.js) | `authApi.js`, `autoLocate.js`, `billApi.js`, `billOcr.js`, `billParse.js`, `billPhoto.js`, `capture.js`, `crawl.js`, `demoAccount.js`, `dialogs.js`, `embedder.js`, `env.js`, `fastStart.js`, `features.js`, `foodLexicon.js`, `foodStory.js`, `geo.js`, `geocode.js`, `gestures.js`, `groupApi.js`, `hereNudge.js`, `journalFilter.js`, `locate.js`, `locationSupport.js`, `locationValue.js`, `lookupMemory.js`, `mapInsights.js`, `mapsLink.js`, `mapsSave.js`, `optimistic.js`, `placeRules.js`, `placeView.js`, `replayPlan.js`, `route.js`, `routes.js`, `search.js`, `shareCard.js`, `shareImage.js`, `shareTarget.js`, `smartIndex.js`, `smartSearch.js`, `speech.js`, `supabase.js`, `tiles.js`, `tourPlan.js`, `undo.js`, `voiceParse.js` (+ 39 tests) |
+| `hooks/` | React hooks and hook-centric modules (+tests) | `layers.js`, `locationReady.js`, `useGestures.js` (+ 1 tests) |
+| `styles/` | globals.css (theme tokens, utilities) | `globals.css` |
+
+Outside these: `app/` (Next.js routes and API routes), `server/` (API logic + tests), `db/`, `public/`, `e2e/`, `scripts/`.
+
 ## Component map
 | File | Role |
 |---|---|
-| `App.jsx` | Auth session, theme, header, space switcher (Personal / each group). Polls group membership every 15s. |
-| `Journal.jsx` | Main screen. Loads places and wishlist, filters/sorts them, shows the tabs: Journal / Map / Wishlist / Activity (groups only). |
+| `AppProvider.jsx` + `Shell.jsx` (was `App.jsx`) | Auth session, theme, space switcher (Personal / each group, by address). Polls group membership every 15s. Shell = sidebar, bottom bar, app sheets. |
+| `SpaceProvider.jsx` + `PlacesView` / `WishlistView` / `NearView` / `ActivityView` (was `Journal.jsx`) | One space's data (loaded once per space), filters/sort, overlays; each view is its own route. |
 | `PlaceForm.jsx`, `DishForm.jsx` | Add/edit a place with its dishes. In groups, add a dish together with your own rating. |
 | `ShareDish.jsx`, `groupApi.js` | Copy a personal dish into a group. A group has one card per place (matched by name + city), and your rating is added to it. |
 | `GroupDish.jsx` | A dish inside a group: average rating, your rating, reactions, comments. |
@@ -31,6 +53,108 @@ BiteMark ("Remember every great bite") is a personal food journal PWA, used main
 | `Login.jsx`, `ResetPassword.jsx`, `ChangePassword.jsx`, `authApi.js` | Login with username or email, sign-up, password reset and change. |
 
 ## Decision log
+- **2026-11-01 - Phase B final review fixes** (branch `BiteMark/NextRoutes`).
+  - **Early hop to `/login` (`lib/earlyStart.js`).** An inline script in the `<head>` of `app/layout.jsx` runs before any app code:
+    - it applies the saved theme, so `/login` no longer flashes light for a dark-mode user;
+    - a visitor with no logged-in mark on this device goes straight to `/login?next=…`, instead of loading the app shell first.
+    - The mark is `bm.in`. AppProvider sets it on any session, the demo's included, and removes it on "no session" and on Log out. `bm.snap.user` also counts, for devices from before the mark.
+    - A wrong guess corrects itself: `/login` moves on when there is a session, and the session gate still checks every start.
+    - `<html>` has `suppressHydrationWarning`, as the Next 16 guide requires.
+  - **Other speed fixes.**
+    - Log out and "back to login" after a password reset go to `/login` directly.
+    - `/login` prefetches the app.
+    - `/share` decides from the mark, without a trip to the auth server.
+  - **Speed after the fixes.** Measured on the production builds: slow 4G with a 4× slower CPU, 390 px, 3 runs each, A and B alternating. Phase B is now faster than phase A on every measure.
+
+    | Measure | A | B |
+    |---|---|---|
+    | Logged out, cold | 3.21 s | 2.85 s |
+    | Logged out, warm | 1.13 s | 0.94 s |
+    | Login → journal | 3.09 s | 2.96 s |
+    | Logged in, cold | 4.32 s | 4.27 s |
+    | Logged in, warm | 1.68 s | 1.48 s |
+
+  - **Groups sheet.** A group created or joined in the sheet now opens when the sheet closes (`groupsChangeTarget` in `lib/routes.js`; `pendingSpace` in AppProvider). The sheet stays up with "Group created. Open it to get the invite code."
+    - Leaving or deleting the open group keeps the sheet up with its message, because GroupSpace waits for the sheet to close before going to Personal. This is the same as the single-page app.
+- **2026-11-01 - Phase B routes: summary and proof** (branch `BiteMark/NextRoutes`, Task 4). The app now has real Next.js routes; the UI and behaviour are unchanged.
+  - **Address map** (Personal / group):
+
+    | Screen | Personal | Group `g/[groupId]` |
+    |---|---|---|
+    | Places | `/` | `/g/<id>` |
+    | Want to try | `/want-to-try` | `/g/<id>/want-to-try` |
+    | Near me | `/near` | `/g/<id>/near` |
+    | Activity | (none) | `/g/<id>/activity` |
+    | Place sheet over the list (in-app) | `/places/<id>` (intercepted) | `/g/<id>/places/<id>` (intercepted) |
+    | Place direct link / refresh | `/places/<id>` shows Places with the sheet open | same under `/g/<id>` |
+    | Groups, You sheets | `/groups`, `/you` (intercepted in-app; direct link = the sheet over Places) | same addresses |
+    | Logged-out | `/login` (`?next=<address>` kept, used after login), `/reset-password`, `/share` (stashes the share, then `/` or `/login`) | |
+
+    An unknown place id shows Places with no sheet. An unknown or left group goes back to `/`. Logged-out visits to any app address redirect to `/login?next=...`.
+  - **Folders:** `app/(auth)/{login,reset-password}`, `app/share`, `app/(app)/layout.jsx` (shell + gate), `app/(app)/@modal/(.)places|(.)g/[groupId]/places|(.)groups|(.)you` (overlays), `app/(app)/(personal)/...` and `app/(app)/g/[groupId]/...` (views), `app/api/*`. UI in `components/<app|add|ask|auth|groups|journal|map|near|place|tour|ui>/`, pure logic in `lib/` (+ tests, `routes.js` for addresses), `hooks/`, `styles/globals.css`. Imports use `@/`.
+  - **Providers:** `AppProvider` (once, in `(app)/layout.jsx`: session, groups, theme, help, + menu, sheets, `view`/`groupId` from the children slot) and `SpaceProvider` (one per space layout: that space's places, wishlist, filters, place sheet). Switching views inside a space therefore fetches nothing.
+  - **Handoffs:** see the "Real routes" entry below (all done).
+  - **Proof (Playwright, demo account, `next start`):**
+    - 72 states (18 x 390/1280 x light/dark) against the phase-A set: 64 identical at the 24-level, 0.05% threshold; the other 8 are data/timing (below). No UI regression.
+    - URL matrix at 390 in Personal and Weekend Foodies: 14 addresses x direct / refresh / Back all behave as above.
+    - The 13 Near me features, the "Are you at" nudge, 3 km ring, bill scan, Craving smart matching, `/share`, the reset page, and username login (Demo/demo1234, lands on `?next`) all work.
+    - 0 extra places/wishlist requests when switching views; Back from the place sheet returns to the list (scroll kept within ~14 px).
+  - **Known differences (not regressions):**
+    - the screenshot harness had to change selectors because nav items are now links (`<a>`) instead of buttons (`getByRole('link')`), and the desktop "Add place" label;
+    - search cards are captured mid-animation in the old set; settled, they are pixel-identical;
+    - the demo group's badge colour (its id changes after a demo reset), and the "Are you near ..." card's last line (fade-in timing);
+    - `/login` while logged in goes to `/`; `/reset-password` while logged in shows "Link not valid" (as before).
+  - **Build (`next build`, first-load JS, uncompressed / gzip):**
+
+    | Route | Phase B | Phase A |
+    |---|---|---|
+    | `/` | 1143 KB / 326 KB | 1147 KB / 321 KB |
+    | `/want-to-try` | 1142 KB / 326 KB | (same page) |
+    | `/near` | 1136 KB / 324 KB | (same page) |
+    | `/g/[groupId]` | 1143 KB / 326 KB | (same page) |
+    | `/g/[groupId]/activity` | 1139 KB / 325 KB | (same page) |
+    | `/login` | 912 KB / 251 KB | (same page) |
+    | `/reset-password` | 453 KB / 135 KB | (same page) |
+    | `/share` | 904 KB / 249 KB | (same page) |
+
+  - **Speed (slow 4G: 150 ms, 1.6 / 0.75 Mbps, CPU x4, 390 px, same machine, interleaved, 3 runs, mean):**
+
+    | Measure | Phase A (`/`) | Phase B `/` (redirects to `/login`) | Phase B `/login` direct |
+    |---|---|---|---|
+    | Cold, to the login form | 4.87 s | 5.21 s | 2.77 s |
+    | Warm, to the login form | 1.21 s | 1.36 s | 0.67 s |
+    | Login click to journal list | 5.37 s | 5.46 s | 6.16 s |
+
+    Opening `/` logged out is about 0.3 s slower than phase A because the shell loads, finds no session and then redirects. Opening `/login` directly is faster than before. Open: avoiding that redirect hop on `/`.
+  - **Dev server:** a stale `.next/dev` after a production build caused a full-reload loop (about 4 reloads per second); deleting `.next/dev` and restarting `npm run dev` fixed it. Run builds and the dev server not at the same time.
+- **2026-10-31 — Real routes: app shell, spaces and views** (branch `BiteMark/NextRoutes`, phase B task 2). `App.jsx` and `Journal.jsx` are gone; each screen has its own address and its own code chunk.
+  - **Route tree:**
+    - `app/layout.jsx`: root head + `ServiceWorker` (registers `/sw.js` after load, on every address).
+    - `app/(app)/layout.jsx` (client): `ClientOnly` → `ErrorBoundary` → `AppProvider` → `Gate` → `Shell` (sidebar, bottom bar, + menu, app sheets, `{modal}`) + `DialogHost`. The `// SESSION GATE (Task 3c)` block in `Gate` still renders `<Login/>` in place when logged out.
+    - `app/(app)/@modal/default.jsx`: empty slot (Task 3 adds the routed overlays).
+    - `app/(app)/(personal)/layout.jsx` → `SpaceProvider group={null}`; pages `page.jsx` (/), `want-to-try/`, `near/`.
+    - `app/(app)/g/[groupId]/layout.jsx` → resolves the group from `useApp().groups` (skeleton while loading; unknown/left group → stores `personal`, `router.replace('/')`); pages `page.jsx`, `want-to-try/`, `near/`, `activity/`.
+    - Pages are tiny server files rendering one client view: `PlacesView`, `WishlistView`, `NearView` (still lazy-loads `NearMe` through `ChunkBoundary`), `ActivityView`.
+    - `app/share/page.jsx` (stashes the share, `router.replace('/')`) and `app/(auth)/reset-password/page.jsx`: minimal, owned and refined by Task 3c.
+    - The catch-all rewrite in `next.config.mjs` is gone: unknown addresses now get Next's 404.
+  - **`lib/routes.js`** (tested): `spaceBase` (encodes the id), `viewHref`, `placeHref`, `parsePath`, `spaceFromSegments`, `safeDecode`. The space and view (header text, tabs, the nav's `on` state, `key={view}`) come from the children slot: `spaceFromSegments(useSelectedLayoutSegments())` in `AppProvider`, exposed once as `useApp().view` / `groupId`, so they stay put under an intercepted overlay. `parsePath(usePathname())` only gives `placeId` and `sheet` (`useApp().route`).
+  - **`useApp()`** (`components/app/AppProvider.jsx`): session, me, isDemo, username, signedIn, logout, demoWaiting; groups, groupsReady, groupsKnown, loadGroups, groupsChanged, chooseSpace, rememberSpace, activeGroup, groupId, view, route, startPending; theme, dark, setDark, desktop; help, setHelp, tryIt, tourDone; adding, setAdding, openAdd, pickAdd, addIntent, clearIntent; go; stats, setStats; sheet, setSheet, acctOpen, setAcctOpen, pwOpen, setPwOpen, groupsOpen, setGroupsOpen, openGroups, openYou; share, setShare, shareToast, setShareToast, shareRev, setShareRev.
+  - **`useSpace()`** (`components/journal/SpaceProvider.jsx`, in each space layout, keyed by space + shareRev): group, me, groups, view, places, wishlist, names, loading, netErr, reload, seed, dishTotal, isOwner, canEditPlace, canEditWish; q/city/cat/minRate/maxPrice/again/sort + setters, filters, reset, dirty, priceOn, priceLabel, priceOpen, sheetTab (+ setters), scale, results, sorted, cities, nActive, searching; openId, openPlace, closePlace; setEditing, setCreating, setSharing, setAddingDish, setPicking, setAsking, setFixing, wishPrefill, setWishPrefill, deletePlace, notify. The provider also draws the shared header, group tabs, `.tabin` wrapper and every space overlay (PlaceDetail, forms, Craving, Picker, filters, Fix locations, toast).
+  - **Navigation:** every view and space item (sidebar, bottom bar, space sheet, group tabs, Near me tile) is a `<Link {...navLink}>` (`navLink` in `Shell.jsx`: `prefetch` full, `scroll={false}`, `draggable={false}`, `onContextMenu` preventDefault) + the old smooth scroll-to-top (same classes; Tailwind preflight already gives `a` inherited colour and no underline). Space Links go to `spaceBase(id) || '/'` and only `rememberSpace(id)` on click. `go(view, { replace })` = `router.push` (or `router.replace` for view changes that come with an overlay: + menu, share Add, Feature guide filters) of `viewHref(view, groupId)` with `{ scroll: false }`, skipped when already there; `chooseSpace(id)` (Groups sheet) remembers and pushes. Each space layout stores itself as `space`. `/` with a stored group → `router.replace('/g/<id>')` once at start (the shell shows the loading skeleton meanwhile, so Personal doesn't load first); the demo reset forces Personal.
+  - **Handoffs (all done in phase B):** `openPlace`/`closePlace`/`openId` live in `SpaceProvider` (Task 3a, `openId` read from `parsePath(pathname).placeId`); `openGroups`/`openYou` in `AppProvider`, with `Sheet`, `AccountPanel` and `useAccount` exported from `Shell.jsx` (Task 3b); the session gate in `app/(app)/layout.jsx`, `app/share/page.jsx` and `app/(auth)/reset-password/page.jsx` (Task 3c).
+  - **Review fixes (round 1):**
+    - Group pages are static (`export const dynamic = 'force-static'` in `g/[groupId]/layout.jsx`; the client part is `components/journal/GroupSpace.jsx`). In Next 16.4.3 a default `<Link>` to a route with a not-prebuilt param only prefetches the route tree, so every click still went to the server (and failed offline). All view links (sidebar, bottom bar, the group's Places/Activity tabs, the Near me quick tile) are therefore `<Link prefetch>` (full prefetch): switching views makes no server request, online or offline.
+    - `view` and `groupId` come from the children slot (`useSelectedLayoutSegments()` in `AppProvider` → `spaceFromSegments`), not the address, so an intercepted overlay (`/places/[id]` over Near me) keeps the header, tabs, nav highlight and the mounted view. `parsePath` still gives `placeId` and `sheet`. `SpaceProvider` reads `view` from `useApp()`.
+    - `@modal/page.jsx` + `@modal/[...rest]/page.jsx` (null) clear the slot on a soft navigation away from an overlay.
+    - The SESSION GATE block in `Gate` runs before any early return (hooks allowed; `pathname`/`router` ready for Task 3c). `ErrorBoundary` passes Next control flow on (`unstable_rethrow`).
+    - A group page waits (skeleton) when the groups list failed to load, and only goes back to Personal when the list really came from the server (`groupsKnown`); the 15 s re-check retries.
+    - `spaceBase` encodes the id and every decode is safe (`safeDecode`): `/g/100%25` → Personal. A raw `/g/100%` is rejected by Next itself (400) before the app runs.
+    - View changes that come with an overlay (+ menu, share "Add", Feature guide filters) use `router.replace`, so Back doesn't switch the view behind the form.
+    - Nav links: `draggable={false}` and `-webkit-touch-callout:none; -webkit-user-drag:none; user-select:none` (`a.navbtn, a.side-item, a.quick, a[role=tab]`), so long-press and drag feel like the old buttons.
+  - **Review fixes (round 2):** offline for the whole visit: `experimental.staleTimes.static: Infinity` in `next.config.mjs` (prefetched pages never expire from the router cache; Next's default is 5 min). The space items are prefetched Links too, and `Shell`'s `PrefetchSpaces` renders invisible in-viewport `<Link prefetch>`s (`.prefetch-links`, `aria-hidden`, `tabIndex={-1}`) for every space × view, so the phone's space sheet and other spaces' views also open offline. The group tabs (`<a role="tab">`) activate on Space like the old buttons.
+    - **Remembered space:** each space layout writes `space` when it mounts (Personal layout → `personal`, a group → its id). A deep link or Back to `/near` therefore makes Personal the remembered space for the next start at `/`.
+  - Checked: 448 tests, `next build` (NearMe in no route's first load; Places code only in `/`), Playwright at 390/1280: 0 extra `places`/`wishlist` requests when switching views, search kept across views, refresh and Back on every address, `/g/not-a-real-id` → `/`, `/share` → sheet at `/`, screenshots pixel-identical to the phase-A baseline except data.
+- **2026-10-31 — Standard folder structure** (branch `BiteMark/NextRoutes`, phase B task 1). `src/` was split into `components/<area>/`, `lib/`, `hooks/` and `styles/`; every import now uses the `@/` alias. No behaviour change: 436 tests pass, `next build` passes. See the Folder map above.
 - **2026-10-26 — Capture a bill** (branch `BiteMark/Bill_Capture`). The user handed the design to Claude. It builds on the bill scan below.
   - **Two actions in the scan tile.**
     - **Take photo**: `<input capture="environment">` opens the phone's own rear camera. That gives better focus, flash and HDR than an in-app `getUserMedia` camera, and works in iOS PWAs.
@@ -87,7 +211,13 @@ BiteMark ("Remember every great bite") is a personal food journal PWA, used main
   - The production build warns that the main chunk is 693 KB. That size was already there before this change.
 
 ## Branches
-- `origin/main` is the main branch. Every task gets a feature branch cut from `origin/main` with `git switch --no-track -c BiteMark/<Name> origin/main`. Claude may create the branch; the user commits and pushes.
+- **Since 2026-11-01: `main` ← `dev` ← feature branches.**
+  - `dev` was cut from `main` at 4fbcac8.
+  - Every task gets a feature branch cut from `dev` with `git switch --no-track -c BiteMark/<Name> origin/dev`.
+  - Feature branches merge into `dev`, and `dev` is later merged into `main` (the release).
+  - Claude may create the branch; the user commits, pushes and merges.
+  - `BiteMark/NextRoutes` (phase B) was cut from `main` before `dev` existed and goes into `dev`.
+- Before 2026-11-01, branches were cut from `origin/main` with `git switch --no-track -c BiteMark/<Name> origin/main`.
   - Without `--no-track`, a plain `git push` goes to main. That is how the bill scan landed: commit b12d64c went directly into `main` on 2026-10-25.
 - `BiteMark/Maps_feature`: an old Map tab experiment (commit 594a41f), "not accurate, not to be merged". Superseded by `BiteMark/Near_Me`, built fresh (its `geocode.js` is unrelated to the new one).
 - `BiteMark/Bill_Scan`: bill photo → prefilled dish form (in progress).
@@ -856,3 +986,25 @@ Spec: `docs/superpowers/specs/2026-10-28-near-me-design.md`. Plan: `docs/superpo
 - **Cost of Next.js** (measured; inherent to the framework):
   - First-visit JS is about 318 kB gzip, against 228 kB on Vite, because of Next's App Router runtime.
   - On slow 4G with 4x CPU, after the review fix: cold (no cache) 4.78 s vs 4.18 s (+0.6 s); warm (cached) 1.12 s vs 1.21 s (slightly faster).
+
+### 2026-11-01: /login, /reset-password, /share and the session gate (Task 3c, real routes)
+- **`/login?next=<address>`** (`app/(auth)/login/page.jsx`): today's `Login` component, unchanged in look, inside `ClientOnly` + `ErrorBoundary`. After a session it does `router.replace(safeNext(next))`; someone who already has a session is sent on at once (`getSession` on mount). The query is read from `window.location` at use time (not `useSearchParams`), so the page stays static.
+- **`lib/nextPath.js`** (tested, `lib/nextPath.test.js`): `safeNext(value)` keeps only same-site paths starting with a single `/` (rejects `//host`, full URLs, backslashes, control characters, `%5c`, `/login`) and falls back to `/`. `loginHref(pathname, search)` builds `/login?next=<encoded>` (plain `/login` for home).
+- **Session gate** (`app/(app)/layout.jsx`, the marked block): a `useEffect` redirects with `router.replace(loginHref(...))` only when `session === null` (a real "no session" answer). While the check runs (`undefined`) or the device runs from a cached user (offline start, `session.offline`) nothing redirects. A skeleton shows while `/login` opens. The inline Login screen in the gate is gone; the demo flow is unchanged (it runs in `AppProvider` after the app mounts).
+- **`/share`**: stashes `title`/`text`/`url` as before (`stashShare`), then `replace('/')` with a session (or when it can't tell, offline) or `replace('/login')` without. After login the existing take in `AppProvider` shows the share sheet. The AppProvider take is still the only consumer, so nothing there was removed.
+- **`/reset-password?token=`**: unchanged (`ResetPassword` inside `ClientOnly` + `ErrorBoundary`).
+- Logout still does `location.replace('/')`, which the gate turns into `/login`.
+
+### 2026-11-01: Place details route (Task 3a)
+- **Address:** a place's sheet is `/places/<id>` (Personal) or `/g/<gid>/places/<id>` (a group). `SpaceProvider` derives `openId` from `useApp().route.placeId` (`parsePath(usePathname())`); `open = places.find(...)`, so an unknown id, or one from another space, shows the Places view with no sheet and no error (and nothing flashes while places load).
+- **`openPlace(id)`** = `router.push(placeHref(id, group?.id), { scroll: false })` and remembers (a ref) that it was opened in the app. **`closePlace()`** = `router.back()` if opened in the app, else `router.replace(viewHref('journal', group?.id))` (direct link / refresh). It does nothing when no sheet is in the address or a close is already under way, so Edit then Delete in the form never goes Back twice. Close button, swipe down, Escape, edit and delete all use it.
+- **Soft navigation is intercepted:** `app/(app)/@modal/(.)places/[placeId]/page.jsx` and `app/(app)/@modal/(.)g/[groupId]/places/[placeId]/page.jsx` render `null`. They exist only so the view underneath (Near me with its map, Want to try, the list and its scroll position) stays mounted; the sheet itself is drawn by `SpaceProvider`. `(.)` is right because `@modal` is a slot and `(app)`/`(personal)` are route groups, none of which are URL segments, so `places` and `g` sit at the same level as the slot's parent (docs: intercepting-routes, "`(..)` is based on route segments, not the file-system"). The view, header and tabs stay on the page underneath (`view` comes from the layout segments).
+- **Direct link / refresh:** `app/(app)/(personal)/places/[placeId]/page.jsx` and `app/(app)/g/[groupId]/places/[placeId]/page.jsx` render the space's `PlacesView` (`dynamic = 'force-static'`, so the build keeps them static ○). The intercept markers have `generateStaticParams() { return [] }` (shown as ● in the build; without it they would be ƒ).
+- **Unchanged:** PlaceDetail's look and actions (Send, Edit, add dish, We went, Bills, Fix location). Deleting a place still shows the "Deleted" notice and puts the card back with an error if the server refuses (there is no Undo button for places, as before).
+
+### /groups and /you routes (Task 3b)
+- **Addresses:** the Groups sheet is `/groups` and the phone "You" sheet is `/you`. `AppProvider` derives `groupsOpen` and `sheet === 'you'` from `parsePath(usePathname()).sheet`; the "Your spaces" sheet stays plain state. `Shell` draws the sheets (same markup as before).
+- **Open / close:** `openGroups()` / `openYou()` do `router.push('/groups' | '/you', { scroll: false })` and remember they were opened in-app. `closeSheet()` (X, swipe down, Escape, scrim) does `router.back()` when opened in-app, else `router.replace(spaceBase(groupId) || '/')`. It ignores a second call while a close is under way.
+- **Switching into a group from the sheet** (`chooseSpace`: Open, join, create) uses `router.replace`, so `/groups` leaves no history entry and the sheet closes with the page change. Leaving the open group lands on Personal, and the sheet closes with it.
+- **Files:** `app/(app)/@modal/(.)groups/page.jsx` and `(.)you/page.jsx` are null markers (a soft open keeps the current page, in any space, underneath). `app/(app)/(personal)/groups/page.jsx` and `you/page.jsx` render `PlacesView` for a direct link or refresh; both stay static.
+- **Direct load:** the Groups sheet waits for `groupsReady` (and the demo's post-reset reload) so it opens on "Your groups", not on "Create group". `/you` on a laptop shows the same "You" sheet (it renders centred there); the sidebar account dropdown is unchanged.

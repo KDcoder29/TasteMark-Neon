@@ -1,6 +1,9 @@
-import '../src/index.css'
+import '@/styles/globals.css'
+import ServiceWorker from '@/components/app/ServiceWorker'
+import { EARLY_START_SCRIPT } from '@/lib/earlyStart'
 
-// The page head that index.html used to have. The app itself is client-side (see ClientApp.jsx).
+// The page head that index.html used to have. The screens are client-side: app/(app)/layout.jsx
+// (the signed-in app), app/(auth)/…, app/share.
 export const metadata = {
   title: 'BiteMark',
   description: 'BiteMark: remember every great bite.',
@@ -18,8 +21,11 @@ const DATA = process.env.NEXT_PUBLIC_NEON_DATA_API_URL
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning: the head script below sets data-theme before React starts
+    <html lang="en" suppressHydrationWarning>
       <head>
+        {/* first thing: the saved theme, and the hop to /login for a logged-out visitor (lib/earlyStart) */}
+        <script dangerouslySetInnerHTML={{ __html: EARLY_START_SCRIPT }} />
         <link rel="icon" type="image/svg+xml" href="/icon.svg" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.webmanifest" />
@@ -35,7 +41,7 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-title" content="BiteMark" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
-      <body>{children}</body>
+      <body>{children}<ServiceWorker /></body>
     </html>
   )
 }
