@@ -28,21 +28,32 @@ export default function DialogHost() {
 }
 
 function Box({ d, leaving = false, close }) {
-  useEscape(() => close(false))
+  const choice = d.kind === 'choice'
+  const dismiss = () => close(choice ? d.dismiss : false)   // Escape / a tap outside: the safe answer
+  useEscape(dismiss)
   useScrollLock()
-  const confirm = d.kind === 'confirm'
+  const confirm = d.kind === 'confirm' || choice
   const icon = d.danger ? 'trash' : d.tone === 'error' ? 'alert' : confirm ? 'help' : 'check'
   const tint = d.danger || d.tone === 'error'
     ? { background: 'var(--errbg)', color: 'var(--bad)' }
     : { background: 'var(--pri-soft)', color: 'var(--pri)' }
 
   return (
-    <div className={`dlg-scrim ${leaving ? 'out' : ''}`} onMouseDown={e => e.target === e.currentTarget && close(false)}>
+    <div className={`dlg-scrim ${leaving ? 'out' : ''}`} onMouseDown={e => e.target === e.currentTarget && dismiss()}>
       <div className={`dlg ${leaving ? 'out' : ''}`} role={confirm ? 'alertdialog' : 'dialog'} aria-modal="true"
         aria-labelledby={`dlg-t${d.id}`} aria-describedby={`dlg-m${d.id}`}>
         <span className={`dlg-icon ${d.danger ? 'danger' : ''}`} style={tint}><Icon name={icon} size={22} stroke={2.2} /></span>
         <h2 id={`dlg-t${d.id}`} className="m-0 mt-3 text-[17px] font-bold leading-snug">{d.title || (confirm ? 'Are you sure?' : 'Something went wrong')}</h2>
         {d.message && <p id={`dlg-m${d.id}`} className="m-0 mt-1.5 text-[14.5px] leading-relaxed" style={{ color: 'var(--mute)' }}>{d.message}</p>}
+        {choice ? (
+          // stacked full-width buttons in the theme's colours: the main one first (and focused)
+          <div className="mt-5 grid gap-2">
+            {d.choices.map((c, i) => (
+              <button key={c.value} className={`btn ${c.tone === 'pri' ? 'btn-pri' : c.tone === 'danger' ? 'btn-danger-soft' : ''}`}
+                autoFocus={i === 0 && !leaving} onClick={() => close(c.value)}>{c.label}</button>
+            ))}
+          </div>
+        ) : (
         <div className={`mt-5 grid gap-2 ${confirm ? 'grid-cols-2' : ''}`}>
           {confirm && (
             // for deletes the safe choice has the focus, so a stray Enter never deletes anything
@@ -52,6 +63,7 @@ function Box({ d, leaving = false, close }) {
             {confirm ? d.confirmLabel : 'OK'}
           </button>
         </div>
+        )}
       </div>
     </div>
   )

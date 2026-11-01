@@ -14,6 +14,8 @@ import { skipUnknownMaps } from '@/lib/mapsSave'
 import BillScan from '@/components/add/BillScan'
 import { saveBills } from '@/lib/billApi'
 import { askConfirm, showAlert } from '@/lib/dialogs'
+import { isChanged } from '@/lib/unsaved'
+import { useUnsaved, guardClose } from '@/hooks/unsaved'
 
 // place      = existing place being edited (null when adding)
 // prefill    = starting values when adding from the wishlist; wishId = that wishlist item
@@ -22,7 +24,8 @@ import { askConfirm, showAlert } from '@/lib/dialogs'
 // initialVoice = opened with "Say it" from the + menu: start listening at once
 // knownPlaces = my personal places (voice: "Sankalp" -> offer to add to that card, no duplicate)
 export default function PlaceForm({ me, place, cities, groups = [], defaultGroupId = '', prefill, wishId, initialBill, initialVoice, knownPlaces = [], onUseExisting, onClose, onSaved, onDelete }) {
-  useEscape(onClose)
+  const close = guardClose('placeForm', onClose)   // asks first when something was changed
+  useEscape(close)
   useScrollLock()
   const editing = !!place
   const editingGroup = editing && !!place.group_id
@@ -45,6 +48,12 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
   const [existing, setExisting] = useState(null)   // voice named a place already in the journal
   const toggleCat = c => setCats(cats.includes(c) ? cats.filter(x => x !== c) : [...cats, c])
 
+  // unsaved changes: anything different from how the form opened (a scanned bill or spoken dishes count)
+  const now = { f, dishes, cats, loc, target }
+  const [opened] = useState(now)
+  useUnsaved({ scope: 'placeForm', changed: isChanged(opened, now) || billFiles.length > 0,
+    what: editing ? `“${place.name}”` : 'this new place', save: () => save(), close: onClose })
+
   const setField = k => e => setF({ ...f, [k]: e.target.value })
   const setDish = (i, k, v) => setDishes(dishes.map((d, j) => (j === i ? { ...d, [k]: v } : d)))
 
@@ -60,8 +69,9 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
     setExisting(!editing && !target && match ? match : null)
   }
 
+  // true when saved (the form then closes), nothing when it stays open with an error
   async function save(e) {
-    e.preventDefault()
+    e?.preventDefault()
     const bad = placeFormError({ f, cats, dishes, editingGroup })
     setError(bad)
     if (bad) return
@@ -136,6 +146,7 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
       catch (err) { console.error(err); showAlert({ title: 'Place saved, bill photo not saved', message: err.message || 'Please add the bill again from Edit.' }) }
       setBusy(false)
       onSaved()
+      return true
     } catch (err) {
       setBusy(false)
       showAlert({ title: 'Couldn’t save', message: err.message || 'Please try again.' })
@@ -158,13 +169,13 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
 
   return (
     <>
-    <div className="scrim" onMouseDown={onClose} />
+    <div className="scrim" onMouseDown={close} />
     <form onSubmit={save} className="drawer" role="dialog" aria-modal="true" aria-label={title}>
       <div className="grabber" />
       <div className="flex-1 overflow-y-auto px-5 pb-8 pt-2 lg:pt-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="m-0 text-xl font-extrabold">{title}</h2>
-          <button type="button" onClick={onClose} className="grid h-8 w-8 place-items-center rounded-full ghost transition" style={mute} aria-label="Close"><Icon name="x" size={18} /></button>
+          <button type="button" onClick={close} className="grid h-8 w-8 place-items-center rounded-full ghost transition" style={mute} aria-label="Close"><Icon name="x" size={18} /></button>
         </div>
 
         {!editing && groups.length > 0 && (

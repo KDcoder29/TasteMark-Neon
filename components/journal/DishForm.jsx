@@ -3,14 +3,20 @@ import Icon from '@/components/ui/Icons'
 import { useEscape, useScrollLock } from '@/hooks/layers'
 import { supabase } from '@/lib/supabase'
 import { addDishWithRating } from '@/lib/groupApi'
+import { isChanged } from '@/lib/unsaved'
+import { useUnsaved, guardClose } from '@/hooks/unsaved'
 import { norm, priceInput, priceProps, StarPicker, OrderAgain } from '@/components/ui/shared'
 
 // Add a dish (with my rating) to a place that is already in the group.
 // If the dish already exists there, my rating is added to it.
+const BLANK = { name: '', price: '', rating: 0, order_again: '', note: '' }
+
 export default function DishForm({ me, place, onClose, onSaved }) {
-  useEscape(onClose)
+  const close = guardClose('dishForm', onClose)   // asks first when something was typed
+  useEscape(close)
   useScrollLock()
-  const [f, setF] = useState({ name: '', price: '', rating: 0, order_again: '', note: '' })
+  const [f, setF] = useState(BLANK)
+  useUnsaved({ scope: 'dishForm', changed: isChanged(BLANK, f), what: 'this dish', save: () => save(), close: onClose })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const mute = { color: 'var(--mute)' }
@@ -20,7 +26,7 @@ export default function DishForm({ me, place, onClose, onSaved }) {
   const set = (k, v) => setF({ ...f, [k]: v })
 
   async function save(e) {
-    e.preventDefault()
+    e?.preventDefault()
     if (!f.name.trim()) return setError('Enter the dish name.')
     if (!existing && f.price === '') return setError('Enter the price.')
     if (!f.rating) return setError('Give the dish a star rating.')
@@ -31,6 +37,7 @@ export default function DishForm({ me, place, onClose, onSaved }) {
       if (e1) throw e1
       await addDishWithRating(place.id, f, me, data, { overwrite: true })
       onSaved()
+      return true
     } catch (err) {
       setError(err.message || 'Could not save. Please try again.')
       setBusy(false)
@@ -39,11 +46,11 @@ export default function DishForm({ me, place, onClose, onSaved }) {
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Add a dish" className="fade fixed inset-0 z-[45] grid place-items-center overflow-y-auto p-4" style={{ background: '#0b120f80', backdropFilter: 'blur(3px)' }}
-      onMouseDown={e => e.target === e.currentTarget && !busy && onClose()}>
+      onMouseDown={e => e.target === e.currentTarget && !busy && close()}>
       <form onSubmit={save} className="sheet w-full max-w-sm rounded-3xl p-5 shadow-2xl" style={{ background: 'var(--surface)' }}>
         <div className="mb-1 flex items-center justify-between">
           <h2 className="text-lg font-bold">Add a dish</h2>
-          <button type="button" onClick={onClose} className="ghost grid h-8 w-8 place-items-center rounded-full" style={mute} aria-label="Close"><Icon name="x" size={18} /></button>
+          <button type="button" onClick={close} className="ghost grid h-8 w-8 place-items-center rounded-full" style={mute} aria-label="Close"><Icon name="x" size={18} /></button>
         </div>
         <p className="mb-4 text-sm" style={mute}>at <b style={{ color: 'var(--ink)' }}>{place.name}</b></p>
 
