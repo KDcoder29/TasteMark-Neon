@@ -9,6 +9,7 @@ import { useSheetDrag } from '@/hooks/useGestures'
 import ShareSheet from '@/components/place/ShareSheet'
 import { useEscape, useScrollLock } from '@/hooks/layers'
 import { guardClose } from '@/hooks/unsaved'
+import { telHref } from '@/lib/phone'
 import { MapsButton, MapsWhere } from '@/components/add/MapsLinkField'
 import { isLocated, isExact } from '@/lib/geo'
 import { useLocationReady } from '@/hooks/locationReady'
@@ -72,6 +73,11 @@ export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onC
             </button>
           )}
           <MapsButton place={p} className="!py-2 !text-sm" />
+          {telHref(p.phone) && (
+            <a className="btn !py-2 !text-sm" href={telHref(p.phone)} aria-label={`Call ${p.name}`} title={p.phone}>
+              <Icon name="phone" size={16} /> Call
+            </a>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-8">

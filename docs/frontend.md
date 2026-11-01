@@ -53,6 +53,22 @@ Outside these: `app/` (Next.js routes and API routes), `server/` (API logic + te
 | `Login.jsx`, `ResetPassword.jsx`, `ChangePassword.jsx`, `authApi.js` | Login with username or email, sign-up, password reset and change. |
 
 ## Decision log
+- **2026-11-01 - Contact number for places and Want to try** (branch `BiteMark/Place_Contact`).
+  - **Request:** fill the restaurant's number automatically, free. A Google scraper was ruled out: it's against Google's terms, it gets blocked from Vercel, and Maps loads the number with JavaScript. The Places API needs billing.
+  - **Data check:** OpenStreetMap had a phone for 1 of the 77 demo restaurants (22 found at all; 8 with a website). So Kandarp picked "find on Google Maps, paste, BiteMark fills it in", with no automatic lookup.
+  - **Field:** `components/add/PhoneField.jsx`, optional, in Add / Edit place (under Directions) and in the Want to try form.
+    - **Find** opens a Google Maps search for name, area and city.
+    - A paste is read by `pastedContact` (`lib/phone.js`): a number fills the field, and a Maps link in the same paste fills the Maps link if it's still empty.
+    - Plain text pastes as it is.
+  - **Rules** (`lib/phone.js`, tested):
+    - `findPhone`: 10 to 13 digits, never across lines, links removed first, so prices, PIN codes and years don't count;
+    - `isPhone`: 8 to 15 digits with + ( ) - and spaces;
+    - `telHref`.
+    - `placeFormError` and the Want to try form reject a non-number (`PHONE_HINT`); empty is fine.
+  - **Showing it:** a **Call** button (`tel:`) in place details and on Want to try cards, only when there is a number. "We went" carries the number into the new place.
+  - **Before the migration runs:** `skipUnknownMaps` (`lib/mapsSave.js`) saves everything else and says "Saved without the contact number".
+    - PlaceForm only sends `phone` when there is one or there was one, so plain saves are untouched.
+  - Icon `phone` added to `components/ui/Icons.jsx`.
 - **2026-11-01 - "Save your changes?" everywhere you edit** (branch `BiteMark/Groups_Speed`, Kandarp: "dirty check on whole product").
   - **The dialog:** BiteMark's own three-choice dialog (`askChoice` in `lib/dialogs.js`, drawn by DialogHost).
     - "Save your changes?", "You’ve changed <what> and haven’t saved it."
@@ -262,9 +278,10 @@ Outside these: `app/` (Next.js routes and API routes), `server/` (API logic + te
 - **Since 2026-11-01: `main` ← `dev` ← feature branches.**
   - `dev` was cut from `main` at 4fbcac8.
   - Every task gets a feature branch cut from the latest `dev`:
-    1. `git switch dev`
+    1. `git fetch origin`, then `git switch dev`
     2. `git pull --ff-only origin dev`
-    3. `git switch --no-track -c BiteMark/<Name> dev`
+    3. `git merge origin/main` (main merged into dev first: Kandarp's rule, so dev never falls behind a release)
+    4. `git switch --no-track -c BiteMark/<Name> dev`
   - If there are uncommitted changes, don't switch: run `git fetch origin` and cut from `origin/dev`.
   - Feature branches merge into `dev`, and `dev` is later merged into `main` (the release).
   - Claude may create the branch; the user commits, pushes and merges.
