@@ -53,6 +53,15 @@ Outside these: `app/` (Next.js routes and API routes), `server/` (API logic + te
 | `Login.jsx`, `ResetPassword.jsx`, `ChangePassword.jsx`, `authApi.js` | Login with username or email, sign-up, password reset and change. |
 
 ## Decision log
+- **2026-11-01 - Bug sweep of the new features, phone (390 px, Android) and desktop (1280 px)** (branch `BiteMark/Install_Link`).
+  - **Checked and working:** the login and top-bar / sidebar Install buttons; the You menu; contact numbers (save, reload, Edit shows it, **Call** on places and Want to try, "We went" carries it, an invalid number is caught); unsaved changes on Add / Edit place, Add dish, Want to try, the Groups sheet, Escape and Back; groups and places (address, Back, header); dark mode. No console errors.
+  - **Fixed:**
+    - **Demo reset failed sometimes** with "reset_demo is only for the demo accounts", so the demo kept the last visitor's changes. The first request after login can go out before the login token is attached.
+      - `resetDemo` (`lib/demoAccount.js`, tested) retries only that error, 3 tries, 1 s apart.
+    - **Invite a friend could do nothing** when both the share menu and copying were blocked.
+      - `inviteFriend` (`lib/install.js`, tested) tries share, then copy, then shows the link in a dialog.
+    - **`/install` on a laptop read badly** ("…or ⋮ the browser menu"). It now says "or open the browser menu ⋮", then "Choose Install BiteMark, then Install".
+  - **Not a bug:** a number "missing" after a new demo login is the demo reset doing its job. Also, closing a "We went" form untouched doesn't ask, because nothing you typed is lost.
 - **2026-11-01 - Install link `/install` and "Invite a friend"** (branch `BiteMark/Install_Link`). Kandarp wanted to send friends a link that installs the app.
   - **Limit:** no website can install itself; the browser always asks. So the goal is one tap after opening the link.
   - **`/install`** (`app/install/page.jsx` → `components/install/InstallPage.jsx`): no login needed (`lib/earlyStart` lets `/install` through). Same frame as Login.
