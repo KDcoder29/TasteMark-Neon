@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import ChangePassword from '@/components/auth/ChangePassword'
 import Groups from '@/components/groups/Groups'
@@ -15,6 +15,9 @@ import FeatureGuide from '@/components/tour/FeatureGuide'
 import DemoVideo from '@/components/tour/DemoVideo'
 import { useSheetDrag, buzz } from '@/hooks/useGestures'
 import { useEscape, useScrollLock } from '@/hooks/layers'
+import { useInstall } from '@/hooks/install'
+import { showInstall } from '@/lib/install'
+import InstallButton from '@/components/install/InstallButton'
 import { useApp } from '@/components/app/AppProvider'
 import { viewHref, spaceBase } from '@/lib/routes'
 
@@ -22,6 +25,30 @@ import { viewHref, spaceBase } from '@/lib/routes'
 // the app-wide sheets and overlays. The open space's screen comes in as children.
 
 // Account details + settings: a dropdown on laptops, a sheet from the "You" tab on phones.
+// "Install app" (until it is installed: one tap where the browser allows, else the /install steps)
+// and "Invite a friend" (shares the /install link: WhatsApp etc. on phones, copied on laptops)
+function InstallItems({ onDone }) {
+  const { mode, install } = useInstall()
+  const [copied, setCopied] = useState(false)
+  const invite = async () => {
+    const url = window.location.origin + '/install'
+    if (navigator.share) { try { await navigator.share({ title: 'BiteMark', text: 'My food journal app. Install it here:', url }); return } catch (e) { if (e?.name === 'AbortError') return } }
+    try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1800) } catch {}
+  }
+  return (
+    <>
+      {showInstall(mode) && (
+        <button className="menu-item" onClick={() => { if (mode === 'prompt') install(); else { onDone(); window.location.href = '/install' } }}>
+          <span className="flex items-center gap-2.5"><Icon name="download" size={18} /> Install app</span>
+        </button>
+      )}
+      <button className="menu-item" onClick={invite}>
+        <span className="flex items-center gap-2.5"><Icon name={copied ? 'check' : 'send'} size={18} /> {copied ? 'Install link copied' : 'Invite a friend'}</span>
+      </button>
+    </>
+  )
+}
+
 export function AccountPanel({ email, username, dark, setDark, onPassword, onLogout, onDone, onGuide, story, demo }) {
   return (
     <>
@@ -53,6 +80,7 @@ export function AccountPanel({ email, username, dark, setDark, onPassword, onLog
       <button className="menu-item" onClick={() => { onDone(); onGuide() }}>
         <span className="flex items-center gap-2.5"><Icon name="help" size={18} /> How BiteMark works</span>
       </button>
+      <InstallItems onDone={onDone} />
       <div className="my-1 h-px" style={{ background: 'var(--line)' }} />
       <button className="menu-item" style={{ color: 'var(--bad)' }} onClick={() => { onDone(); onLogout() }}>
         <span className="flex items-center gap-2.5"><Icon name="logout" size={18} /> Log out</span>
@@ -190,6 +218,7 @@ export default function Shell({ children, modal }) {
         <button className="side-item" onClick={() => openAdd({ tool: 'craving' })}><Icon name="chat" size={18} /> Craving something?</button>
         <button className="side-item" onClick={() => openAdd({ tool: 'picker' })}><Icon name="dice" size={18} /> {activeGroup ? 'Where should we eat?' : 'Where to eat?'}</button>
         <button className="side-item" onClick={() => setHelp('guide')}><Icon name="help" size={18} /> How BiteMark works</button>
+        <InstallButton look="side" />
 
         <div ref={acctRef} className="relative mt-auto pt-4">
           {acctOpen && (
@@ -228,7 +257,8 @@ export default function Shell({ children, modal }) {
                 </span>
               </button>
             </div>
-            <span className="flex items-center">
+            <span className="flex shrink-0 items-center">
+              <InstallButton look="pill" />
               <button onClick={() => setHelp('guide')} aria-label="How BiteMark works"
                 className="ghost grid h-10 w-10 place-items-center rounded-full" style={{ color: 'var(--mute)' }}>
                 <Icon name="help" size={21} />

@@ -53,6 +53,38 @@ Outside these: `app/` (Next.js routes and API routes), `server/` (API logic + te
 | `Login.jsx`, `ResetPassword.jsx`, `ChangePassword.jsx`, `authApi.js` | Login with username or email, sign-up, password reset and change. |
 
 ## Decision log
+- **2026-11-01 - Install link `/install` and "Invite a friend"** (branch `BiteMark/Install_Link`). Kandarp wanted to send friends a link that installs the app.
+  - **Limit:** no website can install itself; the browser always asks. So the goal is one tap after opening the link.
+  - **`/install`** (`app/install/page.jsx` → `components/install/InstallPage.jsx`): no login needed (`lib/earlyStart` lets `/install` through). Same frame as Login.
+    - Its one visual touch is the real BiteMark icon in a small home-screen row of faint tiles.
+    - What it shows comes from `installMode` (`lib/install.js`, tested):
+
+      | Mode | Shows |
+      |---|---|
+      | `prompt` (Chrome / Edge / Samsung with the browser's offer in hand) | **Install BiteMark**, which opens the browser's own "Install app?" |
+      | `ios` (iPhone / iPad, any browser; iPad desktop mode via touch points) | 3 numbered steps: Share → Add to Home Screen → Add |
+      | `in-app` (Instagram, Facebook, LINE, Android webviews) | "Open this page in your browser first", plus Copy link |
+      | `android-menu` / `desktop-menu` (no offer yet) | the browser-menu steps; the button appears if the offer arrives |
+      | `installed` (standalone, or just installed) | Open BiteMark |
+      | `unsupported` (Firefox, desktop Safari) | use it here |
+
+  - **The browser's offer:** `INSTALL_CAPTURE_SCRIPT` in the head of `app/layout.jsx` keeps `beforeinstallprompt` as `window.__bmInstall`, even when it fires before the app loads.
+    - It doesn't `preventDefault`, so Chrome's own install hint is unchanged.
+    - `hooks/install.js` `useInstall()` gives `{ mode, install }`. An offer is used once.
+  - **You menu** (`AccountPanel` in Shell, phone sheet and desktop dropdown):
+    - **Install app** (hidden once installed or unsupported) is one tap when the offer is there, else it opens `/install`.
+    - **Invite a friend** shares `<origin>/install` through the phone's share menu, or copies it.
+  - Styles: `.inst-*` in `styles/globals.css`. The steps list sets `list-style:decimal`, because Tailwind's preflight removes list numbering.
+  - **Already in place:** `manifest.webmanifest` (name, 192/512 icons, standalone, start_url) and `public/sw.js` registered on every page, which Chrome needs before it offers an install.
+  - **Install where people see it** (Kandarp: "on the login screen" and "on the top bar"): `components/install/InstallButton.jsx`, one component in three looks, shown while `showInstall(mode)` (`lib/install.js`, tested).
+    - **Phone top bar:** a green-tinted **Install** pill (`.inst-pill`) before the ? button.
+    - **Laptop sidebar:** **Install app**, under How BiteMark works. The laptop has no top bar.
+    - **Login screen:** an **Install app** button beside **Try the demo**, in the same row (`look="tile"`, `.inst-btn-a`). Kandarp's pick (option A) after comparing three live previews.
+      - The other two previews: B, a pill under the BiteMark name; C, a bar across the top of the card. A top-right corner pill was tried first, but on a wide laptop it sat outside where people look.
+      - **Styling:** a clear green tint, green outline and dark-green text, so it's clearly green but quieter than Log in. The first, lighter tint was "too light".
+      - When Install is hidden, Try the demo takes the whole row.
+      - Kandarp's rule: the login screen must never scroll. Under 800 px tall, `.login-head` tightens (40 px logo, no tagline) and `.demo-note` hides.
+    - One tap opens the browser's own install box where it offers one; otherwise it opens `/install`. Hidden once installed, and in browsers that can't install.
 - **2026-11-01 - Contact number for places and Want to try** (branch `BiteMark/Place_Contact`).
   - **Request:** fill the restaurant's number automatically, free. A Google scraper was ruled out: it's against Google's terms, it gets blocked from Vercel, and Maps loads the number with JavaScript. The Places API needs billing.
   - **Data check:** OpenStreetMap had a phone for 1 of the 77 demo restaurants (22 found at all; 8 with a website). So Kandarp picked "find on Google Maps, paste, BiteMark fills it in", with no automatic lookup.

@@ -4,6 +4,7 @@ import Logo from '@/components/ui/Logo'
 import { recallEmail, rememberLogin } from '@/lib/fastStart'
 import { DEMO, loginLabels } from '@/lib/demoAccount'
 import Icon from '@/components/ui/Icons'
+import InstallButton from '@/components/install/InstallButton'
 import { AUTH_URL } from '@/lib/env'
 
 const store = (() => { try { return window.localStorage } catch { return null } })()
@@ -127,10 +128,10 @@ export default function Login({ onSession }) {
     <div className="fixed inset-0 overflow-y-auto overflow-x-hidden" style={{ background: 'var(--bg)' }}>
       <div className="flex min-h-full items-center justify-center px-4 py-4">
       <div className="w-full max-w-sm">
-        <div className="rise mb-4 flex flex-col items-center text-center">
+        <div className="login-head rise mb-4 flex flex-col items-center text-center">
           <Logo size={48} />
           <h1 className="mt-2.5 text-2xl font-bold leading-none tracking-tight">BiteMark</h1>
-          <p className="mt-1.5 text-sm" style={{ color: 'var(--mute)' }}>Remember every great bite.</p>
+          <p className="login-tagline mt-1.5 text-sm" style={{ color: 'var(--mute)' }}>Remember every great bite.</p>
         </div>
 
         <div className="card login-card rise !p-5 sm:!p-6" style={{ animationDelay: '80ms', boxShadow: '0 1px 2px #0f172a0d, 0 12px 32px #0f172a14' }}>
@@ -195,10 +196,15 @@ export default function Login({ onSession }) {
           {!forgot && !isSignup && (
             <div className="demo-try">
               <span className="demo-or"><span>or</span></span>
-              <button type="button" disabled={!!busy} onClick={tryDemo} className="btn w-full">
-                <Icon name="play" size={16} /> {label.demo}
-              </button>
-              <p className="m-0 mt-1.5 text-center text-xs" style={{ color: 'var(--mute)' }}>
+              <div className="flex gap-2">
+                <button type="button" disabled={!!busy} onClick={tryDemo} className="btn w-full flex-1">
+                  <Icon name="play" size={16} /> {label.demo}
+                </button>
+                {/* put BiteMark on the home screen, beside the demo (hidden once installed / where it
+                    can't be: then Try the demo takes the whole row) */}
+                <InstallButton look="tile" label="Install app" />
+              </div>
+              <p className="demo-note m-0 mt-1.5 text-center text-xs" style={{ color: 'var(--mute)' }}>
                 A sample journal with 72 places in Vadodara and Ahmedabad. No sign-up needed.
               </p>
             </div>
