@@ -531,3 +531,15 @@ alter table places   add  constraint places_maps_url_check check (
 alter table wishlist drop constraint if exists wishlist_maps_url_check;
 alter table wishlist add  constraint wishlist_maps_url_check check (
   maps_url is null or (length(maps_url) <= 500 and maps_url ~ '^https://(maps\.app\.goo\.gl/|goo\.gl/maps|maps\.google\.[a-z.]+/|(www\.)?google\.[a-z.]+/maps)'));
+
+-- 10. CONTACT NUMBER (added 2026-11-01; same as db/migrations/2026-11-01-place-phone.sql) ------
+alter table places   add column if not exists phone text;
+alter table wishlist add column if not exists phone text;
+alter table places   drop constraint if exists places_phone_check;
+alter table places   add  constraint places_phone_check check (
+  phone is null or (length(phone) <= 30 and phone ~ '^\+?[0-9 ()-]+$'
+    and length(regexp_replace(phone, '[^0-9]', '', 'g')) between 8 and 15));
+alter table wishlist drop constraint if exists wishlist_phone_check;
+alter table wishlist add  constraint wishlist_phone_check check (
+  phone is null or (length(phone) <= 30 and phone ~ '^\+?[0-9 ()-]+$'
+    and length(regexp_replace(phone, '[^0-9]', '', 'g')) between 8 and 15));

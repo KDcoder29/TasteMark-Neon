@@ -12,13 +12,15 @@ import { MAPS_HINT } from '@/lib/placeRules'
 import { skipUnknownMaps } from '@/lib/mapsSave'
 import { showAlert } from '@/lib/dialogs'
 import LocationField from '@/components/add/LocationField'
+import PhoneField from '@/components/add/PhoneField'
+import { isPhone, PHONE_HINT, telHref } from '@/lib/phone'
 import { locationRow, wantsAreaLookup } from '@/lib/locationValue'
 import { autoLocate } from '@/lib/autoLocate'
 import { useLocationReady } from '@/hooks/locationReady'
 import { isChanged } from '@/lib/unsaved'
 import { useUnsaved, guardClose } from '@/hooks/unsaved'
 
-const EMPTY = { name: '', city: '', area: '', note: '', maps_url: '' }
+const EMPTY = { name: '', city: '', area: '', note: '', maps_url: '', phone: '' }
 
 // "Want to try" list. In a group everybody sees it; in Personal only you do.
 // Remove is instant with a 5-second Undo (no "are you sure?" box); the real delete happens after.
@@ -68,12 +70,14 @@ export default function Wishlist({ me, group, items, names, isOwner, onChanged, 
     e?.preventDefault()
     if (!f.name.trim()) return setError('Enter the place name.')
     if (f.maps_url.trim() && !isMapsLink(f.maps_url.trim())) return setError(MAPS_HINT)
+    if (f.phone.trim() && !isPhone(f.phone.trim())) return setError(PHONE_HINT)
     setBusy(true); setError('')
     const row = {
       name: f.name.trim(), city: f.city.trim() || null, area: f.area.trim() || null,
       note: f.note.trim() || null, categories: cats, group_id: group?.id ?? null,
     }
     if (f.maps_url.trim()) row.maps_url = f.maps_url.trim()
+    if (f.phone.trim()) row.phone = f.phone.trim()
     Object.assign(row, locationRow(loc, false))
     const { data: added, error: err } = await skipUnknownMaps(r => supabase.from('wishlist').insert(r).select('id').single(), row)
     setBusy(false)
@@ -114,6 +118,8 @@ export default function Wishlist({ me, group, items, names, isOwner, onChanged, 
           </div>
           <input value={f.note} onChange={setField('note')} placeholder="Why? (optional, e.g. Riya recommended it)" className="input mb-3" />
           <LocationField value={loc} onChange={setLoc} place={f} onLink={l => setF(x => ({ ...x, maps_url: l }))} />
+          <PhoneField value={f.phone} onChange={v => setF(x => ({ ...x, phone: v }))} place={f}
+            onLink={l => setF(x => ({ ...x, maps_url: x.maps_url || l }))} />
           {error && <p className="fade mb-3 rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--errbg)', color: 'var(--bad)' }}>{error}</p>}
           <button disabled={busy} className="btn btn-pri w-full">{busy ? 'Adding…' : 'Add to Want to try'}</button>
         </form>
@@ -146,6 +152,7 @@ export default function Wishlist({ me, group, items, names, isOwner, onChanged, 
                 <div className="mt-3 flex items-center gap-2">
                   <button onClick={() => onWent(w)} className="btn btn-pri !px-3.5 !py-2 !text-sm"><Icon name="check" size={16} stroke={2.6} /> We went</button>
                   <MapsButton place={w} className="!px-3.5 !py-2 !text-sm" />
+                  {telHref(w.phone) && <a href={telHref(w.phone)} className="btn !px-3.5 !py-2 !text-sm" aria-label={`Call ${w.name}`}><Icon name="phone" size={16} /> Call</a>}
                   {(w.user_id === me || isOwner) && (
                     <button onClick={() => remove(w)} aria-label={`Remove ${w.name}`} className="ghost ml-auto grid h-9 w-9 place-items-center rounded-full" style={mute}>
                       <Icon name="trash" size={18} />

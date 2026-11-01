@@ -135,3 +135,13 @@ Everything server-side: Neon Postgres (schema, RLS, RPCs, triggers), Neon Auth, 
   3. Keep `DATABASE_URL`.
   4. Test the branch's Preview deployment before merging. Add the preview domain to Neon Auth's trusted domains if login fails there.
   5. After the merge, the `VITE_` variables can be deleted.
+
+### 2026-11-01: Contact number on places and wishlist (branch `BiteMark/Place_Contact`)
+- **Migration:** `db/migrations/2026-11-01-place-phone.sql`, also added to `db/neon-schema.sql` as section 10.
+  - It adds a nullable `phone text` to `places` and `wishlist`: optional in the database and in the app.
+  - A check constraint allows only phone-number text: `^\+?[0-9 ()-]+$`, 8 to 15 digits, at most 30 characters. That matches `lib/phone.js` `isPhone`.
+  - The existing grants and RLS policies cover the column; no policy changes. It ends with `notify pgrst, 'reload schema'`.
+- **STATUS: not yet applied. The user runs it** in Neon Console → SQL Editor, then refreshes the Data API schema cache if the NOTIFY doesn't take.
+  - Until then the app saves places without the number (`lib/mapsSave.js` retries without `phone` on "column not found") and says so.
+- No free data source has Indian restaurants' numbers. OpenStreetMap had 1 in 77 of the demo places, and Google's Places API needs billing. So the number comes from the user pasting it from Google Maps; there is no server-side lookup.
+

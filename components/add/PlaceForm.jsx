@@ -7,6 +7,7 @@ import { findGroupPlace, addDishWithRating } from '@/lib/groupApi'
 import { blankDish, mergeScannedDishes, mergeSpokenDishes, newScannedDishes, placeFormError } from '@/lib/placeRules'
 import VoiceAdd from '@/components/add/VoiceAdd'
 import LocationField from '@/components/add/LocationField'
+import PhoneField from '@/components/add/PhoneField'
 import { locationRow, locationOf, saveLocation } from '@/lib/locationValue'
 import { autoLocate } from '@/lib/autoLocate'
 import { useLocationReady } from '@/hooks/locationReady'
@@ -32,7 +33,7 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
   const start = place || prefill || {}
 
   const [f, setF] = useState({
-    name: start.name || '', city: start.city || '', area: start.area || '', directions: start.directions || '', maps_url: start.maps_url || '',
+    name: start.name || '', city: start.city || '', area: start.area || '', directions: start.directions || '', maps_url: start.maps_url || '', phone: start.phone || '',
   })
   const [dishes, setDishes] = useState(
     editing && place.dishes?.length
@@ -80,6 +81,7 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
     try {
       const clean = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v.trim() || null]))
       if (!clean.maps_url && !place?.maps_url) delete clean.maps_url    // nothing to save or clear
+      if (!clean.phone && !place?.phone) delete clean.phone             // (so saves work before its migration too)
       clean.categories = cats
       const where = saveLocation(loc, place, f)        // a changed landmark drops the old area-level spot
       Object.assign(clean, where.row)
@@ -220,7 +222,9 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
         </div>
         <LocationField value={loc} onChange={setLoc} place={f} onLink={l => setF(x => ({ ...x, maps_url: l }))} />
         <label className={label} style={mute}>Directions / timing</label>
-        <textarea rows={2} placeholder="Optional" value={f.directions} onChange={setField('directions')} className="input mb-5" />
+        <textarea rows={2} placeholder="Optional" value={f.directions} onChange={setField('directions')} className="input mb-3" />
+        <PhoneField value={f.phone} onChange={v => setF(x => ({ ...x, phone: v }))} place={f} className="mb-5"
+          onLink={l => setF(x => ({ ...x, maps_url: x.maps_url || l }))} />
         <datalist id="cities">{cities.map(c => <option key={c} value={c} />)}</datalist>
 
         {editingGroup ? (
