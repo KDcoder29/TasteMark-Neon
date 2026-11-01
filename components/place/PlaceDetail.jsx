@@ -8,6 +8,7 @@ import { LovedTag, tileColor } from '@/components/place/PlaceCard'
 import { useSheetDrag } from '@/hooks/useGestures'
 import ShareSheet from '@/components/place/ShareSheet'
 import { useEscape, useScrollLock } from '@/hooks/layers'
+import { guardClose } from '@/hooks/unsaved'
 import { MapsButton, MapsWhere } from '@/components/add/MapsLinkField'
 import { isLocated, isExact } from '@/lib/geo'
 import { useLocationReady } from '@/hooks/locationReady'
@@ -17,18 +18,20 @@ export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onC
   const locReady = useLocationReady()
   const [bills, setBills] = useState(false)
   const [sending, setSending] = useState(false)    // "Send to friends" open
-  const drag = useSheetDrag(onClose)
+  // a half-written comment, rating or dish edit inside (GroupDish) asks before the sheet closes
+  const close = guardClose('place', onClose)
+  const drag = useSheetDrag(close)
   const s = placeSummary({ dishes: p.allDishes || p.dishes })
   const dishes = p.allDishes || p.dishes || []
   const where = placeWhere(p)
   const mute = { color: 'var(--mute)' }
 
   useScrollLock()                                             // the page behind stays put
-  useEscape(onClose)
+  useEscape(close)
 
   return (
     <>
-      <div className="scrim" onMouseDown={onClose} />
+      <div className="scrim" onMouseDown={close} />
       <section ref={drag} className="drawer" role="dialog" aria-modal="true" aria-label={p.name}>
         <div className="grabber" />
         <div className="flex items-start gap-3.5 px-5 pb-4 pt-3 lg:pt-6">
@@ -48,7 +51,7 @@ export default function PlaceDetail({ p, me, group, names, isOwner, canEdit, onC
               {(p.categories || []).map(c => <span key={c} className="pill">{c}</span>)}
             </div>
           </div>
-          <button onClick={onClose} aria-label="Close" className="ghost -mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-full" style={mute}>
+          <button onClick={close} aria-label="Close" className="ghost -mr-2 grid h-10 w-10 shrink-0 place-items-center rounded-full" style={mute}>
             <Icon name="x" size={20} />
           </button>
         </div>

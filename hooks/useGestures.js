@@ -54,7 +54,14 @@ export function useSheetDrag(onClose) {
         el.style.transform = 'translateY(100%)'
         if (scrim) scrim.style.opacity = '0'
         buzz()
-        setTimeout(() => close.current(), 190)
+        setTimeout(() => {
+          // a close that asked first and got "Keep editing" (false): the sheet slides back up
+          Promise.resolve(close.current()).then(closed => {
+            if (closed !== false) return
+            el.style.transform = ''
+            if (scrim) scrim.style.opacity = ''
+          })
+        }, 190)
       } else {
         el.style.transform = ''
         if (scrim) scrim.style.opacity = ''

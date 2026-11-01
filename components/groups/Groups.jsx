@@ -3,6 +3,7 @@ import Icon from '@/components/ui/Icons'
 import { useEscape, useScrollLock } from '@/hooks/layers'
 import { supabase } from '@/lib/supabase'
 import { askConfirm } from '@/lib/dialogs'
+import { useUnsaved, guardClose } from '@/hooks/unsaved'
 import { optimistic } from '@/lib/optimistic'
 
 const fmt = c => (c ? c.slice(0, 4) + '-' + c.slice(4) : '')
@@ -21,7 +22,8 @@ export default function Groups({ me, groups: allGroups, onClose, onChanged, onOp
   const [gone, setGone] = useState(() => new Set())     // groups just deleted / left (server catching up)
   const groups = allGroups.filter(g => !gone.has(g.id))
   const hide = (id, on) => setGone(s => { const n = new Set(s); on ? n.add(id) : n.delete(id); return n })
-  useEscape(onClose)
+  const close = guardClose('groups', onClose)   // asks first when a name or code was typed but not saved
+  useEscape(close)
   useScrollLock()
   const [tab, setTab] = useState(groups.length ? 'mine' : 'create')   // 'mine' | 'create'
   const [selectedId, setSelectedId] = useState(null)                   // group opened in the detail view
@@ -53,11 +55,18 @@ export default function Groups({ me, groups: allGroups, onClose, onChanged, onOp
   useEffect(() => { loadPeople() }, [groups])
 
   const say = (type, text) => setMsg({ type, text })
+  // unsaved: a new group's name, an invite code, or your name in groups being edited
+  const nameEdited = editName && myName.trim() !== (names[me] || '').trim()
+  // Save in the dialog saves whatever is typed: the new group, the code to join, your name
+  const saveTyped = async () => (name.trim() ? create() : code.trim() ? join() : saveName())
+  useUnsaved({ scope: 'groups', changed: !!(name.trim() || code.trim() || nameEdited), save: saveTyped, close: onClose,
+    what: name.trim() ? 'the new group’s name' : code.trim() ? 'the invite code' : 'your name in groups' })
+  const openGroup = id => guardClose('groups', () => { onOpen(id); onClose() })()
   const switchTab = t => { setTab(t); setSelectedId(null); say('', '') }
   const selected = groups.find(g => g.id === selectedId) || null
 
   async function create(e) {
-    e.preventDefault()
+    e?.preventDefault()
     if (!name.trim()) return say('err', 'Give your group a name.')
     setBusy('create'); say('', '')
     const { data, error } = await supabase.rpc('create_group', { gname: name })
@@ -67,10 +76,11 @@ export default function Groups({ me, groups: allGroups, onClose, onChanged, onOp
     await onChanged(data)
     setTab('mine'); setSelectedId(null)
     say('ok', 'Group created. Open it to get the invite code.')
+    return true
   }
 
   async function join(e) {
-    e.preventDefault()
+    e?.preventDefault()
     if (!code.trim()) return say('err', 'Enter an invite code.')
     setBusy('join'); say('', '')
     const { data, error } = await supabase.rpc('join_group', { code })
@@ -82,10 +92,11 @@ export default function Groups({ me, groups: allGroups, onClose, onChanged, onOp
     await onChanged(data)
     setTab('mine'); setSelectedId(null)
     say('ok', 'You joined the group.')
+    return true
   }
 
   async function saveName(e) {
-    e.preventDefault()
+    e?.preventDefault()
     if (!myName.trim()) return say('err', 'Name cannot be empty.')
     setBusy('name'); say('', '')
     const { error } = await supabase.from('profiles').update({ display_name: myName.trim() }).eq('id', me)
@@ -94,6 +105,7 @@ export default function Groups({ me, groups: allGroups, onClose, onChanged, onOp
     setEditName(false)
     say('ok', 'Name saved.')
     loadPeople()
+    return true
   }
 
   async function leave(g) {
@@ -157,11 +169,11 @@ export default function Groups({ me, groups: allGroups, onClose, onChanged, onOp
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Groups" className="fade fixed inset-0 z-[45] overflow-y-auto" style={{ background: '#0b120f80', backdropFilter: 'blur(3px)' }}
-      onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      onMouseDown={e => e.target === e.currentTarget && close()}>
       <div className="sheet mx-auto my-6 w-[calc(100%-24px)] max-w-xl rounded-3xl p-5 shadow-2xl" style={{ background: 'var(--surface)' }}>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold">Groups</h2>
-          <button type="button" onClick={onClose} className="ghost grid h-8 w-8 place-items-center rounded-full" style={mute} aria-label="Close"><Icon name="x" size={18} /></button>
+          <button type="button" onClick={close} className="ghost grid h-8 w-8 place-items-center rounded-full" style={mute} aria-label="Close"><Icon name="x" size={18} /></button>
         </div>
 
         {/* Tabs */}
@@ -227,7 +239,7 @@ export default function Groups({ me, groups: allGroups, onClose, onChanged, onOp
                           </div>
 
                           <div className="mt-3 grid grid-cols-2 gap-2">
-                            <button onClick={() => { onOpen(g.id); onClose() }} className="btn btn-pri !py-2 !text-sm">Open</button>
+                            <button onClick={() => openGroup(g.id)} className="btn btn-pri !py-2 !text-sm">Open</button>
                             <button onClick={() => { setSelectedId(g.id); say('', '') }} className="btn !py-2 !text-sm">Manage</button>
                           </div>
                         </div>
@@ -271,7 +283,7 @@ export default function Groups({ me, groups: allGroups, onClose, onChanged, onOp
                     <div className="truncate text-lg font-bold leading-snug">{g.name}</div>
                     <div className="text-xs" style={mute}>{count(list.length)} · you are {owner ? 'the owner' : 'a member'}</div>
                   </div>
-                  <button onClick={() => { onOpen(g.id); onClose() }} className="btn btn-pri !py-2 !text-sm shrink-0">Open</button>
+                  <button onClick={() => openGroup(g.id)} className="btn btn-pri !py-2 !text-sm shrink-0">Open</button>
                 </div>
 
                 <div className="mt-4">
