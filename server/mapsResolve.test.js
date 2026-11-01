@@ -1,5 +1,5 @@
 import { describe, expect, test, vi, afterEach } from 'vitest'
-import handler, { allowedStart, allowedHop } from './mapsResolve.js'
+import handler, { allowedStart, allowedHop } from '@/server/mapsResolve.js'
 
 const res = () => {
   const r = { code: 200, body: null, headers: {} }

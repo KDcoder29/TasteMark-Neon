@@ -1,0 +1,528 @@
+@import "tailwindcss";
+
+/* BiteMark design system (2026-10-26 revamp).
+   Colours come from the logo: deep cloche green for brand + actions, saffron for the add button and
+   highlights. Saffron never carries small text (too low contrast on white); green does. */
+:root{
+  --bg:#f5f6f4; --surface:#fff; --surface-2:#fafbfa; --ink:#17201c; --mute:#5f6b66; --faint:#8a948f; --line:#e6e9e7;
+  --pri:#1d6b4f; --pri-d:#16573f; --on-pri:#fff; --pri-soft:#e7f2ec;
+  --accent:#f26b1d; --accent-ink:#a8460c; --accent-soft:#fff1e8;
+  --soft:#eef3f0; --head:#f0f3f1; --dish:#fafbfa;
+  --star:#e8a33d; --star-off:#dde2df; --ok:#1d7a4f; --okbg:#e5f4ec; --bad:#c2410c; --errbg:#fdf1eb;
+  --glass:#ffffffe0; --glow:#e9efeb; --sk1:#eceeed; --sk2:#f7f8f7;
+  --sh-1:0 1px 2px #10201814,0 1px 1px #1020180a; --sh-2:0 6px 20px #1020181a; --sh-3:0 24px 60px #10201833;
+  --ease:cubic-bezier(.2,.8,.2,1); --spring:cubic-bezier(.32,1.25,.5,1);
+  --font:Figtree,Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0e1311; --surface:#161c19; --surface-2:#1a211e; --ink:#e8eeeb; --mute:#9aa8a1; --faint:#748079; --line:#26302b;
+  --pri:#4fbf8f; --pri-d:#6fd1a6; --on-pri:#08130e; --pri-soft:#173126;
+  --accent:#ff7a2e; --accent-ink:#ffa46b; --accent-soft:#2c1c12;
+  --soft:#1b2420; --head:#18201c; --dish:#131916;
+  --star:#f0b44c; --star-off:#323d37; --ok:#5fcf98; --okbg:#173126; --bad:#f08a5d; --errbg:#2e1d17;
+  --glass:#161c19e6; --glow:#1b2420; --sk1:#1b221f; --sk2:#232c28;
+  --sh-1:0 1px 2px #0006; --sh-2:0 8px 24px #0008; --sh-3:0 24px 60px #000a;
+}
+*{box-sizing:border-box}
+html{-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;font-family:var(--font);
+  font-size:15px;line-height:1.45;transition:background .3s,color .3s}
+h1,h2,h3{letter-spacing:-.01em}
+:focus-visible{outline:2px solid var(--pri);outline-offset:2px;border-radius:8px}
+
+/* ---------- motion ---------- */
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes sheet{from{opacity:0;transform:translateY(24px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes up{from{transform:translateY(100%)}to{transform:none}}
+@keyframes left{from{transform:translateX(100%)}to{transform:none}}
+@keyframes shimmer{0%{background-position:-300px 0}100%{background-position:300px 0}}
+@keyframes slide{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+@keyframes pop{from{opacity:0;transform:translateY(-4px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes popup{from{opacity:0;transform:translateY(12px) scale(.94)}to{opacity:1;transform:none}}
+.rise{animation:rise .38s var(--ease) both}
+.fade{animation:fade .2s ease both}
+.sheet{animation:sheet .3s var(--ease) both}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:1ms!important;animation-delay:0ms!important;transition-duration:1ms!important}
+}
+
+/* "Reading your bill": no honest percentage exists, so a calm sliding bar instead */
+.scanbar{position:relative;height:6px;overflow:hidden;border-radius:99px;background:color-mix(in srgb,var(--pri) 16%,transparent)}
+.scanbar::after{content:"";position:absolute;inset:0 auto 0 0;width:40%;border-radius:99px;background:var(--pri);
+  animation:slide 1.3s cubic-bezier(.45,.05,.55,.95) infinite}
+@media (prefers-reduced-motion: reduce){.scanbar::after{animation:none;width:100%;opacity:.45}}
+
+/* ---------- form controls ---------- */
+.input{width:100%;padding:11px 14px;font:inherit;font-size:15px;color:var(--ink);background:var(--surface);
+  border:1px solid var(--line);border-radius:12px;outline:none;transition:border-color .18s,box-shadow .18s}
+.input::placeholder{color:var(--faint)}
+.input:focus{border-color:var(--pri);box-shadow:0 0 0 4px color-mix(in srgb,var(--pri) 16%,transparent)}
+input::-webkit-calendar-picker-indicator{display:none!important;opacity:0}
+input[list]{background-image:none}
+select.input{-webkit-appearance:none;appearance:none;padding-right:40px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235f6b66' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;background-size:14px}
+:root[data-theme="dark"] select.input{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa8a1' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border-radius:12px;font:inherit;
+  font-weight:600;font-size:15px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;
+  transition:transform .15s var(--ease),box-shadow .2s,background .2s,border-color .2s}
+.btn:active{transform:scale(.97)}
+.btn-pri{background:var(--pri);border-color:var(--pri);color:var(--on-pri)}
+.btn-pri:hover:not(:disabled){background:var(--pri-d);border-color:var(--pri-d)}
+.btn-accent{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px color-mix(in srgb,var(--accent) 35%,transparent)}
+.btn:disabled{opacity:.6;cursor:wait}
+.btn:hover:not(:disabled){border-color:var(--pri);box-shadow:var(--sh-2)}
+button:not(:disabled),[role=button],select,label[for]{cursor:pointer}
+.tbtn{padding:4px 9px;margin:-4px -9px;border-radius:8px;cursor:pointer;background:transparent;transition:background .18s,transform .15s}
+.tbtn:hover{background:color-mix(in srgb,currentColor 12%,transparent)}
+.tbtn:active{transform:scale(.95)}
+.ghost{transition:background .18s}
+.ghost:hover,.menu-item:hover{background:color-mix(in srgb,var(--ink) 7%,transparent)}
+
+.chip{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:99px;font:inherit;font-size:13.5px;font-weight:600;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap;
+  transition:background .18s,border-color .18s,color .18s,transform .15s var(--ease)}
+.chip:hover{border-color:var(--pri)}
+.chip:active{transform:scale(.95)}
+.chip.on{background:var(--pri-soft);border-color:var(--pri);color:var(--pri)}
+.chip:disabled{opacity:.5;cursor:not-allowed;transform:none;border-color:var(--line)}
+.pill{display:inline-flex;align-items:center;padding:2px 9px;border-radius:99px;font-size:11.5px;font-weight:600;background:var(--soft);color:var(--pri)}
+.pill-ok{background:var(--okbg);color:var(--ok)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--sh-1)}
+.skel{height:96px;border-radius:18px;background:linear-gradient(90deg,var(--sk1) 25%,var(--sk2) 50%,var(--sk1) 75%);
+  background-size:600px 100%;animation:shimmer 1.2s infinite linear}
+.menu{position:absolute;right:0;top:calc(100% + 8px);width:264px;background:var(--surface);border:1px solid var(--line);z-index:30;
+  border-radius:16px;padding:6px;box-shadow:var(--sh-3);animation:pop .16s var(--ease) both;transform-origin:top right}
+.menu-item{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:0;
+  border-radius:10px;background:transparent;color:var(--ink);font:inherit;font-size:14px;text-align:left;cursor:pointer;transition:background .18s}
+.switch{position:relative;width:38px;height:22px;border-radius:99px;background:var(--line);flex:none;transition:background .25s}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px #0003;transition:transform .25s var(--spring)}
+.switch.on{background:var(--pri)}
+.switch.on::after{transform:translateX(16px)}
+.noscroll{scrollbar-width:none}.noscroll::-webkit-scrollbar{display:none}
+
+/* ---------- app shell ---------- */
+.shell{min-height:100vh}
+.sidebar{display:none}
+.topbar{position:sticky;top:0;z-index:15;background:var(--glass);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.main{padding:0 16px calc(96px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:1320px;margin:0 auto}
+.bottomnav{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(5,1fr);align-items:end;
+  padding:6px 8px calc(8px + env(safe-area-inset-bottom,0px));background:var(--glass);backdrop-filter:blur(14px);border-top:1px solid var(--line)}
+.navbtn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;border:0;background:none;font:inherit;font-size:11px;
+  font-weight:600;color:var(--faint);transition:color .18s}
+.navbtn svg{transition:transform .2s var(--spring)}
+.navbtn.on{color:var(--pri)}
+.navbtn.on svg{transform:translateY(-1px) scale(1.08)}
+.navplus{justify-self:center;margin-top:-26px;width:58px;height:58px;border-radius:20px;border:0;display:grid;place-items:center;
+  background:var(--accent);color:#fff;box-shadow:0 10px 24px color-mix(in srgb,var(--accent) 45%,transparent);
+  transition:transform .2s var(--spring),border-radius .2s}
+.navplus:active{transform:scale(.92)}
+.navplus.open{transform:rotate(45deg);border-radius:50%}
+
+@media (min-width:1024px){
+  .shell{display:grid;grid-template-columns:264px minmax(0,1fr)}
+  .sidebar{display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;padding:20px 14px;gap:4px;
+    background:var(--surface);border-right:1px solid var(--line)}
+  .main{padding:0 32px 48px}
+  .bottomnav,.mobile-only{display:none!important}
+}
+@media (max-width:1023.98px){.desktop-only{display:none!important}}
+.side-h{margin:18px 10px 6px;font-size:11.5px;font-weight:700;color:var(--faint);letter-spacing:.04em}
+.side-item{display:flex;align-items:center;gap:11px;width:100%;padding:9px 10px;border:0;border-radius:11px;background:none;font:inherit;
+  font-size:14.5px;font-weight:500;color:var(--ink);text-align:left;transition:background .15s,color .15s}
+.side-item:hover{background:var(--soft)}
+.side-item.on{background:var(--pri-soft);color:var(--pri);font-weight:700}
+.side-item .count{margin-left:auto;font-size:12px;font-weight:700;color:var(--faint)}
+/* the nav items are links (real routes): no long-press link preview or drag, like the old buttons */
+a.navbtn,a.side-item,a.quick,a[role=tab]{-webkit-touch-callout:none;-webkit-user-drag:none;user-select:none;-webkit-user-select:none}
+/* Shell's PrefetchSpaces: Links in the viewport (so Next prefetches them) that nobody sees or reaches */
+.prefetch-links{position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none}
+.prefetch-links a{position:absolute;left:0;top:0;width:1px;height:1px;overflow:hidden}
+
+/* ---------- journal ---------- */
+.searchbar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:0 14px;
+  box-shadow:var(--sh-1);transition:border-color .18s,box-shadow .18s}
+.searchbar:focus-within{border-color:var(--pri);box-shadow:0 0 0 4px color-mix(in srgb,var(--pri) 14%,transparent)}
+.searchbar input{flex:1;min-width:0;border:0;outline:0;background:transparent;font:inherit;font-size:15px;color:var(--ink);padding:12px 0}
+.place-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+@media (min-width:640px){.place-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (min-width:1280px){.place-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}}
+@media (min-width:1680px){.place-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.pcard{display:flex;gap:14px;width:100%;padding:14px;text-align:left;font:inherit;color:inherit;background:var(--surface);
+  border:1px solid var(--line);border-radius:18px;box-shadow:var(--sh-1);transition:transform .2s var(--ease),box-shadow .2s,border-color .2s}
+.pcard:hover{transform:translateY(-2px);box-shadow:var(--sh-2);border-color:color-mix(in srgb,var(--pri) 30%,var(--line))}
+.pcard:active{transform:scale(.985)}
+.mono{flex:none;display:grid;place-items:center;border-radius:14px;color:#fff;font-weight:800;letter-spacing:-.02em}
+.lovetag{display:inline-flex;align-items:center;gap:4px;flex:none;padding:3px 8px;border-radius:8px;font-size:12.5px;font-weight:700;background:var(--okbg);color:var(--ok);line-height:1.3}
+.lovetag.none{background:var(--soft);color:var(--mute);font-weight:600}
+.must{color:var(--accent-ink);font-weight:600}
+.quick{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:var(--surface);
+  font:inherit;color:inherit;text-align:left;box-shadow:var(--sh-1);transition:transform .18s var(--ease),box-shadow .2s}
+.quick:hover{box-shadow:var(--sh-2)}.quick:active{transform:scale(.97)}
+.qicon{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;flex:none}
+
+/* ---------- overlays: bottom sheet on phones, right drawer / centred dialog on laptops ---------- */
+.scrim{position:fixed;inset:0;z-index:40;background:#0b120f80;backdrop-filter:blur(2px);animation:fade .2s ease both}
+.drawer{position:fixed;z-index:41;left:0;right:0;bottom:0;max-height:92vh;display:flex;flex-direction:column;background:var(--surface);
+  border-radius:24px 24px 0 0;box-shadow:var(--sh-3);animation:up .32s var(--ease) both}
+.grabber{width:40px;height:4px;border-radius:99px;background:var(--line);margin:8px auto 2px;flex:none}
+@media (min-width:1024px){
+  .drawer{left:auto;top:0;width:520px;max-height:none;border-radius:24px 0 0 24px;animation:left .3s var(--ease) both}
+  .grabber{display:none}
+}
+.actsheet{position:fixed;z-index:41;left:12px;right:12px;bottom:calc(92px + env(safe-area-inset-bottom,0px));padding:8px;
+  background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:var(--sh-3);animation:popup .22s var(--spring) both}
+@media (min-width:1024px){.actsheet{position:absolute;left:auto;right:0;bottom:auto;top:calc(100% + 8px);width:320px;transform-origin:top right}}
+.actrow{display:flex;align-items:center;gap:14px;width:100%;padding:12px;border:0;border-radius:14px;background:none;font:inherit;color:var(--ink);
+  text-align:left;transition:background .15s}
+.actrow:hover{background:var(--soft)}
+.actrow:active{transform:scale(.98)}
+
+/* ---------- login ---------- */
+.login{display:grid;min-height:100vh;background:var(--bg);grid-template-areas:"brand" "form" "info"}
+.l-brand,.l-info{background:var(--head);padding:20px 22px}
+.l-brand{grid-area:brand;padding-top:16px;padding-bottom:6px;background:var(--bg)}
+.l-info{grid-area:info;padding-top:28px;padding-bottom:36px;border-top:1px solid var(--line)}
+.l-form{grid-area:form;display:grid;place-items:start center;padding:12px 16px 28px}
+.login-card{border-top:4px solid var(--pri);box-shadow:var(--sh-3)}
+@media (min-width:900px){
+  .login{grid-template-columns:1.05fr 1fr;grid-template-rows:auto 1fr;grid-template-areas:"brand form" "info form"}
+  .l-brand,.l-info{padding-left:max(48px,6vw);padding-right:48px;border:0}
+  .l-brand{padding-top:32px;padding-bottom:0;background:var(--head)}
+  .l-form{place-items:center;padding:28px 16px}
+  .l-info{padding-top:48px}
+}
+.l-inner{max-width:520px}
+
+/* ---------- phone polish (2026-10-27) ---------- */
+@keyframes tabin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes out{to{opacity:0;transform:translateX(-28px) scale(.97)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.tabin{animation:tabin .26s var(--ease) backwards}   /* not "both": a held transform would trap position:fixed children (Near me full screen) */
+
+/* bottom bar: the active tab gets a soft pill that springs open behind its icon */
+.navico{position:relative;display:grid;place-items:center;width:56px;height:30px}
+.navico>*{position:relative}
+.navico::before{content:"";position:absolute;inset:0;border-radius:99px;background:var(--pri-soft);opacity:0;transform:scaleX(.35);
+  transition:transform .32s var(--spring),opacity .18s}
+.navbtn.on .navico::before{opacity:1;transform:none}
+.navbtn.on svg{transform:none}
+.navbtn:active .navico{transform:scale(.92)}
+.navico{transition:transform .15s var(--ease)}
+
+/* pull to refresh: a round badge slides out from under the top bar */
+@media (max-width:1023.98px){html,body{overscroll-behavior-y:none}}
+.ptr{position:fixed;left:0;right:0;top:62px;z-index:14;display:flex;justify-content:center;pointer-events:none;
+  opacity:0;transform:translateY(-56px)}
+.ptr-ball{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--surface);color:var(--faint);
+  border:1px solid var(--line);box-shadow:var(--sh-2);transition:color .15s}
+.ptr.ready .ptr-ball,.ptr.spin .ptr-ball{color:var(--pri)}
+.ptr.spin svg{animation:spin .75s linear infinite}
+
+/* Want to try */
+.wcard{padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--sh-1)}
+.wcard.out{animation:out .18s var(--ease) forwards}
+.wnote{margin:8px 0 0;padding:2px 0 2px 10px;border-left:3px solid var(--accent-soft);font-size:13.5px;color:var(--mute)}
+:root[data-theme="dark"] .wnote{border-left-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+
+/* "Removed · Undo" */
+.toast{position:fixed;z-index:44;left:16px;right:16px;bottom:calc(96px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;
+  justify-content:space-between;gap:12px;padding:12px 8px 12px 16px;border-radius:14px;background:var(--ink);color:var(--bg);
+  font-size:14px;font-weight:500;box-shadow:var(--sh-3);animation:popup .24s var(--spring) both}
+.toast-act{flex:none;padding:6px 12px;border:0;border-radius:9px;background:transparent;font:inherit;font-weight:700;
+  color:color-mix(in srgb,var(--pri) 55%,var(--bg))}
+.toast-act:active{transform:scale(.95)}
+@media (min-width:1024px){.toast{left:auto;right:32px;bottom:28px;width:360px}}
+
+/* "Your food story" in the You sheet */
+.story{margin:2px 8px 10px;padding:14px;border-radius:16px;background:var(--surface-2);border:1px solid var(--line)}
+.story-nums{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 6px}
+.story-nums div{display:flex;flex-direction:column}
+.story-nums b{font-size:26px;font-weight:800;line-height:1.1;letter-spacing:-.02em;color:var(--pri);font-variant-numeric:tabular-nums}
+.story-nums span{font-size:12.5px;color:var(--mute)}
+.story-row{display:flex;align-items:center;gap:11px;padding:8px 0 0}
+
+/* ---------- Add by voice ---------- */
+@keyframes listen{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 45%,transparent)}100%{box-shadow:0 0 0 16px transparent}}
+.voicebar{display:flex;align-items:center;gap:12px;padding:10px 12px;border:2px dashed var(--line);border-radius:16px;background:var(--bg);
+  transition:border-color .2s,background .2s}
+.voicebar.on{border-style:solid;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));background:var(--accent-soft)}
+.micbtn{flex:none;display:grid;place-items:center;width:46px;height:46px;border:0;border-radius:50%;background:var(--pri-soft);color:var(--pri);
+  transition:background .2s,color .2s,transform .15s var(--ease)}
+.micbtn:active{transform:scale(.92)}
+.micbtn.on{background:var(--accent);color:#fff;animation:listen 1.3s ease-out infinite}
+
+/* ---------- Send to friends ---------- */
+.sharepreview{display:grid;place-items:center;min-height:240px;border-radius:16px;overflow:hidden;border:1px solid var(--line);
+  background:var(--surface-2);box-shadow:var(--sh-2)}
+.sharepreview img{display:block;max-width:100%;max-height:52vh;object-fit:contain}
+.sharepreview .skel{width:100%;height:360px}
+
+/* "Order again?" Yes / Maybe / No */
+.seg{display:inline-flex;padding:3px;gap:2px;border-radius:12px;background:var(--soft);border:1px solid var(--line)}
+.seg button{padding:6px 12px;border:0;border-radius:9px;background:transparent;font:inherit;font-size:13px;font-weight:600;color:var(--mute);
+  transition:background .18s,color .18s,box-shadow .18s,transform .12s var(--ease)}
+.seg button:active{transform:scale(.95)}
+.seg button.on{background:var(--surface);box-shadow:var(--sh-1)}
+.seg .seg-yes.on{color:var(--ok);background:var(--okbg)}
+.seg .seg-maybe.on{color:var(--ink)}
+.seg .seg-no.on{color:var(--bad);background:var(--errbg)}
+
+/* the browser's own clear (✕) in search boxes: we draw our own */
+input[type=search]::-webkit-search-cancel-button,input[type=search]::-webkit-search-decoration{-webkit-appearance:none;appearance:none;display:none}
+
+/* ---------- the 1-minute tour (plays like stories) ---------- */
+.tour{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:#0f2b21;color:#fff;
+  padding:calc(10px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));animation:fade .25s ease both;
+  user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.tour-top,.tour-body,.tour-foot{width:100%;max-width:460px;margin:0 auto}
+.tour-bars{display:flex;gap:4px}
+/* each bar: a faint track (the button's background) and a white fill that grows with the scene */
+.tour-bars button{flex:1;height:14px;padding:5px 0;border:0;border-radius:9px;cursor:pointer;
+  background:linear-gradient(#ffffff40,#ffffff40) center/100% 4px no-repeat}
+.tour-bars button>span{display:block;height:4px;border-radius:9px;background:#fff;transform-origin:left}
+.tour-btn{display:grid;place-items:center;width:38px;height:38px;border:0;border-radius:50%;background:#ffffff1a;color:#fff}
+.tour-btn:active{transform:scale(.92)}
+.tour-body{position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;gap:22px;min-height:0;padding:12px 0}
+.tour-stage{position:relative;padding:18px;border-radius:26px;background:var(--bg);color:var(--ink);box-shadow:0 30px 60px #0007;
+  max-height:58vh;overflow:hidden;animation:tourin .45s var(--ease) both}
+.tour-caption{animation:tourcap .5s .15s var(--ease) both}
+.tour-caption h2{margin:0;font-size:25px;font-weight:800;line-height:1.15;letter-spacing:-.015em}
+.tour-caption p{margin:8px 0 0;font-size:15.5px;line-height:1.5;color:#d6e8df;max-width:40ch}
+.tour-zone{position:absolute;top:0;bottom:0;border:0;background:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.tour-zone.left{left:-16px;width:33%}.tour-zone.right{right:-16px;width:calc(67% + 16px)}
+.tour-zone:focus-visible{outline:2px solid #fff;outline-offset:-4px}
+.tour-foot{display:grid;gap:6px;justify-items:center;min-height:56px;align-content:end}
+.tour-link{border:0;background:none;padding:10px 14px;font:inherit;font-size:14px;font-weight:600;color:#ffffffc0;text-decoration:underline;text-underline-offset:3px}
+@keyframes tourin{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes tourcap{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (min-width:1024px){.tour{background:#0b241bf2;backdrop-filter:blur(6px)}}
+
+/* scene motion: ts-in (rise), ts-pop (pop), ts-on (switch on), ts-type (typing), ts-star (star lights up) */
+@keyframes tsin{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes tspop{0%{opacity:0;transform:scale(.6)}70%{opacity:1;transform:scale(1.06)}100%{opacity:1;transform:none}}
+@keyframes tstype{from{max-width:0}to{max-width:100%}}
+@keyframes tsstar{0%{color:var(--star-off);transform:scale(1)}50%{transform:scale(1.4)}100%{color:var(--star);transform:none}}
+@keyframes tson{to{background:var(--pri-soft);border-color:var(--pri);color:var(--pri)}}
+@keyframes tsyes{to{background:var(--okbg);color:var(--ok);box-shadow:var(--sh-1)}}
+@keyframes tsscan{0%{top:0}100%{top:100%}}
+@keyframes tsroll{0%{transform:rotate(0)}100%{transform:rotate(720deg)}}
+@keyframes tstap{0%{opacity:0;transform:translate(-50%,-50%) scale(.4)}30%{opacity:.9}100%{opacity:0;transform:translate(-50%,-50%) scale(1.8)}}
+@keyframes tsrise{from{opacity:0;transform:translateY(40px) rotate(-2deg)}to{opacity:1;transform:rotate(-1deg)}}
+.ts-in{animation:tsin .45s var(--ease) both}
+.ts-pop{animation:tspop .5s var(--ease) both}
+.ts-type{display:inline-block;overflow:hidden;white-space:nowrap;vertical-align:bottom;max-width:0;animation:tstype 1.6s steps(28) .5s forwards}
+/* longer sentences wrap: revealed left to right instead of typed on one line */
+@keyframes tsreveal{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+.ts-say{display:block;clip-path:inset(0 100% 0 0);animation:tsreveal 2s steps(30) .5s forwards}
+@media (prefers-reduced-motion: reduce){.ts-say{clip-path:none}}
+.ts-star{display:inline-block;color:var(--star-off);animation:tsstar .35s var(--ease) both}
+.chip.ts-on{animation:tson .25s ease forwards}
+.seg .ts-on{animation:tsyes .25s ease forwards}
+.ts-bill{background:#fffdf6;color:#3b3b3b;box-shadow:0 8px 20px #0002}
+.ts-scanline{position:absolute;left:0;right:0;height:3px;background:var(--pri);box-shadow:0 0 14px 4px color-mix(in srgb,var(--pri) 50%,transparent);
+  animation:tsscan 1.4s ease-in-out .3s 1 both}
+.ts-roll{animation:tsroll 1.4s cubic-bezier(.3,.7,.3,1) .2s both}
+.ts-tap{position:absolute;width:46px;height:46px;border-radius:50%;background:#ffffffb3;border:2px solid var(--pri);pointer-events:none;
+  animation:tstap .7s ease-out both}
+.ts-rise{animation:tsrise .7s var(--ease) both}
+/* Near me scene: a drawn street map (no tiles), pins drop in, the tapped one opens its card */
+.ts-map{height:150px;background:var(--soft);box-shadow:inset 0 0 0 1px var(--line)}
+.ts-map-road{fill:none;stroke:var(--surface);stroke-width:7;stroke-linecap:round}
+.ts-map-road.thin{stroke-width:4}
+.ts-map-water{fill:none;stroke:color-mix(in srgb,#2f7cf6 22%,var(--soft));stroke-width:12;stroke-linecap:round}
+.ts-pin{translate:-50% -100%}
+.ts-pin .mk{width:24px;height:24px}
+.ts-map .mk-me{translate:-50% -50%}
+@media (prefers-reduced-motion: reduce){.ts-type{max-width:100%}.ts-star{color:var(--star)}}
+
+/* the Feature guide */
+.guide-hero{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.guide-play{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:14px;border:0;border-radius:18px;text-align:left;font:inherit;
+  transition:transform .15s var(--ease)}
+.guide-play:active{transform:scale(.97)}
+.guide-play.tour-card{background:#0f2b21;color:#fff}
+.guide-play.video-card{background:var(--accent-soft);color:var(--ink)}
+.guide-item{display:flex;gap:12px;padding:12px 4px;border-top:1px solid var(--line)}
+.guide-item:first-of-type{border-top:0}
+
+/* an address line that opens Google Maps */
+.mapswhere{display:inline-flex;align-items:center;gap:4px;color:inherit;text-decoration:underline;text-decoration-color:color-mix(in srgb,currentColor 35%,transparent);
+  text-underline-offset:3px;border-radius:6px;transition:color .15s}
+.mapswhere:hover{color:var(--pri)}
+
+/* place details: action buttons keep their label on one line (the row wraps instead) */
+.detail-actions .btn{white-space:nowrap}
+
+/* ---------- the app's own confirm / message box (replaces the browser's) ---------- */
+@keyframes dlgin{from{opacity:0;transform:translateY(10px) scale(.92)}to{opacity:1;transform:none}}
+@keyframes dlgout{to{opacity:0;transform:scale(.96)}}
+@keyframes dlgshake{0%,100%{transform:none}25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+.dlg-scrim{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:20px;background:#0b120f8c;backdrop-filter:blur(3px);
+  animation:fade .18s ease both}
+.dlg-scrim.out{animation:fade .14s ease reverse both;pointer-events:none}
+.dlg{width:100%;max-width:360px;padding:22px 20px 18px;border-radius:22px;background:var(--surface);color:var(--ink);
+  border:1px solid var(--line);box-shadow:var(--sh-3);animation:dlgin .3s var(--spring) both}
+.dlg.out{animation:dlgout .14s ease both}
+.dlg-icon{display:grid;place-items:center;width:46px;height:46px;border-radius:15px}
+/* a little wiggle on the trash can, once, when a delete is asked */
+.dlg-icon.danger svg{animation:dlgshake .4s .25s ease both}
+.btn-danger{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn-danger:hover:not(:disabled){filter:brightness(.95);border-color:var(--bad)}
+:root[data-theme="dark"] .btn-danger{color:#1a0d07}
+
+/* ---------- the public demo ---------- */
+.demo-try{margin-top:16px}
+.demo-or{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:12px;font-weight:600;color:var(--faint)}
+.demo-or::before,.demo-or::after{content:"";flex:1;height:1px;background:var(--line)}
+.demobar{display:flex;align-items:center;justify-content:center;gap:8px;padding:7px 14px;font-size:12.5px;font-weight:600;text-align:center;
+  background:var(--accent-soft);color:var(--accent-ink);border-bottom:1px solid color-mix(in srgb,var(--accent) 25%,transparent)}
+.demobar button{border:0;background:none;padding:2px 4px;font:inherit;font-weight:700;color:inherit;text-decoration:underline;text-underline-offset:2px}
+.demo-wait{display:grid;min-height:100vh;place-items:center;padding:24px;text-align:center}
+
+/* ---------- maps (Leaflet + OpenStreetMap): forms, Near me, Fix locations ---------- */
+.lmap{position:relative;overflow:hidden;border-radius:16px;background:var(--soft);isolation:isolate}
+.lmap .leaflet-container{font:inherit;background:var(--soft)}
+/* CARTO has a real dark style; only the OSM fallback needs dimming in dark mode */
+:root[data-theme="dark"] .lmap.osm-dark .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.82) contrast(.92)}
+.lmap .leaflet-control-attribution{font-size:10.5px;background:color-mix(in srgb,var(--surface) 85%,transparent);color:var(--mute)}
+.lmap .leaflet-control-attribution a{color:var(--pri)}
+.lmap .leaflet-bar a{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.lmap-msg{position:absolute;inset:0;z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  font-size:13px;color:var(--mute);background:var(--soft)}
+/* pins: a teardrop in the place's colour; wishes carry a bookmark; you are the blue dot */
+.mk{display:grid;place-items:center;width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--c);
+  border:2.5px solid #fff;box-shadow:0 3px 8px #0005;transition:transform .15s var(--ease)}
+.mk i{width:9px;height:9px;border-radius:50%;background:#fff}
+.mk svg{transform:rotate(45deg);color:#fff}
+.mk.mk-wish{--c:var(--accent)!important}
+.mk.mk-approx{background:var(--surface);border:3px dashed var(--c)}
+.mk.mk-approx i{background:var(--c)}
+.mk-num{transform:rotate(45deg);font-size:13px;font-weight:800;line-height:1;color:#fff}
+.mk.mk-approx .mk-num{color:var(--c)}
+.mk.mk-numbered{--c:var(--pri)!important}
+.mk.mk-approx svg{color:var(--c)}
+/* group space: who added it, a small letter badge on the pin's shoulder */
+.mk-who{position:absolute;top:-5px;right:-5px;z-index:2;display:grid;place-items:center;min-width:15px;height:15px;padding:0 3px;border-radius:999px;box-sizing:border-box;
+  font-size:9.5px;font-weight:800;line-height:1;background:var(--surface);color:var(--ink);border:1.5px solid var(--pri);box-shadow:0 1px 3px #0004;pointer-events:none}
+.mk.on{transform:rotate(-45deg) scale(1.22)}
+/* pin labels: upright, beside the pin (not inside the rotated teardrop); names from zoom 15, dishes from 16 */
+.mkw{display:block;position:relative}
+.mk-name,.mk-sub{display:none;position:absolute;left:36px;max-width:140px;padding:1px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 1px 3px #0003;pointer-events:none;line-height:1.35}
+.mk-name{top:2px;font-size:11.5px;font-weight:700;border-radius:6px 6px 0 0}
+.mk-sub{top:19px;font-size:10.5px;font-weight:500;color:var(--mute);border-radius:0 0 6px 6px;border-top:0}
+.lmap .lbl-1 .mk-name,.lmap .lbl-2 .mk-name{display:block}
+.lmap .lbl-2 .mk-sub{display:block}
+.lmap .lbl-1 .mk-name{border-radius:6px}
+.mkw.on .mk-name,.mkw.on .mk-sub{display:none!important}
+.mk-drag{width:36px;height:36px;--c:var(--accent);cursor:grab}
+.mk-drag i{width:11px;height:11px}
+.mk-me{display:block;width:22px;height:22px;border-radius:50%;background:#2f7cf6;border:3px solid #fff;box-shadow:0 0 0 0 #2f7cf680,0 2px 6px #0004;
+  animation:mepulse 2s ease-out infinite}
+@keyframes mepulse{to{box-shadow:0 0 0 16px #2f7cf600,0 2px 6px #0004}}
+@media (prefers-reduced-motion: reduce){.mk-me{animation:none}}
+/* cluster bubble: a count where pins crowd together */
+.mk-cluster{display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--pri);color:#fff;font-weight:800;font-size:14px;
+  border:3px solid #fff;box-shadow:0 0 0 5px color-mix(in srgb,var(--pri) 28%,transparent),0 3px 8px #0005;cursor:pointer}
+/* area summary under the map */
+.areacard{margin-top:10px;padding:13px 14px;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:var(--sh-1);animation:popup .22s var(--spring) both}
+.areachip{display:inline-flex;align-items:center;gap:4px;margin-top:8px;padding:4px 6px 4px 12px;border-radius:999px;border:1px solid var(--pri);background:var(--pri-soft);color:var(--pri);font-size:13px;font-weight:600}
+/* form: saved location preview */
+.locset{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:var(--surface)}
+.locset .locset-map{height:120px;border-radius:0}
+/* full-height map sheet (above the form that opened it) */
+.mapsheet{position:fixed;z-index:51;left:0;right:0;bottom:0;top:5vh;display:flex;flex-direction:column;background:var(--surface);
+  border-radius:24px 24px 0 0;box-shadow:var(--sh-3);animation:up .32s var(--ease) both}
+@media (min-width:1024px){.mapsheet{top:6vh;bottom:6vh;left:50%;right:auto;width:min(760px,92vw);transform:translateX(-50%);border-radius:24px;animation:fade .2s ease both}}
+.pinpick{display:flex;flex-direction:column;gap:10px;min-height:0}
+.pinpick .pinpick-map{flex:1;min-height:240px}
+.pinpick-results{position:absolute;z-index:600;left:0;right:0;top:calc(100% + 6px);margin:0;padding:6px;list-style:none;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh-2)}
+.pinpick-results button{display:flex;width:100%;align-items:flex-start;gap:8px;padding:9px 10px;border:0;border-radius:10px;background:none;
+  font:inherit;font-size:13.5px;color:var(--ink);text-align:left;cursor:pointer}
+.pinpick-results button:hover,.pinpick-results button:focus-visible{background:var(--soft)}
+.pinpick-results svg{flex:none;margin-top:2px;color:var(--mute)}
+/* Near me (its blue matches the map's "you are here" dot) */
+:root{--near-soft:#e8f0fe;--near-ink:#2557b8}
+:root[data-theme="dark"]{--near-soft:#18284a;--near-ink:#9cbcf7}
+.nearseg button,.nearseg>span{display:inline-flex;align-items:center;gap:5px}
+.nearchips{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+@media (max-width:1023.98px){.nearchips{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px;padding:2px 16px 4px;scrollbar-width:none}
+  .nearchips::-webkit-scrollbar{display:none}.nearchips .chip{flex:none}}
+.nearwarn{display:flex;align-items:flex-start;gap:8px;margin:0 0 12px;padding:9px 12px;border-radius:12px;background:var(--soft);font-size:13px;color:var(--mute)}
+.nearwarn svg{flex:none;margin-top:1px}
+.nearsep{flex:none;width:1px;height:22px;background:var(--line)}
+.lmap-ring{fill:var(--pri);fill-opacity:.07;stroke:var(--pri);stroke-width:2;stroke-opacity:.55;stroke-dasharray:6 6}
+.lmap-route{stroke:var(--pri);stroke-width:5;stroke-opacity:.78;stroke-linecap:round;stroke-linejoin:round;fill:none}
+.lmap-halo{fill:var(--pri);fill-opacity:.04;stroke:var(--pri);stroke-width:1.5;stroke-opacity:.4;stroke-dasharray:3 5}
+.nearhint{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:18px 0 0;padding:10px 4px 0;border-top:1px solid var(--line);
+  font-size:13px;color:var(--mute)}
+.nearhint .ghost{color:var(--faint)}
+.herecard{margin:0 0 14px;padding:11px 14px;border:1px solid var(--line);border-radius:14px;background:var(--pri-soft);font-size:14px;color:var(--ink)}
+.herecard svg{display:inline;vertical-align:-2px;color:var(--pri)}
+.nearcard{overflow:hidden;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:var(--sh-1)}
+.nearcard.pop{margin-top:10px;animation:popup .22s var(--spring) both}
+.nearcard-main{display:flex;gap:12px;width:100%;padding:13px 14px 10px;border:0;background:none;font:inherit;color:inherit;text-align:left}
+button.nearcard-main{cursor:pointer}
+.neardist{flex:none;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:700;background:var(--near-soft);color:var(--near-ink)}
+.neardist.approx{background:transparent;box-shadow:inset 0 0 0 1px var(--line);color:var(--mute)}
+.nearmap{height:min(62vh,560px)}
+@media (max-width:1023.98px){.nearmap{height:58vh;margin:0 -4px}}
+.nearsplit{display:block}
+.nearside{min-width:0}
+.nearareacard{margin-top:10px}
+/* phones: a swipeable row of cards under the map; desktop: a scrolling list beside it */
+.nearrail{display:flex;gap:10px;margin:8px -4px 0;padding:4px 4px 8px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain}
+.nearrail::-webkit-scrollbar{display:none}
+.nearitem{flex:0 0 85%;min-width:0;scroll-snap-align:center;border-radius:18px;scroll-margin:6px;transition:box-shadow .15s var(--ease)}
+.nearoff{margin:0 0 4px 6px;font-size:12px;font-weight:700;color:var(--pri)}
+.nearitem.on{box-shadow:0 0 0 2px var(--pri)}
+@media (min-width:1024px){
+  .nearsplit{display:grid;grid-template-columns:3fr 2fr;gap:16px;align-items:start}
+  .nearside .nearareacard{margin-top:0;margin-bottom:10px}
+  .nearside>p{margin:0 0 8px;text-align:left}
+  .nearrail{display:flex;flex-direction:column;gap:12px;margin:0;padding:3px;max-height:min(62vh,560px);overflow-y:auto;overflow-x:hidden;scroll-snap-type:none}
+  .nearitem{flex:none}
+  .nearitem:hover{box-shadow:0 0 0 2px var(--pri)}
+}
+.nearpulse{animation:listen 1.6s ease-out infinite}
+@media (prefers-reduced-motion: reduce){.nearpulse{animation:none}}
+.fixbar{height:4px;border-radius:99px;background:var(--soft);overflow:hidden}
+.fixbar span{display:block;height:100%;background:var(--pri);transition:width .3s var(--ease)}
+/* Google Maps -> Copy link -> Paste link */
+.glocate-ready{animation:listen 1.4s ease-out 3}
+@media (prefers-reduced-motion: reduce){.glocate-ready{animation:none}}
+.fixplace{margin-bottom:12px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--dish)}
+.fixsteps{margin:0 0 14px;padding:0 0 0 20px;font-size:13.5px;line-height:1.55;color:var(--mute)}
+.fixsteps b{color:var(--ink);font-weight:600}
+.fixmap{height:clamp(220px,46vh,420px)}
+/* food crawl: the bar under the map, the picked state on cards */
+.crawlbar{position:sticky;top:8px;z-index:5;margin:8px 0;padding:11px 14px;border:1px solid var(--pri);border-radius:14px;background:var(--pri-soft);color:var(--ink);box-shadow:var(--sh-1)}
+.nearitem.picked{box-shadow:0 0 0 2px var(--pri)}
+/* heatmap on: pins fade back but stay tappable; the glow canvas never takes taps */
+.nearmap.heat-on .leaflet-marker-icon:not(.mk-keep){opacity:.35}   /* your dot, the selected pin and route stops (mk-keep) stay solid */
+.lmap .leaflet-heatmap-layer{pointer-events:none}
+/* replay your food year: the card over the bottom of the map */
+.replay{position:absolute;left:10px;right:10px;bottom:26px;z-index:500;max-width:340px;padding:11px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);box-shadow:var(--sh-1)}
+.replay-end{border-color:var(--pri);background:var(--pri-soft)}
+.replay-month{font-size:20px;font-weight:800;letter-spacing:-.01em}
+.replay-add{padding:1px 9px;border-radius:999px;background:var(--pri-soft);color:var(--pri);font-size:13px;font-weight:700;animation:fade .3s ease both}
+.replay-stats{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:4px;font-size:14px}
+.replay-stats b{font-size:22px;font-weight:800;margin-right:3px}
+
+/* Near me map: full screen button (top right, clear of the zoom control) and the full-screen state */
+.nearfull{position:absolute;top:10px;right:10px;z-index:500;display:grid;place-items:center;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);box-shadow:var(--sh-1);cursor:pointer}
+.nearfull:hover{color:var(--pri)}
+.lmap.nearmap-full,.lmap.nearmap-full.nearmap{position:fixed;inset:0;z-index:60;height:auto;margin:0;border-radius:0}
+.nearmap-full .nearfull{top:calc(10px + env(safe-area-inset-top,0px));right:calc(10px + env(safe-area-inset-right,0px))}
+.nearmap-full .leaflet-top{padding-top:env(safe-area-inset-top,0px)}
+.nearmap-full .replay{bottom:calc(26px + env(safe-area-inset-bottom,0px))}
+.nearfloat{position:absolute;left:10px;right:10px;bottom:calc(26px + env(safe-area-inset-bottom,0px));z-index:500;max-width:400px}
+.nearfloat .nearcard{margin-top:0}

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { toRouteHandler } from './nodeAdapter'
+import { toRouteHandler } from '@/server/nodeAdapter'
 
 describe('Vercel-style (req, res) handlers served as Next.js route handlers', () => {
   test('query, headers, status and JSON body carry over', async () => {

@@ -1,4 +1,4 @@
-// BiteMark runs as a single-page app inside Next.js: the whole app is client-side (app/ClientApp.jsx).
+// BiteMark's screens are Next.js routes (app/); they are client components (the session lives in the browser).
 // The two browser settings fall back to the old VITE_ names, so an existing .env or Vercel project
 // keeps working until they are renamed to NEXT_PUBLIC_.
 const env = name => process.env[`NEXT_PUBLIC_${name}`] || process.env[`VITE_${name}`] || ''
@@ -7,9 +7,9 @@ const env = name => process.env[`NEXT_PUBLIC_${name}`] || process.env[`VITE_${na
 export default {
   reactStrictMode: true,
   agentRules: false,          // no generated AGENTS.md: CLAUDE.md is this project's agent guide
-  // like the old vercel.json: any path that isn't a file (has no dot), /api or /_next opens the app,
-  // with the URL kept; unknown files and API paths still get a 404
-  async rewrites() { return [{ source: '/:path((?!api/|_next/)[^.]+)', destination: '/' }] },
+  // prefetched pages stay in the browser's router cache for the whole visit (Next's default is 5 min), so
+  // switching views and spaces keeps working offline, as the single-page app did. The pages hold no data.
+  experimental: { staleTimes: { static: Infinity } },
   env: {
     NEXT_PUBLIC_NEON_AUTH_URL: env('NEON_AUTH_URL'),
     NEXT_PUBLIC_NEON_DATA_API_URL: env('NEON_DATA_API_URL'),
