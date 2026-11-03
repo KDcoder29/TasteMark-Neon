@@ -234,7 +234,9 @@ export default function PlaceForm({ me, place, cities, groups = [], defaultGroup
         ) : (
           <>
             <h3 className="mb-2 text-sm font-semibold">Dishes</h3>
-            <BillScan initialFile={initialBill} onPhoto={file => setBillFiles(b => [...b, file])} onDishes={found => {
+            {/* the bill's restaurant name fills an empty place name (and offers a place you already have, like voice) */}
+            <BillScan initialFile={initialBill} onPhoto={file => setBillFiles(b => [...b, file])}
+              onName={name => { if (f.name.trim()) return false; spoken({ place: name, dishes: [] }); return true }} onDishes={found => {
               const fresh = newScannedDishes(dishes, found)
               setDishes(mergeScannedDishes(dishes, fresh))
               return fresh.length
