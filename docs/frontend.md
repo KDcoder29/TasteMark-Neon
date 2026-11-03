@@ -53,6 +53,21 @@ Outside these: `app/` (Next.js routes and API routes), `server/` (API logic + te
 | `Login.jsx`, `ResetPassword.jsx`, `ChangePassword.jsx`, `authApi.js` | Login with username or email, sign-up, password reset and change. |
 
 ## Decision log
+- **2026-11-03 - Bill scan also reads the restaurant name** (branch `BiteMark/Bill_Restaurant_Name`). Kandarp: find the name from "the bold title, bigger font, written separately on top, italic, etc."
+  - **Reader** (`lib/billOcr.js` `readBillText`) now returns `{ text, lines, width }`.
+    - Each line comes with its box from Tesseract's `blocks` output (`linesOf`) and its **ink**: the share of dark pixels (`inkRatio`). Bold print has thicker strokes.
+    - Tesseract v6 (LSTM) reports no bold or italic attributes, so bold is measured from the ink, and italic can't be detected. An italic name is still found by size, place and spacing.
+  - **Root cause found on real scans:** the dish pass uses psm 6, which drops lines much bigger than the rest. The big printed name never reached the parser.
+    - Fix: re-read the **top of the bill** (above the first dish line, `headCut`, else the top 40 %) as a cropped canvas in psm 3.
+    - Not Tesseract's `rectangle` option: tested, it returned garbled text.
+    - Cost: +0.2–0.3 s per scan.
+  - **Detector** (`lib/billName.js` `findRestaurantName`, 11 tests): scores the lines above the first dish line.
+    - Signals: bigger than the body text, more ink (bold), centred, ALL CAPS, near the top, spacing around it.
+    - It skips lines with GSTIN / invoice / date / table / phone / address words / "Pvt Ltd", many digits or commas.
+    - It joins a name printed over two same-size lines; the gap is measured against the name's own height. Capitals become "The Grand Bhagwati"; mixed case stays as printed.
+    - It returns null when nothing stands out.
+  - **Form:** `BillScan onName` fills the place name only when it's empty, through PlaceForm's voice path (`spoken`), so a place already in the journal is offered too. The message reads 'Place name "X" from the bill.'
+  - **Real checks** (Tesseract in the browser, production build): the place name was right on all 8 bills (big, bold at normal size, two lines, italic, a "TAX INVOICE" banner above, no name → left empty, the real test photo, + menu → Scan a bill). Dishes were unchanged.
 - **2026-11-01 - Bug sweep of the new features, phone (390 px, Android) and desktop (1280 px)** (branch `BiteMark/Install_Link`).
   - **Checked and working:** the login and top-bar / sidebar Install buttons; the You menu; contact numbers (save, reload, Edit shows it, **Call** on places and Want to try, "We went" carries it, an invalid number is caught); unsaved changes on Add / Edit place, Add dish, Want to try, the Groups sheet, Escape and Back; groups and places (address, Back, header); dark mode. No console errors.
   - **Fixed:**
